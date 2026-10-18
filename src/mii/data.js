@@ -12,9 +12,9 @@
 //   glasses: { type, color, size, y }, mole: { on, size, x, y },
 // }
 
-import { FACE_SHAPES, NOSES } from './head.js';
+import { FACE_SHAPES } from './head.js';
 import { HAIR_STYLES } from './hair.js';
-import { EYES, BROWS, MOUTHS, MUSTACHES, BEARDS, GLASSES, FEATURES } from './face.js';
+import { EYES, BROWS, NOSES, MOUTHS, MUSTACHES, BEARDS, GLASSES, FEATURES } from './face.js';
 import { FAVORITE_COLORS, SKIN_COLORS, HAIR_COLORS, EYE_COLORS, LIP_COLORS, GLASSES_COLORS } from './palette.js';
 
 export const NAME_MAX = 10;
@@ -79,15 +79,15 @@ export function defaultMii(gender = 'm') {
     creator: '',
     gender: f ? 'f' : 'm',
     birthday: { month: 0, day: 0 },
-    favoriteColor: f ? 7 : 6,
+    favoriteColor: 0,
     height: 64,
     weight: 64,
     face: { shape: f ? 1 : 0, skin: 0, feature: 0 },
-    hair: { style: f ? 10 : 0, color: 1, flip: false },
-    brows: { type: f ? 0 : 1, color: 1, size: 4, y: 10, spacing: 4, rotation: 6 },
+    hair: { style: f ? 6 : 0, color: 1, flip: false },
+    brows: { type: f ? 0 : 1, color: 1, size: 4, y: 10, spacing: 4, rotation: f ? 6 : 8 },
     eyes: { type: f ? 6 : 0, color: 0, size: 4, y: 12, spacing: 4, rotation: 4 },
     nose: { type: 0, size: 4, y: 9 },
-    mouth: { type: f ? 6 : 0, color: f ? 2 : 0, size: 4, y: 9 },
+    mouth: { type: 2, color: f ? 2 : 0, size: 4, y: 9 },
     facialHair: { mustache: 0, beard: 0, color: 1, size: 4, y: 8 },
     glasses: { type: 0, color: 0, size: 4, y: 10 },
     mole: { on: false, size: 4, x: 11, y: 20 },
@@ -145,7 +145,7 @@ const NAMES = {
   f: ['Emma', 'Julia', 'Sophie', 'Tess', 'Anna', 'Lotte', 'Fleur', 'Sanne', 'Noor', 'Evi', 'Lisa', 'Femke', 'Mila', 'Saar', 'Yara', 'Ilse', 'Fatima', 'Roos'],
 };
 
-const HAIR_POOL = { m: [0, 0, 1, 1, 2, 3, 4, 5, 11, 12, 13, 14, 15, 7], f: [6, 6, 7, 8, 9, 10, 10, 13, 5, 14, 11, 1] };
+const HAIR_POOL = { m: [0, 0, 0, 1, 1, 2, 3, 4, 5, 11, 12, 13, 14, 15], f: [6, 6, 16, 16, 7, 8, 9, 10, 10, 13, 5, 14, 11, 1] };
 const EYE_POOL = { m: [0, 0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 12], f: [0, 1, 3, 4, 6, 6, 7, 7, 10, 11, 11] };
 const BROW_POOL = { m: [0, 1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], f: [0, 0, 1, 5, 6, 7, 9, 10] };
 const MOUTH_POOL = { m: [0, 0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11], f: [0, 1, 1, 6, 6, 4, 7, 8, 9] };

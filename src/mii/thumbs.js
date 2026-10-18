@@ -1,12 +1,10 @@
 // Off-screen snapshots of Miis: portraits for the plaza and 3D option icons
-// (hairstyles, face shapes, noses) in the editor. One shared WebGL renderer;
+// (hairstyles, face shapes) in the editor. One shared WebGL renderer;
 // requests are queued so the page stays responsive while icons appear.
 
 import * as THREE from 'three';
 import { MiiModel } from './model.js';
 import { addStudioLights, framing } from '../three/stage.js';
-import { faceLayout } from './face.js';
-import { FACE_SHAPES, headPoint } from './head.js';
 
 let gl = null;
 const cache = new Map();
@@ -27,7 +25,7 @@ function keyOf(data, view, size, yaw) {
   return `${view}|${size}|${yaw}|${JSON.stringify(look)}`;
 }
 
-/** Renders a Mii to a PNG data URL. view: 'face', 'body' or 'nose'. */
+/** Renders a Mii to a PNG data URL. view: 'face' or 'body'. */
 export function snapshot(data, { view = 'face', size = 192, yaw = 0 } = {}) {
   const key = keyOf(data, view, size, yaw);
   if (cache.has(key)) return cache.get(key);
@@ -38,18 +36,9 @@ export function snapshot(data, { view = 'face', size = 192, yaw = 0 } = {}) {
   model.group.rotation.y = yaw;
   scene.add(model.group);
 
-  if (view === 'nose') {
-    const m = model.data;
-    const nose = headPoint(FACE_SHAPES[m.face.shape], faceLayout(m).noseTheta, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
-    nose.y += model.headY;
-    nose.x += Math.sin(yaw) * 0.05;
-    camera.position.set(nose.x, nose.y + 0.02, nose.z + 1.25);
-    camera.lookAt(nose.x, nose.y, nose.z - 0.12);
-  } else {
-    const f = framing(model, view, camera.fov);
-    camera.position.set(f.target.x, f.target.y + f.dist * 0.05, f.target.z + f.dist);
-    camera.lookAt(f.target);
-  }
+  const f = framing(model, view, camera.fov);
+  camera.position.set(f.target.x, f.target.y + f.dist * 0.05, f.target.z + f.dist);
+  camera.lookAt(f.target);
   renderer.render(scene, camera);
   const url = renderer.domElement.toDataURL('image/png');
   scene.remove(model.group);

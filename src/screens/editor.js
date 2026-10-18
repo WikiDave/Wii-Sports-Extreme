@@ -5,8 +5,8 @@ import { MiiStage } from '../three/stage.js';
 import { MiiModel } from '../mii/model.js';
 import { RANGES, NAME_MAX, normalizeMii, cloneMii, getPath, setPath, randomMii } from '../mii/data.js';
 import { miiStore } from '../mii/storage.js';
-import { drawFeatureThumb, EYES, BROWS, MOUTHS, MUSTACHES, BEARDS, GLASSES, FEATURES } from '../mii/face.js';
-import { FACE_SHAPES, NOSES } from '../mii/head.js';
+import { drawFeatureThumb, EYES, BROWS, NOSES, MOUTHS, MUSTACHES, BEARDS, GLASSES, FEATURES } from '../mii/face.js';
+import { FACE_SHAPES } from '../mii/head.js';
 import { HAIR_STYLES } from '../mii/hair.js';
 import { snapshotImage } from '../mii/thumbs.js';
 import { FAVORITE_COLORS, SKIN_COLORS, HAIR_COLORS, EYE_COLORS, LIP_COLORS, GLASSES_COLORS } from '../mii/palette.js';
@@ -187,7 +187,7 @@ export function editorScreen(root, app, { mii, isNew }) {
     return c;
   };
 
-  /** Icon rendered in 3D (hairstyles, face shapes, noses). */
+  /** Icon rendered in 3D (hairstyles, face shapes). */
   const modelThumb = (path, view, tweak = () => {}, yaw = 0) => (i) => {
     const img = h('img', { class: 'opt-art', alt: '', width: 112, height: 112 });
     const variant = cloneMii(draft);
@@ -348,7 +348,7 @@ export function editorScreen(root, app, { mii, isNew }) {
     ],
 
     nose: () => [
-      group('Vorm', options('nose.type', NOSES, modelThumb('nose.type', 'nose', () => {}, 0.75), 'Neusvorm')),
+      group('Vorm', options('nose.type', NOSES, faceThumb('nose.type', 'nose'), 'Neusvorm')),
       group('Aanpassen', stepper('nose.size', 'size'), stepper('nose.y', 'y')),
     ],
 

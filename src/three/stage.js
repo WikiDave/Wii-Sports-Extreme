@@ -45,10 +45,10 @@ export function framing(model, view, fov = 26, aspect = 1) {
   const tanV = Math.tan(THREE.MathUtils.degToRad(fov / 2));
   const tanH = tanV * aspect;
   if (view === 'face' || !model.parts) {
-    return { target: new THREE.Vector3(0, model.headY + 0.04, 0), dist: Math.max(0.76 / tanV, 0.72 / tanH) };
+    return { target: new THREE.Vector3(0, model.headY + 0.05, 0), dist: Math.max(0.74 / tanV, 0.62 / tanH) };
   }
-  const top = model.headY + 0.7;
-  return { target: new THREE.Vector3(0, top / 2 - 0.02, 0), dist: Math.max((top * 0.56) / tanV, 0.75 / tanH) };
+  const top = model.headY + 0.68;
+  return { target: new THREE.Vector3(0, top / 2 - 0.02, 0), dist: Math.max((top * 0.56) / tanV, 0.8 / tanH) };
 }
 
 export class MiiStage {

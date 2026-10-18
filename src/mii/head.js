@@ -1,22 +1,23 @@
-// The head: a deformed sphere (face shape), the face texture wrapped over the
-// front, ears and a 3D nose. Angles: theta runs down from the crown (0) to the
-// chin (PI); phi runs around the head with phi = 0 facing forward (+z).
+// The head: an egg-shaped surface (taller than wide, like a Wii Mii) whose front
+// carries the face texture and a small nose bulge. Angles: theta runs down from
+// the crown (0) to the chin (PI); phi runs around the head, phi = 0 facing +z.
 
 import * as THREE from 'three';
 import { parametric } from '../three/surface.js';
-import { FACE_TEX } from './face.js';
+import { FACE_TEX, NOSES } from './face.js';
 
-export const HEAD_R = 0.5;
+/** Head radii in world units: the head is 1 unit tall. */
+export const HEAD = { rx: 0.4, ry: 0.5, rz: 0.44 };
 
 export const FACE_SHAPES = [
-  { name: 'Rond', w: 1.0, jaw: 0.94, chin: 1.0, sq: 0 },
-  { name: 'Ovaal', w: 0.93, jaw: 0.86, chin: 1.1, sq: 0 },
-  { name: 'Puntkin', w: 0.98, jaw: 0.72, chin: 1.14, sq: 0 },
-  { name: 'Vierkant', w: 1.0, jaw: 1.0, chin: 0.98, sq: 0.9 },
-  { name: 'Breed', w: 1.09, jaw: 0.98, chin: 0.94, sq: 0.35 },
-  { name: 'Hoekige kaak', w: 1.0, jaw: 1.06, chin: 1.02, sq: 0.6 },
-  { name: 'Smal', w: 0.88, jaw: 0.86, chin: 1.04, sq: 0.15 },
-  { name: 'Peer', w: 0.95, jaw: 1.12, chin: 1.0, sq: 0.25 },
+  { name: 'Ei', w: 1.0, jaw: 0.86, chin: 1.02, sq: 0 },
+  { name: 'Rond', w: 1.05, jaw: 0.97, chin: 0.94, sq: 0 },
+  { name: 'Puntkin', w: 0.98, jaw: 0.72, chin: 1.12, sq: 0 },
+  { name: 'Vierkant', w: 1.0, jaw: 1.0, chin: 0.97, sq: 0.9 },
+  { name: 'Breed', w: 1.1, jaw: 0.95, chin: 0.93, sq: 0.35 },
+  { name: 'Hoekige kaak', w: 1.0, jaw: 1.06, chin: 1.0, sq: 0.6 },
+  { name: 'Smal', w: 0.9, jaw: 0.84, chin: 1.06, sq: 0.15 },
+  { name: 'Peer', w: 0.96, jaw: 1.12, chin: 0.98, sq: 0.25 },
 ];
 
 const smooth = (a, b, x) => {
@@ -24,8 +25,26 @@ const smooth = (a, b, x) => {
   return t * t * (3 - 2 * t);
 };
 
-/** Point on the head surface; scale > 1 gives a shell around the head (for hair). */
-export function headPoint(shape, theta, phi, scale = 1, out = new THREE.Vector3()) {
+/** Height of the nose bulge at world (x, y) on the face. */
+function noseBump(n, x, y) {
+  const dy = y - n.y;
+  const along = dy >= 0 ? Math.max(0, 1 - dy / n.L) ** 0.8 * (0.6 + 0.4 * Math.exp(-((dy / (n.L * 0.35)) ** 2))) : Math.exp(-((dy / n.fall) ** 2));
+  const w = n.tipW + (n.bridgeW - n.tipW) * THREE.MathUtils.clamp(dy / n.L, 0, 1);
+  return n.A * along * Math.exp(-((x / w) ** 2));
+}
+
+/** Nose parameters for the head surface, from a Mii's nose type, size and height. */
+export function noseShape(type, worldY, scale) {
+  const b = NOSES[type].bump;
+  const s = scale / 3.4;
+  return { y: worldY, A: b.A * s, L: b.L * s, tipW: b.tipW * s, bridgeW: b.bridgeW * s, fall: 0.028 * s };
+}
+
+/**
+ * Point on the head surface. scale > 1 gives a shell around the head (for hair);
+ * nose (from noseShape) adds the nose bulge to the face.
+ */
+export function headPoint(shape, theta, phi, scale = 1, out = new THREE.Vector3(), nose = null) {
   const st = Math.sin(theta);
   let x = st * Math.sin(phi);
   let y = Math.cos(theta);
@@ -40,11 +59,16 @@ export function headPoint(shape, theta, phi, scale = 1, out = new THREE.Vector3(
   }
   if (y < 0) {
     const t = Math.min(1, -y);
-    x *= 1 + (shape.jaw - 1) * t * t;
-    z *= 1 + (shape.jaw - 1) * t * t * 0.4;
+    x *= 1 + (shape.jaw - 1) * t ** 1.5;
+    z *= 1 + (shape.jaw - 1) * t * t * 0.5;
     y *= shape.chin;
   }
-  return out.set(x * shape.w * 1.02, y * 1.06, z * 0.97).multiplyScalar(HEAD_R * scale);
+  // Slightly fuller cheeks, flatter face front.
+  x *= 1 + 0.04 * Math.exp(-(((y + 0.15) / 0.35) ** 2));
+  z *= 1 - 0.05 * Math.max(0, Math.cos(phi)) ** 4 * st;
+  out.set(x * shape.w * HEAD.rx, y * HEAD.ry, z * HEAD.rz).multiplyScalar(scale);
+  if (nose && out.z > 0) out.z += noseBump(nose, out.x, out.y);
+  return out;
 }
 
 const _q = new THREE.Vector3();
@@ -60,77 +84,43 @@ export function headNormal(shape, theta, phi, out = new THREE.Vector3()) {
   return out;
 }
 
-export function headGeometry(shape) {
-  return parametric((u, v, out) => headPoint(shape, Math.PI * v, -Math.PI + 2 * Math.PI * u, 1, out), 72, 48);
+// The head is built from three patches that share their edge vertices exactly, so
+// it is watertight: the textured face (front, below the forehead) and two skin
+// patches (front of the crown, back of the head).
+const ROWS = 120;
+const FACE_ROW0 = 24;
+const FRONT_COLS = 120;
+
+export function headGeometries(shape, nose) {
+  const t0 = (FACE_ROW0 / ROWS) * Math.PI;
+  const at = (theta, phi, out) => headPoint(shape, theta, phi, 1, out, nose);
+  const face = parametric((u, v, out) => at(t0 + (Math.PI - t0) * v, -Math.PI / 2 + Math.PI * u, out), FRONT_COLS, ROWS - FACE_ROW0);
+  const crown = parametric((u, v, out) => at(t0 * v, -Math.PI / 2 + Math.PI * u, out), FRONT_COLS, FACE_ROW0);
+  const back = parametric((u, v, out) => at(Math.PI * v, Math.PI / 2 + Math.PI * u, out), 64, ROWS);
+
+  // Front-view UVs: the face canvas is a straight-on picture of the face.
+  const pos = face.attributes.position;
+  const uv = face.attributes.uv;
+  const height = FACE_TEX.top - FACE_TEX.bottom;
+  for (let i = 0; i < pos.count; i++) {
+    uv.setXY(i, 0.5 + pos.getX(i) / (2 * FACE_TEX.halfWidth), (pos.getY(i) - FACE_TEX.bottom) / height);
+  }
+  return { face, crown, back };
 }
-
-/** The patch the face canvas is drawn on; its UVs match the canvas layout in face.js. */
-export function faceGeometry(shape) {
-  const t0 = FACE_TEX.theta0;
-  const tSpan = (FACE_TEX.height / FACE_TEX.width) * FACE_TEX.phiSpan;
-  const p0 = -FACE_TEX.phiSpan / 2;
-  return parametric((u, v, out) => headPoint(shape, t0 + tSpan * v, p0 + FACE_TEX.phiSpan * u, 1, out), 64, 48);
-}
-
-// ---------------------------------------------------------------- noses
-// Built from a few squashed spheres in a frame where +z points out of the face.
-
-export const NOSES = [
-  { name: 'Knopje', parts: [{ s: [0.055, 0.05, 0.045] }] },
-  { name: 'Rond', parts: [{ s: [0.075, 0.065, 0.06] }] },
-  { name: 'Lang', parts: [{ s: [0.05, 0.11, 0.06], o: [0, 0.03, 0], r: -0.25 }, { s: [0.055, 0.045, 0.05], o: [0, -0.05, 0.03] }] },
-  { name: 'Breed', parts: [{ s: [0.1, 0.055, 0.05] }] },
-  {
-    name: 'Haakneus',
-    parts: [
-      { s: [0.045, 0.1, 0.055], o: [0, 0.04, 0.01], r: -0.35 },
-      { s: [0.05, 0.05, 0.05], o: [0, -0.04, 0.05] },
-    ],
-  },
-  { name: 'Wipneus', parts: [{ s: [0.055, 0.06, 0.06], r: 0.45 }] },
-  {
-    name: 'Groot',
-    parts: [
-      { s: [0.08, 0.08, 0.075] },
-      { s: [0.04, 0.034, 0.034], o: [0.055, -0.025, -0.01] },
-      { s: [0.04, 0.034, 0.034], o: [-0.055, -0.025, -0.01] },
-    ],
-  },
-  { name: 'Plat', parts: [{ s: [0.07, 0.045, 0.028] }] },
-  { name: 'Puntig', parts: [{ s: [0.045, 0.09, 0.05], o: [0, 0.02, 0], r: -0.15 }, { s: [0.03, 0.03, 0.06], o: [0, -0.035, 0.03] }] },
-];
 
 const unitSphere = new THREE.SphereGeometry(1, 28, 20);
 unitSphere.userData.shared = true;
-
-export function buildNose(type, shape, theta, scale, material) {
-  const group = new THREE.Group();
-  const anchor = headPoint(shape, theta, 0);
-  const normal = headNormal(shape, theta, 0);
-  group.position.copy(anchor);
-  group.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
-  group.scale.setScalar(scale);
-  for (const part of NOSES[type].parts) {
-    const mesh = new THREE.Mesh(unitSphere, material);
-    mesh.scale.set(...part.s);
-    const [ox, oy, oz] = part.o ?? [0, 0, 0];
-    mesh.position.set(ox, oy, oz + part.s[2] * 0.25);
-    mesh.rotation.x = part.r ?? 0;
-    group.add(mesh);
-  }
-  return group;
-}
 
 export function buildEars(shape, material) {
   const group = new THREE.Group();
   for (const side of [-1, 1]) {
     const phi = side * THREE.MathUtils.degToRad(88);
-    const theta = THREE.MathUtils.degToRad(100);
+    const theta = THREE.MathUtils.degToRad(97);
     const ear = new THREE.Mesh(unitSphere, material);
-    ear.scale.set(0.05, 0.1, 0.075);
-    ear.position.copy(headPoint(shape, theta, phi)).add(new THREE.Vector3(side * 0.01, 0, -0.02));
-    ear.rotation.y = side * 0.25;
-    ear.rotation.z = -side * 0.12;
+    ear.scale.set(0.035, 0.085, 0.06);
+    ear.position.copy(headPoint(shape, theta, phi)).add(new THREE.Vector3(side * 0.008, 0, -0.01));
+    ear.rotation.y = side * 0.3;
+    ear.rotation.z = -side * 0.1;
     group.add(ear);
   }
   return group;

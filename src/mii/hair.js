@@ -32,6 +32,13 @@ function zone(phi, f, side, back, pf = 1.4, pb = 1.2) {
 }
 
 function shell(shape, { from, to, off }) {
+  // Styles that start at the crown share one thickness there; otherwise the
+  // shell would pinch into a point where all angles meet.
+  let pole = null;
+  if (from(0) === 0) {
+    pole = 0;
+    for (let k = 0; k < 8; k++) pole += off(0, (k / 8) * TAU - Math.PI, 0) / 8;
+  }
   return parametric(
     (u, v, out) => {
       const phi = -Math.PI + TAU * u;
@@ -40,7 +47,9 @@ function shell(shape, { from, to, off }) {
       const theta = a + (b - a) * v;
       const cover = smooth(0, D(12), b - a);
       // Where there is no hair the shell sinks just below the scalp.
-      return headPoint(shape, theta, phi, 1 + off(theta, phi, v) * cover - 0.02 * (1 - cover), out);
+      let o = off(theta, phi, v) * cover - 0.02 * (1 - cover);
+      if (pole !== null) o = pole + (o - pole) * smooth(0, 0.35, v);
+      return headPoint(shape, theta, phi, 1 + o, out);
     },
     128,
     32,
@@ -148,30 +157,39 @@ function ball(mat, position, radius, squash = 1) {
 // ---------------------------------------------------------------- styles
 
 const crown = () => 0;
+/** Extra thickness that is largest on the crown and flat there (no peak). */
+const dome = (v) => 1 - v * v;
+/** Big pointed locks over the forehead, like the default Wii hairstyle. */
+const locks = (p, period, amp, shift = 0) => Math.max(0, Math.cos(p)) ** 0.4 * D(amp) * tri(p / D(period) + shift);
+/** A pointed sideburn in front of each ear. */
+const sideburn = (p, amp = 12) => D(amp) * gauss(fromFront(p) - D(76), D(8));
 
 export const HAIR_STYLES = [
   {
     name: 'Kort',
-    cover: { to: (p) => zone(p, 52, 92, 128) + front(p) * jag(p, 9, 2.5), off: (t, p, v) => 0.06 + 0.09 * (1 - v) ** 1.5 },
+    cover: {
+      to: (p) => zone(p, 62, 97, 128) + locks(p, 19, 7) + sideburn(p),
+      off: (t, p, v) => 0.07 + 0.14 * dome(v) + 0.04 * front(p) * dome(v),
+    },
   },
   {
     name: 'Zijscheiding',
     cover: {
-      to: (p) => zone(p, 56, 94, 130) + front(p) * D(10) * smooth(-0.5, 0.6, p),
-      off: (t, p, v) => 0.06 + 0.07 * (1 - v) + 0.03 * smooth(-0.3, 0.5, p) * front(p) - 0.045 * gauss(p + 0.42, 0.1) * (1 - v),
+      to: (p) => zone(p, 58, 97, 130) + front(p) * D(13) * smooth(-0.5, 0.7, p) + locks(p, 14, 2.5) + sideburn(p, 8),
+      off: (t, p, v) => 0.07 + 0.13 * dome(v) + 0.04 * smooth(-0.3, 0.5, p) * front(p) - 0.05 * gauss(p + 0.45, 0.1) * dome(v),
     },
   },
   {
     name: 'Stekels',
-    cover: { to: (p) => zone(p, 50, 90, 124), off: (t, p, v) => 0.05 + 0.03 * (1 - v) },
+    cover: { to: (p) => zone(p, 58, 94, 124) + locks(p, 16, 4) + sideburn(p, 8), off: (t, p, v) => 0.06 + 0.05 * dome(v) },
     extras(shape, mat) {
       const out = [];
-      const rings = [[8, 1, 0], [26, 6, 0.3], [44, 9, 0.1], [60, 7, 0.5]];
+      const rings = [[6, 1, 0], [24, 6, 0.3], [42, 9, 0.1], [58, 7, 0.5]];
       for (const [theta, count, shift] of rings) {
         for (let i = 0; i < count; i++) {
           const phi = ((i + shift) / count) * TAU - Math.PI;
           if (theta > 50 && Math.cos(phi) < -0.2) continue;
-          out.push(spike(shape, mat, D(theta), phi, 0.2 - theta * 0.0012, 0.06));
+          out.push(spike(shape, mat, D(theta), phi, 0.22 - theta * 0.0012, 0.07));
         }
       }
       return out;
@@ -181,65 +199,63 @@ export const HAIR_STYLES = [
   {
     name: 'Kalend',
     cover: {
-      from: (p) => zone(p, 72, 74, 64),
+      from: (p) => zone(p, 72, 76, 64),
       to: (p) => {
-        const a = zone(p, 72, 74, 64);
-        return a + (zone(p, 72, 102, 128) - a) * smooth(1.05, 1.6, fromFront(p));
+        const a = zone(p, 72, 76, 64);
+        return a + (zone(p, 72, 104, 128) - a) * smooth(1.05, 1.6, fromFront(p));
       },
-      off: () => 0.05,
+      off: () => 0.06,
     },
   },
   {
     name: 'Pottenkapsel',
-    cover: { to: (p) => zone(p, 76, 100, 124, 0.7), off: (t, p, v) => 0.09 + 0.04 * (1 - v) - 0.03 * v ** 4 },
+    cover: { to: (p) => zone(p, 70, 100, 124, 0.7), off: (t, p, v) => 0.1 + 0.08 * dome(v) - 0.03 * v ** 4 },
   },
   {
     name: 'Lang',
     hideEars: true,
     cover: {
-      to: (p) => zone(p, 68, 138, 150, 0.8) - front(p) * D(16) * gauss(p, 0.2),
-      off: (t, p, v) => 0.07 + 0.05 * (1 - v) - 0.03 * gauss(p, 0.06) * (1 - v),
+      to: (p) => zone(p, 62, 138, 150, 0.8) + front(p) * D(16) * smooth(-0.7, 0.5, p),
+      off: (t, p, v) => 0.08 + 0.1 * dome(v) + 0.03 * front(p) * smooth(-0.4, 0.4, p) - 0.04 * gauss(p + 0.5, 0.08) * dome(v),
     },
     curtain: { phiMin: D(58), drop: 0.36, flare: 0.2 },
   },
   {
     name: 'Paardenstaart',
     cover: {
-      to: (p) => zone(p, 50, 100, 122, 1.8) - front(p) * D(6) * gauss(p - 0.35, 0.3),
-      off: (t, p, v) => 0.045 + 0.05 * (1 - v),
+      to: (p) => zone(p, 54, 100, 122, 1.8) + front(p) * D(8) * smooth(-0.6, 0.6, p),
+      off: (t, p, v) => 0.05 + 0.08 * dome(v),
     },
-    extras: (shape, mat) => [
-      tail(mat, [[0, 0.2, -0.4], [0, 0.27, -0.64], [0, 0.04, -0.84], [0, -0.3, -0.8]], 0.1),
-    ],
+    extras: (shape, mat) => [tail(mat, [[0, 0.22, -0.34], [0, 0.3, -0.6], [0, 0.06, -0.8], [0, -0.28, -0.76]], 0.1)],
   },
   {
     name: 'Staartjes',
     cover: {
-      to: (p) => zone(p, 58, 96, 126) - front(p) * D(10) * gauss(p, 0.2),
-      off: (t, p, v) => 0.05 + 0.035 * (1 - v) - 0.025 * gauss(p, 0.05) * (1 - v),
+      to: (p) => zone(p, 62, 98, 126) - front(p) * D(10) * gauss(p, 0.2),
+      off: (t, p, v) => 0.06 + 0.07 * dome(v) - 0.03 * gauss(p, 0.05) * dome(v),
     },
     extras: (shape, mat) =>
-      [-1, 1].map((s) => tail(mat, [[s * 0.42, 0.1, -0.12], [s * 0.6, 0.08, -0.14], [s * 0.7, -0.18, -0.12], [s * 0.66, -0.5, -0.06]], 0.085)),
+      [-1, 1].map((s) => tail(mat, [[s * 0.32, 0.12, -0.12], [s * 0.52, 0.1, -0.14], [s * 0.62, -0.16, -0.12], [s * 0.58, -0.48, -0.06]], 0.085)),
   },
   {
     name: 'Knot',
-    cover: { to: (p) => zone(p, 46, 92, 122), off: (t, p, v) => 0.05 + 0.03 * (1 - v) },
-    extras: (shape, mat) => [ball(mat, headPoint(shape, D(30), Math.PI, 1.2), 0.15, 0.88)],
+    cover: { to: (p) => zone(p, 52, 94, 122) + front(p) * D(6) * smooth(-0.6, 0.6, p), off: (t, p, v) => 0.05 + 0.07 * dome(v) },
+    extras: (shape, mat) => [ball(mat, headPoint(shape, D(28), Math.PI, 1.22), 0.15, 0.88)],
   },
   {
     name: 'Bob',
     hideEars: true,
     cover: {
-      to: (p) => zone(p, 72, 128, 134, 0.7) + front(p) * jag(p, 8, 2),
-      off: (t, p, v) => 0.06 + 0.04 * (1 - v) + 0.12 * v ** 3 * (1 - front(p)),
+      to: (p) => zone(p, 70, 128, 134, 0.7) + locks(p, 10, 2.5),
+      off: (t, p, v) => 0.07 + 0.09 * dome(v) + 0.14 * v ** 3 * (1 - front(p)),
     },
   },
   {
     name: 'Afro',
     hideEars: true,
     cover: {
-      to: (p) => zone(p, 48, 104, 136),
-      off: (t, p, v) => (0.34 + 0.035 * Math.sin(7 * p) * Math.sin(9 * t)) * (1 - 0.55 * v * v),
+      to: (p) => zone(p, 54, 104, 136),
+      off: (t, p, v) => (0.36 + 0.035 * Math.sin(7 * p) * Math.sin(9 * t)) * (1 - 0.55 * v * v),
     },
   },
   {
@@ -247,10 +263,10 @@ export const HAIR_STYLES = [
     cover: null,
     extras(shape, mat) {
       const out = [];
-      for (let a = -42; a <= 118; a += 14) {
+      for (let a = -40; a <= 118; a += 14) {
         const theta = D(Math.abs(a));
         const phi = a < 0 ? 0 : Math.PI;
-        const h = 0.24 - Math.abs(a - 30) * 0.0011;
+        const h = 0.26 - Math.abs(a - 30) * 0.0011;
         out.push(spike(shape, mat, theta, phi, h, 0.075, a < 0 ? 0.2 : 0.5));
       }
       return out;
@@ -261,23 +277,32 @@ export const HAIR_STYLES = [
     hideEars: true,
     cover: {
       to: (p) => zone(p, 62, 112, 140, 0.9),
-      off: (t, p, v) => (0.13 + 0.035 * Math.sin(11 * p) * Math.sin(13 * t) + 0.02 * Math.sin(5 * p + 3 * t)) * (1 - 0.3 * v * v),
+      off: (t, p, v) => (0.14 + 0.06 * dome(v) + 0.035 * Math.sin(11 * p) * Math.sin(13 * t) + 0.02 * Math.sin(5 * p + 3 * t)) * (1 - 0.3 * v * v),
     },
   },
   {
     name: 'Halflang',
     hideEars: true,
     cover: {
-      to: (p) => zone(p, 64, 118, 140) + jag(p, 7, 3.5),
-      off: (t, p, v) => 0.08 + 0.03 * (1 - v) + 0.04 * v * v,
+      to: (p) => zone(p, 64, 118, 140) + jag(p, 9, 4.5),
+      off: (t, p, v) => 0.08 + 0.1 * dome(v) + 0.05 * v * v,
     },
   },
   {
     name: 'Kuif',
     cover: {
-      to: (p) => zone(p, 44, 90, 124),
-      off: (t, p, v) => 0.05 + 0.03 * (1 - v) + 0.26 * gauss(t - D(26), D(20)) * Math.max(0, Math.cos(p)) ** 1.5,
+      to: (p) => zone(p, 50, 94, 124) + sideburn(p, 8),
+      off: (t, p, v) => 0.06 + 0.07 * dome(v) + 0.26 * gauss(t - D(28), D(20)) * Math.max(0, Math.cos(p)) ** 1.5,
     },
+  },
+  {
+    name: 'Middenscheiding',
+    hideEars: true,
+    cover: {
+      to: (p) => zone(p, 66, 138, 150, 0.8) - front(p) * D(16) * gauss(p, 0.2),
+      off: (t, p, v) => 0.08 + 0.09 * dome(v) - 0.04 * gauss(p, 0.06) * dome(v),
+    },
+    curtain: { phiMin: D(58), drop: 0.36, flare: 0.2 },
   },
 ];
 

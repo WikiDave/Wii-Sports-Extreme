@@ -2,9 +2,9 @@
 
 import * as THREE from 'three';
 import { normalizeMii } from './data.js';
-import { FAVORITE_COLORS, SKIN_COLORS, HAIR_COLORS, PANTS_COLOR, SHOE_COLOR } from './palette.js';
+import { FAVORITE_COLORS, SKIN_COLORS, HAIR_COLORS, PANTS_COLOR } from './palette.js';
 import { drawFace, faceLayout, FACE_TEX } from './face.js';
-import { FACE_SHAPES, headGeometry, faceGeometry, buildEars, buildNose } from './head.js';
+import { FACE_SHAPES, headGeometries, noseShape, buildEars } from './head.js';
 import { HAIR_STYLES, buildHair, hairMaterial } from './hair.js';
 import { buildBody } from './body.js';
 
@@ -17,7 +17,7 @@ function disposeTree(obj) {
 export class MiiModel {
   /**
    * @param data Mii data (see data.js)
-   * @param options.textureScale resolution of the face texture (1 = 1024 x 768)
+   * @param options.textureScale resolution of the face texture (1 = 1000 pixels per unit)
    * @param options.body false builds only the head (for portraits)
    */
   constructor(data, { textureScale = 1, body = true } = {}) {
@@ -41,18 +41,10 @@ export class MiiModel {
 
     this.mats = {
       skin: new THREE.MeshStandardMaterial({ roughness: 0.78 }),
-      face: new THREE.MeshStandardMaterial({
-        map: this.face.tex,
-        transparent: true,
-        roughness: 0.78,
-        depthWrite: false,
-        polygonOffset: true,
-        polygonOffsetFactor: -1,
-        polygonOffsetUnits: -4,
-      }),
-      shirt: new THREE.MeshStandardMaterial({ roughness: 0.72 }),
-      pants: new THREE.MeshStandardMaterial({ color: PANTS_COLOR, roughness: 0.8 }),
-      shoes: new THREE.MeshStandardMaterial({ color: SHOE_COLOR, roughness: 0.6 }),
+      // The face texture has the skin colour as background, so face and head match.
+      face: new THREE.MeshStandardMaterial({ map: this.face.tex, roughness: 0.78 }),
+      shirt: new THREE.MeshStandardMaterial({ roughness: 0.62 }),
+      pants: new THREE.MeshStandardMaterial({ color: PANTS_COLOR, roughness: 0.42 }),
       hair: hairMaterial('#000000'),
     };
     this.parts = null;
@@ -84,13 +76,12 @@ export class MiiModel {
     }
     const shape = FACE_SHAPES[m.face.shape];
     const head = new THREE.Group();
-    head.add(new THREE.Mesh(headGeometry(shape), this.mats.skin));
-    const faceMesh = new THREE.Mesh(faceGeometry(shape), this.mats.face);
-    faceMesh.renderOrder = 1;
-    head.add(faceMesh);
-    if (!HAIR_STYLES[m.hair.style].hideEars) head.add(buildEars(shape, this.mats.skin));
     const L = faceLayout(m);
-    head.add(buildNose(m.nose.type, shape, L.noseTheta, L.noseScale, this.mats.skin));
+    const geo = headGeometries(shape, noseShape(m.nose.type, L.noseWorldY, L.noseScale));
+    head.add(new THREE.Mesh(geo.face, this.mats.face));
+    head.add(new THREE.Mesh(geo.crown, this.mats.skin));
+    head.add(new THREE.Mesh(geo.back, this.mats.skin));
+    if (!HAIR_STYLES[m.hair.style].hideEars) head.add(buildEars(shape, this.mats.skin));
     const hair = buildHair(m.hair.style, shape, this.mats.hair);
     if (m.hair.flip) hair.scale.x = -1;
     head.add(hair);

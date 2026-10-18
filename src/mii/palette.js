@@ -59,8 +59,7 @@ export const GLASSES_COLORS = [
   { name: 'Grijs', hex: '#8a8a8a' },
 ];
 
-export const PANTS_COLOR = '#424856';
-export const SHOE_COLOR = '#2a2c33';
+export const PANTS_COLOR = '#4c4f58';
 
 /** Mixes two hex colours; t = 0 gives a, t = 1 gives b. */
 export function mixHex(a, b, t) {
