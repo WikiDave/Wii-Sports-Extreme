@@ -761,8 +761,8 @@ button {
 
 .tabs {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 4px;
   padding: 10px;
   background: var(--panel-soft);
   border-bottom: 2px solid var(--line);
@@ -802,6 +802,37 @@ button {
   font-weight: 700;
   line-height: 1.15;
   text-align: center;
+}
+
+.subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--stripe);
+  justify-self: start;
+}
+
+.subtab {
+  min-height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font-weight: 700;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.subtab:hover {
+  color: var(--ink);
+}
+
+.subtab.is-on {
+  background: var(--panel);
+  color: var(--wii-blue-deep);
+  box-shadow: 0 2px 0 var(--line-deep);
 }
 
 .tab-body {
@@ -1147,7 +1178,7 @@ button {
   }
 
   .tabs {
-    grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     border-radius: 27px 27px 0 0;
   }
 

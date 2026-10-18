@@ -39,23 +39,23 @@ function mii(gender, overrides) {
 /** A few example Miis so the plaza is not empty on the first visit. */
 function examples() {
   return [
-    mii('m', { name: 'Daan', favoriteColor: 5, hair: { style: 1, color: 3 }, brows: { color: 3 }, eyes: { color: 2 }, mouth: { type: 1 } }),
+    mii('m', { name: 'Daan', favoriteColor: 5, hair: { style: 1, color: 3 }, brows: { type: 0, color: 3 }, eyes: { type: 9, color: 2 }, mouth: { type: 2 } }),
     mii('f', {
-      name: 'Emma', favoriteColor: 7, height: 56, face: { shape: 1, skin: 3 }, hair: { style: 7, color: 7 }, brows: { color: 6, type: 0 },
-      eyes: { type: 7, color: 4 }, mouth: { type: 1, color: 2 },
+      name: 'Emma', favoriteColor: 7, height: 56, face: { shape: 2, skin: 3, feature: 1 }, hair: { style: 39, color: 7 },
+      brows: { type: 5, color: 6 }, eyes: { type: 22, color: 4 }, nose: { type: 1 }, mouth: { type: 1, color: 2 },
     }),
     mii('m', {
-      name: 'Opa Kees', favoriteColor: 9, height: 50, weight: 96, face: { shape: 4, feature: 3 }, hair: { style: 4, color: 4 },
-      brows: { type: 3, color: 4 }, eyes: { type: 3 }, nose: { type: 6 }, mouth: { type: 0 },
-      facialHair: { mustache: 1, color: 4, size: 5 }, glasses: { type: 1, color: 1 },
+      name: 'Opa Kees', favoriteColor: 9, height: 50, weight: 96, face: { shape: 1, feature: 11 }, hair: { style: 31, color: 4 },
+      brows: { type: 17, color: 4 }, eyes: { type: 5 }, nose: { type: 4 }, mouth: { type: 0 },
+      facialHair: { mustache: 1, color: 4, size: 5 }, glasses: { type: 3, color: 1 },
     }),
     mii('f', {
-      name: 'Fleur', favoriteColor: 3, height: 74, weight: 52, face: { shape: 0, skin: 1, feature: 2 }, hair: { style: 6, color: 2 },
-      brows: { type: 9, color: 2 }, eyes: { type: 10, color: 5 }, mouth: { type: 0, color: 1 },
+      name: 'Fleur', favoriteColor: 3, height: 74, weight: 52, face: { shape: 2, skin: 1, feature: 3 }, hair: { style: 50, color: 2 },
+      brows: { type: 1, color: 2 }, eyes: { type: 36, color: 5 }, mouth: { type: 2, color: 1 },
     }),
     mii('m', {
-      name: 'Jayden', favoriteColor: 1, height: 88, face: { shape: 5, skin: 4 }, hair: { style: 11, color: 0 }, brows: { type: 2, color: 0 },
-      eyes: { type: 0, color: 2 }, nose: { type: 3 }, mouth: { type: 5 },
+      name: 'Jayden', favoriteColor: 1, height: 88, face: { shape: 5, skin: 4 }, hair: { style: 29, color: 0 }, brows: { type: 14, color: 0 },
+      eyes: { type: 4, color: 2 }, nose: { type: 9 }, mouth: { type: 22 },
     }),
   ];
 }

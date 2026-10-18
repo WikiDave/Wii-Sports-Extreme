@@ -18,6 +18,31 @@ import { EYES, BROWS, NOSES, MOUTHS, MUSTACHES, BEARDS, GLASSES, FEATURES } from
 import { FAVORITE_COLORS, SKIN_COLORS, HAIR_COLORS, EYE_COLORS, LIP_COLORS, GLASSES_COLORS } from './palette.js';
 
 export const NAME_MAX = 10;
+const VERSION = 2;
+
+// Version 1 Miis used an earlier, smaller set of parts; map them to the closest Wii part.
+const V1_MAP = {
+  face: { shape: [0, 1, 0, 7, 5, 6, 2, 3], feature: [0, 1, 3, 11, 2, 5, 7, 4] },
+  hair: { style: [0, 2, 11, 33, 31, 14, 59, 39, 66, 64, 41, 29, 25, 47, 23, 24, 48] },
+  eyes: { type: [9, 36, 27, 5, 18, 25, 39, 12, 33, 7, 13, 31, 42] },
+  brows: { type: [5, 0, 4, 21, 7, 16, 13, 8, 22, 9, 18, 23] },
+  mouth: { type: [2, 4, 0, 21, 14, 22, 11, 18, 23, 2, 14, 22] },
+  glasses: { type: [0, 3, 1, 2, 6, 5, 4, 7, 3] },
+  facialHair: { mustache: [0, 1, 2, 3, 1, 1, 2], beard: [0, 0, 1, 3, 2, 1] },
+};
+
+function migrate(raw) {
+  if (raw.version !== 1) return raw;
+  const m = JSON.parse(JSON.stringify(raw));
+  for (const [group, fields] of Object.entries(V1_MAP)) {
+    for (const [field, map] of Object.entries(fields)) {
+      const v = m[group]?.[field];
+      if (Number.isInteger(v) && v in map) m[group][field] = map[v];
+    }
+  }
+  m.version = VERSION;
+  return m;
+}
 
 const last = (list) => list.length - 1;
 
@@ -73,7 +98,7 @@ export function newId() {
 export function defaultMii(gender = 'm') {
   const f = gender === 'f';
   return {
-    version: 1,
+    version: VERSION,
     id: newId(),
     name: 'Mii',
     creator: '',
@@ -82,12 +107,12 @@ export function defaultMii(gender = 'm') {
     favoriteColor: 0,
     height: 64,
     weight: 64,
-    face: { shape: f ? 1 : 0, skin: 0, feature: 0 },
-    hair: { style: f ? 6 : 0, color: 1, flip: false },
-    brows: { type: f ? 0 : 1, color: 1, size: 4, y: 10, spacing: 4, rotation: f ? 6 : 8 },
-    eyes: { type: f ? 6 : 0, color: 0, size: 4, y: 12, spacing: 4, rotation: 4 },
+    face: { shape: 0, skin: 0, feature: 0 },
+    hair: { style: f ? 44 : 0, color: 1, flip: false },
+    brows: { type: f ? 5 : 0, color: 1, size: 4, y: 10, spacing: 4, rotation: 6 },
+    eyes: { type: f ? 39 : 9, color: 0, size: 4, y: 12, spacing: 4, rotation: 4 },
     nose: { type: 0, size: 4, y: 9 },
-    mouth: { type: 2, color: f ? 2 : 0, size: 4, y: 9 },
+    mouth: { type: 0, color: f ? 2 : 0, size: 4, y: 9 },
     facialHair: { mustache: 0, beard: 0, color: 1, size: 4, y: 8 },
     glasses: { type: 0, color: 0, size: 4, y: 10 },
     mole: { on: false, size: 4, x: 11, y: 20 },
@@ -111,7 +136,7 @@ export function cloneMii(m) {
 
 /** Returns a complete, valid Mii; missing or broken fields fall back to the defaults. */
 export function normalizeMii(raw) {
-  const src = raw && typeof raw === 'object' ? raw : {};
+  const src = raw && typeof raw === 'object' ? migrate(raw) : {};
   const base = defaultMii(src.gender === 'f' ? 'f' : 'm');
   const m = cloneMii(base);
   for (const group of Object.keys(base)) {
@@ -129,7 +154,7 @@ export function normalizeMii(raw) {
     const v = Math.round(Number(getPath(m, path)));
     setPath(m, path, Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : getPath(base, path));
   }
-  m.version = 1;
+  m.version = VERSION;
   m.id = typeof m.id === 'string' && m.id ? m.id : newId();
   m.name = String(m.name ?? '').slice(0, NAME_MAX).trim() || 'Mii';
   m.creator = String(m.creator ?? '').slice(0, NAME_MAX).trim();
@@ -145,10 +170,12 @@ const NAMES = {
   f: ['Emma', 'Julia', 'Sophie', 'Tess', 'Anna', 'Lotte', 'Fleur', 'Sanne', 'Noor', 'Evi', 'Lisa', 'Femke', 'Mila', 'Saar', 'Yara', 'Ilse', 'Fatima', 'Roos'],
 };
 
-const HAIR_POOL = { m: [0, 0, 0, 1, 1, 2, 3, 4, 5, 11, 12, 13, 14, 15], f: [6, 6, 16, 16, 7, 8, 9, 10, 10, 13, 5, 14, 11, 1] };
-const EYE_POOL = { m: [0, 0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 12], f: [0, 1, 3, 4, 6, 6, 7, 7, 10, 11, 11] };
-const BROW_POOL = { m: [0, 1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], f: [0, 0, 1, 5, 6, 7, 9, 10] };
-const MOUTH_POOL = { m: [0, 0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11], f: [0, 1, 1, 6, 6, 4, 7, 8, 9] };
+const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
+// Wii order: hairstyles 1-36 are mostly short, 37-72 mostly long.
+const HAIR_POOL = { m: [...range(0, 32), 0, 0, 1, 34, 35, 13, 21, 23], f: [...range(36, 71), 2, 15, 18, 19, 26] };
+const EYE_POOL = { m: range(0, 47), f: [...range(0, 47), 22, 23, 30, 31, 35, 39, 40, 41, 45] };
+const BROW_POOL = { m: range(0, 22), f: [1, 1, 5, 5, 6, 13, 15, 18, 19, 2, 4, 9] };
+const MOUTH_POOL = { m: range(0, 23), f: [...range(0, 23), 1, 5, 6, 11, 12, 17] };
 
 /** Seeded random generator (mulberry32), so look-alikes can be reproduced. */
 export function seededRandom(seed) {
@@ -179,7 +206,7 @@ export function randomMii(gender = null, rng = Math.random) {
 
   m.face.shape = int(0, R['face.shape'][1]);
   m.face.skin = pick([0, 0, 0, 1, 1, 2, 3, 4, 5]);
-  m.face.feature = rng() < 0.7 ? 0 : g === 'f' ? pick([1, 1, 2, 4, 4, 7]) : pick([2, 3, 5, 6, 7]);
+  m.face.feature = rng() < 0.7 ? 0 : g === 'f' ? pick([1, 1, 2, 3, 8]) : pick([3, 4, 5, 6, 7, 9, 10, 11]);
 
   const hairColor = pick([0, 0, 1, 1, 1, 2, 3, 3, 4, 5, 6, 7]);
   m.hair = { style: pick(HAIR_POOL[g]), color: hairColor, flip: rng() < 0.5 };

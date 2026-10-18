@@ -20,7 +20,8 @@ JavaScript en [three.js](https://threejs.org/). Geen build-stap nodig.
 - **Nieuwe Mii**: begin met een leeg gezicht (man of vrouw) of kies een lookalike.
 - **Editor** met een live 3D-voorbeeld (sleep om de Mii te draaien) en tabbladen voor
   profiel, lengte en postuur, lievelingskleur, gezichtsvorm, huidskleur, kenmerken,
-  17 kapsels, wenkbrauwen, ogen, 12 lijntekening-neuzen, mond, snor en baard, bril en moedervlek.
+  alle onderdelen van het Wii Mii-kanaal in dezelfde volgorde: 8 gezichtsvormen, 12 soorten make-up/rimpels,
+  72 kapsels, 24 wenkbrauwen, 48 ogen, 12 neuzen, 24 monden, 9 brillen, 3 snorren, 3 baarden en een moedervlek.
   Ogen, wenkbrauwen, mond, snor en bril kun je groter, kleiner, hoger, lager,
   verder uit elkaar en schuiner zetten, net als op de Wii.
 - Mii's worden bewaard in de browser (`localStorage`), zodat de sporten ze straks
@@ -46,9 +47,10 @@ src/main.js           start de app en wisselt tussen schermen
 src/screens/          menu, Mii-plein en Mii-editor
 src/mii/data.js       Mii-gegevens: standaardwaarden, controle, willekeurige Mii's
 src/mii/storage.js    opslaan in localStorage
-src/mii/face.js       2D-tekeningen van ogen, neus, mond, wenkbrauwen, snor, baard en bril
+src/mii/parts.js      de Wii-gezichtsonderdelen (ogen, wenkbrauwen, neuzen, monden, snorren)
+src/mii/face.js       tekent het gezicht: onderdelen, baard, bril en make-up
 src/mii/head.js       3D-hoofd (eivorm), gezichtsvormen, neusbultje en oren
-src/mii/hair.js       de kapsels
+src/mii/hair.js       de 72 kapsels (plus pet en muts)
 src/mii/body.js       het lichaam (met gewrichten voor animaties in de sporten)
 src/mii/model.js      zet alles samen tot één 3D-Mii
 src/mii/thumbs.js     portretten en 3D-icoontjes

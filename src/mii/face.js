@@ -1,11 +1,14 @@
-// 2D drawings of the facial features, in the bold line style of Wii Miis. They are
-// painted onto the face texture (see head.js) and reused for the editor's option icons.
+// Paints the face: places the Wii face parts (parts.js) plus beards, glasses and
+// make-up onto the face texture (see head.js), and draws the editor's option icons.
 //
 // The texture is a front view of the head: canvas x and y map linearly onto world
 // x and y (FACE_TEX.scale pixels per unit, head height = 1 unit), so a feature
 // drawn N pixels wide appears N / scale units wide when the Mii faces you.
 
 import { SKIN_COLORS, HAIR_COLORS, EYE_COLORS, LIP_COLORS, GLASSES_COLORS, mixHex } from './palette.js';
+import { EYES, BROWS, NOSES, MOUTHS, MUSTACHES, E } from './parts.js';
+
+export { EYES, BROWS, NOSES, MOUTHS, MUSTACHES };
 
 export const FACE_TEX = { scale: 1000, halfWidth: 0.47, top: 0.45, bottom: -0.62 };
 FACE_TEX.width = Math.round(2 * FACE_TEX.halfWidth * FACE_TEX.scale);
@@ -51,6 +54,17 @@ export function faceLayout(m) {
 
 // ---------------------------------------------------------------- helpers
 
+const paths = new Map();
+/** Cached Path2D for an SVG path string. */
+function P(d) {
+  let p = paths.get(d);
+  if (!p) {
+    p = new Path2D(d);
+    paths.set(d, p);
+  }
+  return p;
+}
+
 function circle(c, x, y, r) {
   c.beginPath();
   c.arc(x, y, r, 0, Math.PI * 2);
@@ -61,22 +75,19 @@ function ellipse(c, x, y, rx, ry, rot = 0) {
   c.ellipse(x, y, rx, ry, rot, 0, Math.PI * 2);
 }
 
-function stroke(c, color, width, build) {
-  c.beginPath();
-  build(c);
+function strokePath(c, path, color, width) {
   c.lineCap = 'round';
   c.lineJoin = 'round';
   c.lineWidth = width;
   c.strokeStyle = color;
-  c.stroke();
+  if (path) c.stroke(path);
+  else c.stroke();
 }
 
-function fill(c, color, build) {
+function stroke(c, color, width, build) {
   c.beginPath();
   build(c);
-  c.closePath();
-  c.fillStyle = color;
-  c.fill();
+  strokePath(c, undefined, color, width);
 }
 
 /** Polygon through world-space points. */
@@ -91,79 +102,35 @@ function hexAlpha(hex, a) {
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
 
-// ---------------------------------------------------------------- eyes
-// Local space: eye centred on (0, 0), outer corner towards +x, y down.
+// ---------------------------------------------------------------- drawing the parts
 
-function almond(c, p) {
-  const { w, top, bot } = p;
-  const outer = p.outer ?? 0;
-  const inner = p.inner ?? 0;
-  c.beginPath();
-  c.moveTo(-w, inner);
-  c.bezierCurveTo(-w * 0.55, -top * 1.33 + inner * 0.5, w * 0.55, -top * 1.33 + outer * 0.5, w, outer);
-  c.bezierCurveTo(w * 0.55, bot * 1.33 + outer * 0.5, -w * 0.55, bot * 1.33 + inner * 0.5, -w, inner);
-  c.closePath();
-}
-
-function upperLid(c, p) {
-  const { w, top } = p;
-  const outer = p.outer ?? 0;
-  const inner = p.inner ?? 0;
-  c.moveTo(-w, inner);
-  c.bezierCurveTo(-w * 0.55, -top * 1.33 + inner * 0.5, w * 0.55, -top * 1.33 + outer * 0.5, w, outer);
-}
-
-function eyeBase(c, o, p) {
-  almond(c, p);
-  c.fillStyle = '#ffffff';
-  c.fill();
+function iris(c, o, x, y, r, clip) {
   c.save();
-  c.clip();
-  const r = p.iris;
-  const ix = p.irisX ?? 0;
-  const iy = p.irisY ?? 0;
-  circle(c, ix, iy, r);
+  if (clip) c.clip(P(clip));
+  circle(c, x, y, r);
   c.fillStyle = o.eye;
   c.fill();
-  c.lineWidth = r * 0.2;
-  c.strokeStyle = 'rgba(0,0,0,0.3)';
+  c.lineWidth = r * 0.18;
+  c.strokeStyle = 'rgba(0,0,0,0.28)';
   c.stroke();
-  circle(c, ix, iy, r * 0.5);
+  circle(c, x, y, r * 0.5);
   c.fillStyle = '#050505';
   c.fill();
-  circle(c, ix - r * 0.36, iy - r * 0.38, r * 0.27);
+  circle(c, x - r * 0.35, y - r * 0.38, r * 0.26);
   c.fillStyle = 'rgba(255,255,255,0.95)';
   c.fill();
-  if (p.sparkle) {
-    circle(c, ix + r * 0.38, iy + r * 0.36, r * 0.13);
-    c.fill();
-  }
   c.restore();
-  almond(c, p);
-  c.lineWidth = 3.4;
-  c.strokeStyle = OUTLINE;
-  c.stroke();
-  if (p.lid !== 0) stroke(c, OUTLINE, p.lid ?? 6, (cc) => upperLid(cc, p));
 }
 
-/** Covers the eye above a line with a lid in skin colour (sleepy and angry eyes). */
-function lidCover(c, o, p, x0, y0, x1, y1) {
-  c.save();
-  almond(c, p);
-  c.clip();
+function sparkle(c, x, y, s) {
   c.beginPath();
-  c.moveTo(-60, -60);
-  c.lineTo(60, -60);
-  c.lineTo(60, y1 + ((y1 - y0) * (60 - x1)) / (x1 - x0));
-  c.lineTo(-60, y0 - ((y1 - y0) * (x0 + 60)) / (x1 - x0));
-  c.closePath();
-  c.fillStyle = o.lid;
+  c.moveTo(x, y - s);
+  c.quadraticCurveTo(x, y, x + s, y);
+  c.quadraticCurveTo(x, y, x, y + s);
+  c.quadraticCurveTo(x, y, x - s, y);
+  c.quadraticCurveTo(x, y, x, y - s);
+  c.fillStyle = '#ffffff';
   c.fill();
-  c.restore();
-  stroke(c, OUTLINE, 6, (cc) => {
-    cc.moveTo(x0, y0);
-    cc.lineTo(x1, y1);
-  });
 }
 
 function closedEye(c, w) {
@@ -173,537 +140,89 @@ function closedEye(c, w) {
   });
 }
 
-const eye = (name, p, extra) => ({
-  name,
-  draw(c, o) {
-    eyeBase(c, o, p);
-    if (extra) extra(c, o, p);
-  },
-  blink: (c) => closedEye(c, p.w),
-});
-
-export const EYES = [
-  eye('Normaal', { w: 33, top: 22, bot: 20, iris: 17, irisY: 2 }),
-  eye('Rond', { w: 29, top: 26, bot: 25, iris: 16, irisY: 1 }),
-  eye('Smal', { w: 36, top: 12, bot: 10, iris: 12, irisY: 1 }),
-  eye('Slaperig', { w: 34, top: 19, bot: 16, iris: 14, irisY: 4, lid: 0 }, (c, o, p) => lidCover(c, o, p, -36, 0, 36, -3)),
-  {
-    name: 'Vrolijk',
-    draw: (c) =>
-      stroke(c, OUTLINE, 7, (cc) => {
-        cc.moveTo(-28, 8);
-        cc.quadraticCurveTo(0, -26, 28, 8);
-      }),
-    blink: (c) => closedEye(c, 28),
-  },
-  eye('Boos', { w: 34, top: 19, bot: 16, iris: 14, irisY: 4, lid: 0 }, (c, o, p) => lidCover(c, o, p, -36, 3, 36, -17)),
-  eye('Wimpers', { w: 33, top: 20, bot: 17, iris: 15, irisY: 2, lid: 6.5 }, (c) =>
-    stroke(c, OUTLINE, 4, (cc) => {
-      cc.moveTo(30, -6);
-      cc.lineTo(42, -14);
-      cc.moveTo(23, -15);
-      cc.lineTo(32, -26);
-    }),
-  ),
-  eye('Groot', { w: 32, top: 29, bot: 26, iris: 21, irisY: 3, sparkle: true }),
-  {
-    name: 'Stipjes',
-    draw(c, o) {
-      ellipse(c, 0, 2, 9, 13);
-      c.fillStyle = mixHex(o.eye, '#000000', 0.5);
-      c.fill();
-      circle(c, -2.5, -3, 2.8);
-      c.fillStyle = 'rgba(255,255,255,0.9)';
-      c.fill();
-    },
-    blink: (c) => closedEye(c, 12),
-  },
-  {
-    name: 'Dicht',
-    draw(c) {
-      closedEye(c, 30);
-      stroke(c, OUTLINE, 3.5, (cc) => {
-        cc.moveTo(18, 4);
-        cc.lineTo(22, 12);
-        cc.moveTo(28, 1);
-        cc.lineTo(35, 7);
-      });
-    },
-    blink: (c) => closedEye(c, 30),
-  },
-  eye('Puppy', { w: 32, top: 23, bot: 20, outer: 8, inner: -3, iris: 16, irisY: 3 }),
-  eye('Katachtig', { w: 36, top: 17, bot: 13, outer: -9, inner: 3, iris: 13, irisY: 2, lid: 6.5 }, (c) =>
-    stroke(c, OUTLINE, 5, (cc) => {
-      cc.moveTo(34, -9);
-      cc.lineTo(47, -17);
-    }),
-  ),
-  eye('Verbaasd', { w: 28, top: 27, bot: 27, iris: 8, lid: 4 }),
-];
-
-// ---------------------------------------------------------------- eyebrows
-// Local space: brow centred on (0, 0), outer end towards +x.
-
-export const BROWS = [
-  {
-    name: 'Dun',
-    draw: (c, o) =>
-      stroke(c, o.brow, 6, (cc) => {
-        cc.moveTo(-36, 5);
-        cc.quadraticCurveTo(0, -10, 37, 5);
-      }),
-  },
-  {
-    name: 'Normaal',
-    draw: (c, o) =>
-      fill(c, o.brow, (cc) => {
-        cc.moveTo(-38, 8);
-        cc.lineTo(-37, -6);
-        cc.quadraticCurveTo(0, -15, 38, 0);
-        cc.quadraticCurveTo(2, -1, -38, 8);
-      }),
-  },
-  {
-    name: 'Dik',
-    draw: (c, o) =>
-      fill(c, o.brow, (cc) => {
-        cc.moveTo(-36, -5);
-        cc.quadraticCurveTo(0, -15, 36, -5);
-        cc.lineTo(36, 8);
-        cc.quadraticCurveTo(0, -1, -36, 10);
-      }),
-  },
-  {
-    name: 'Borstelig',
-    draw: (c, o) =>
-      fill(c, o.brow, (cc) => {
-        cc.moveTo(-37, 10);
-        for (let i = 0; i <= 8; i++) {
-          const x = -37 + i * 9.25;
-          const arch = -9 + (x / 37) ** 2 * 7;
-          cc.lineTo(x, arch - (i % 2 ? 7 : 0));
-        }
-        cc.lineTo(37, 9);
-        cc.quadraticCurveTo(0, 0, -37, 10);
-      }),
-  },
-  {
-    name: 'Hoekig',
-    draw: (c, o) =>
-      stroke(c, o.brow, 10, (cc) => {
-        cc.moveTo(-35, 6);
-        cc.lineTo(8, -10);
-        cc.lineTo(36, 3);
-      }),
-  },
-  {
-    name: 'Kort',
-    draw(c, o) {
-      ellipse(c, -8, 0, 22, 10, -0.12);
-      c.fillStyle = o.brow;
-      c.fill();
-    },
-  },
-  {
-    name: 'Recht',
-    draw: (c, o) =>
-      stroke(c, o.brow, 8, (cc) => {
-        cc.moveTo(-34, 0);
-        cc.lineTo(34, 0);
-      }),
-  },
-  {
-    name: 'Bezorgd',
-    draw: (c, o) =>
-      fill(c, o.brow, (cc) => {
-        cc.moveTo(-37, -12);
-        cc.lineTo(-35, 1);
-        cc.quadraticCurveTo(0, 4, 37, 10);
-        cc.quadraticCurveTo(2, -6, -37, -12);
-      }),
-  },
-  {
-    name: 'Stip',
-    draw(c, o) {
-      ellipse(c, -16, 0, 13, 9);
-      c.fillStyle = o.brow;
-      c.fill();
-    },
-  },
-  {
-    name: 'Boog',
-    draw: (c, o) =>
-      stroke(c, o.brow, 10, (cc) => {
-        cc.moveTo(-33, 8);
-        cc.quadraticCurveTo(0, -18, 33, 8);
-      }),
-  },
-  {
-    name: 'Golvend',
-    draw: (c, o) =>
-      stroke(c, o.brow, 8, (cc) => {
-        cc.moveTo(-36, 4);
-        cc.bezierCurveTo(-14, -14, 10, 10, 36, -5);
-      }),
-  },
-  { name: 'Geen', none: true, draw() {} },
-];
-
-// ---------------------------------------------------------------- noses
-// Line drawings like the Wii nose icons. Local space: (0, 0) is the tip, the
-// bridge runs up to about y = -38. `bump` shapes the small 3D bulge under it.
-
-const BUMP = {
-  small: { A: 0.018, L: 0.07, tipW: 0.03, bridgeW: 0.02 },
-  normal: { A: 0.03, L: 0.13, tipW: 0.04, bridgeW: 0.022 },
-  big: { A: 0.042, L: 0.16, tipW: 0.048, bridgeW: 0.026 },
-  wide: { A: 0.026, L: 0.1, tipW: 0.062, bridgeW: 0.026 },
-};
-
-const noseLine = (name, bump, build) => ({ name, bump: BUMP[bump], draw: (c, o) => stroke(c, o.noseLine, 4, build) });
-
-export const NOSES = [
-  noseLine('Haakje', 'normal', (c) => {
-    c.moveTo(3, -36);
-    c.bezierCurveTo(3, -18, -11, -9, -11, -2);
-    c.bezierCurveTo(-11, 5, -2, 6, 5, 1);
-  }),
-  noseLine('Rondje', 'normal', (c) => {
-    c.moveTo(-15, -8);
-    c.quadraticCurveTo(0, 10, 15, -8);
-  }),
-  {
-    name: 'Stipjes',
-    bump: BUMP.small,
-    draw(c, o) {
-      c.fillStyle = o.noseLine;
-      for (const x of [-6, 6]) {
-        circle(c, x, -2, 3.3);
-        c.fill();
-      }
-    },
-  },
-  noseLine('Puntje', 'normal', (c) => {
-    c.moveTo(-13, -12);
-    c.quadraticCurveTo(-3, 4, 0, 4);
-    c.quadraticCurveTo(3, 4, 13, -12);
-  }),
-  noseLine('Groot', 'big', (c) => {
-    c.moveTo(-4, -38);
-    c.quadraticCurveTo(-5, -16, -9, -10);
-    c.quadraticCurveTo(-18, -4, -13, 2);
-    c.quadraticCurveTo(-7, 6, 0, 2);
-    c.quadraticCurveTo(7, 6, 13, 2);
-    c.quadraticCurveTo(18, -4, 9, -10);
-  }),
-  {
-    name: 'Driehoekje',
-    bump: BUMP.small,
-    draw: (c, o) =>
-      fill(c, o.noseLine, (cc) => {
-        cc.moveTo(-9, 0);
-        cc.lineTo(9, 0);
-        cc.lineTo(0, -9);
-      }),
-  },
-  noseLine('Bakje', 'wide', (c) => {
-    c.moveTo(-16, -12);
-    c.quadraticCurveTo(-17, 2, -8, 2);
-    c.lineTo(8, 2);
-    c.quadraticCurveTo(17, 2, 16, -12);
-  }),
-  noseLine('Boogje', 'small', (c) => {
-    c.moveTo(-11, 2);
-    c.quadraticCurveTo(0, -14, 11, 2);
-  }),
-  noseLine('Lang', 'big', (c) => {
-    c.moveTo(-8, -36);
-    c.bezierCurveTo(-12, -4, -9, 4, 0, 4);
-    c.bezierCurveTo(9, 4, 12, -4, 8, -36);
-  }),
-  noseLine('Neusgaten', 'big', (c) => {
-    c.moveTo(-5, -38);
-    c.lineTo(-6, -10);
-    c.quadraticCurveTo(-16, -6, -14, 0);
-    c.quadraticCurveTo(-11, 6, -4, 1);
-    c.moveTo(5, -38);
-    c.lineTo(6, -10);
-    c.quadraticCurveTo(16, -6, 14, 0);
-    c.quadraticCurveTo(11, 6, 4, 1);
-  }),
-  noseLine('Golfje', 'wide', (c) => {
-    c.moveTo(-16, -8);
-    c.quadraticCurveTo(-15, 2, -8, 0);
-    c.quadraticCurveTo(-4, -1, -3, 2);
-    c.quadraticCurveTo(0, 6, 3, 2);
-    c.quadraticCurveTo(4, -1, 8, 0);
-    c.quadraticCurveTo(15, 2, 16, -8);
-  }),
-  noseLine('Recht', 'big', (c) => {
-    c.moveTo(-4, -38);
-    c.lineTo(-5, -6);
-    c.lineTo(-12, 2);
-    c.moveTo(4, -38);
-    c.lineTo(5, -6);
-    c.lineTo(12, 2);
-  }),
-];
-
-// ---------------------------------------------------------------- mouths
-// Local space: mouth centred on (0, 0).
-
-function openMouth(c, o, build, { teeth = 0, tongue = true } = {}) {
-  c.beginPath();
-  build(c);
-  c.closePath();
-  c.fillStyle = '#6a1414';
-  c.fill();
-  c.save();
-  c.clip();
-  if (teeth) {
-    c.fillStyle = '#ffffff';
-    c.fillRect(-60, -40, 120, 40 + teeth);
+function drawEye(c, eye, o, blink) {
+  if (blink && !eye.closed) {
+    closedEye(c, eye.w);
+    return;
   }
-  if (tongue) {
-    ellipse(c, 0, 24, 16, 10);
-    c.fillStyle = o.tongue;
-    c.fill();
+  for (const layer of eye.layers) {
+    const [k, a, b, r, clip] = layer;
+    if (k === 'W') {
+      c.fillStyle = '#ffffff';
+      c.fill(P(a));
+    } else if (k === 'I') iris(c, o, a, b, r, clip);
+    else if (k === 'K') {
+      c.fillStyle = OUTLINE;
+      c.fill(P(a));
+    } else if (k === 'L') strokePath(c, P(a), OUTLINE, b);
+    else if (k === 'R') strokePath(c, P(a), o.lidColor, b);
+    else if (k === 'S') sparkle(c, a, b, r);
   }
-  c.restore();
-  c.beginPath();
-  build(c);
-  c.closePath();
-  c.lineWidth = 3.5;
-  c.lineJoin = 'round';
-  c.strokeStyle = o.mouthLine;
-  c.stroke();
 }
 
-const line = (name, build) => ({ name, draw: (c, o) => stroke(c, o.mouthLine, 5, build) });
+/** Draws simple fill / line / dot layers in one colour. */
+function drawFlat(c, layers, color) {
+  for (const [k, a, b, r] of layers) {
+    if (k === 'F') {
+      c.fillStyle = color;
+      c.fill(P(a));
+    } else if (k === 'L' || k === 'B') strokePath(c, P(a), color, b);
+    else if (k === 'O') {
+      circle(c, a, b, r);
+      c.fillStyle = color;
+      c.fill();
+    }
+  }
+}
 
-export const MOUTHS = [
-  line('Glimlach', (c) => {
-    c.moveTo(-30, -4);
-    c.quadraticCurveTo(0, 13, 30, -4);
-  }),
-  {
-    name: 'Lach',
-    draw: (c, o) =>
-      openMouth(
-        c,
-        o,
-        (cc) => {
-          cc.moveTo(-30, -6);
-          cc.quadraticCurveTo(0, 0, 30, -6);
-          cc.quadraticCurveTo(0, 36, -30, -6);
-        },
-        { teeth: 3 },
-      ),
-  },
-  line('Neutraal', (c) => {
-    c.moveTo(-27, 0);
-    c.lineTo(27, 0);
-  }),
-  line('Sip', (c) => {
-    c.moveTo(-27, 7);
-    c.quadraticCurveTo(0, -10, 27, 7);
-  }),
-  {
-    name: 'Oo',
-    draw: (c, o) => openMouth(c, o, (cc) => cc.ellipse(0, 2, 9, 11, 0, 0, Math.PI * 2), { tongue: false }),
-  },
-  {
-    name: 'Grijns',
-    draw(c, o) {
-      const build = (cc) => {
-        cc.moveTo(-34, -8);
-        cc.lineTo(34, -8);
-        cc.quadraticCurveTo(28, 20, 0, 20);
-        cc.quadraticCurveTo(-28, 20, -34, -8);
-      };
-      fill(c, '#ffffff', build);
-      stroke(c, 'rgba(60,20,20,0.45)', 2.5, (cc) => {
-        cc.moveTo(-31, 3);
-        cc.quadraticCurveTo(0, 9, 31, 3);
-      });
-      c.beginPath();
-      build(c);
-      c.closePath();
-      c.lineWidth = 3.5;
-      c.strokeStyle = o.mouthLine;
-      c.stroke();
-    },
-  },
-  {
-    name: 'Lippen',
-    draw(c, o) {
-      fill(c, o.lip, (cc) => {
-        cc.moveTo(-28, 0);
-        cc.bezierCurveTo(-17, -12, -8, -12, 0, -6);
-        cc.bezierCurveTo(8, -12, 17, -12, 28, 0);
-        cc.quadraticCurveTo(0, 4, -28, 0);
-      });
-      fill(c, mixHex(o.lip, '#ffffff', 0.15), (cc) => {
-        cc.moveTo(-28, 0);
-        cc.quadraticCurveTo(0, 4, 28, 0);
-        cc.bezierCurveTo(17, 14, -17, 14, -28, 0);
-      });
-      stroke(c, mixHex(o.lip, '#300808', 0.55), 2.5, (cc) => {
-        cc.moveTo(-27, 0);
-        cc.quadraticCurveTo(0, 4, 27, 0);
-      });
-    },
-  },
-  line('Scheef', (c) => {
-    c.moveTo(-28, 2);
-    c.quadraticCurveTo(4, 12, 30, -10);
-  }),
-  line('Kattensnoet', (c) => {
-    c.moveTo(-22, -2);
-    c.quadraticCurveTo(-11, 12, 0, 0);
-    c.quadraticCurveTo(11, 12, 22, -2);
-  }),
-  {
-    name: 'Tong uit',
-    draw(c, o) {
-      const tongue = (cc) => {
-        cc.moveTo(-11, 4);
-        cc.lineTo(-11, 14);
-        cc.quadraticCurveTo(-11, 26, 0, 26);
-        cc.quadraticCurveTo(11, 26, 11, 14);
-        cc.lineTo(11, 4);
-      };
-      fill(c, o.tongue, tongue);
-      stroke(c, o.mouthLine, 3, tongue);
-      stroke(c, o.mouthLine, 5, (cc) => {
-        cc.moveTo(-30, -4);
-        cc.quadraticCurveTo(0, 13, 30, -4);
-      });
-    },
-  },
-  {
-    name: 'Ooh',
-    draw: (c, o) => openMouth(c, o, (cc) => cc.ellipse(0, 4, 15, 19, 0, 0, Math.PI * 2), { teeth: -14 }),
-  },
-  {
-    name: 'Tanden',
-    draw(c, o) {
-      c.beginPath();
-      c.roundRect(-26, -9, 52, 18, 7);
+function drawMouth(c, mouth, o) {
+  for (const [k, a, b] of mouth.layers) {
+    if (k === 'U' || k === 'D') {
+      c.fillStyle = k === 'U' ? o.lipTop : o.lip;
+      c.fill(P(a));
+    } else if (k === 'G') {
+      const g = c.createLinearGradient(0, -18, 0, 18);
+      g.addColorStop(0, o.lipTop);
+      g.addColorStop(0.5, o.lip);
+      g.addColorStop(1, o.lipTop);
+      c.fillStyle = g;
+      c.fill(P(a));
+    } else if (k === 'T') {
+      c.save();
+      if (b) c.clip(P(b));
       c.fillStyle = '#ffffff';
-      c.fill();
-      stroke(c, 'rgba(60,20,20,0.5)', 2, (cc) => {
-        cc.moveTo(-26, 0);
-        cc.lineTo(26, 0);
-        for (const x of [-13, 0, 13]) {
-          cc.moveTo(x, -9);
-          cc.lineTo(x, 9);
-        }
-      });
-      c.beginPath();
-      c.roundRect(-26, -9, 52, 18, 7);
-      c.lineWidth = 3.5;
-      c.strokeStyle = o.mouthLine;
-      c.stroke();
-    },
-  },
-];
-
-// ---------------------------------------------------------------- moustaches
-// Local space: centred under the nose.
-
-export const MUSTACHES = [
-  { name: 'Geen', none: true, draw() {} },
-  {
-    name: 'Snor',
-    draw: (c, o) =>
-      fill(c, o.facialHair, (cc) => {
-        cc.moveTo(0, -8);
-        cc.bezierCurveTo(14, -15, 40, -9, 46, 8);
-        cc.bezierCurveTo(30, 4, 14, 6, 0, 2);
-        cc.bezierCurveTo(-14, 6, -30, 4, -46, 8);
-        cc.bezierCurveTo(-40, -9, -14, -15, 0, -8);
-      }),
-  },
-  {
-    name: 'Potlood',
-    draw: (c, o) =>
-      stroke(c, o.facialHair, 5, (cc) => {
-        cc.moveTo(-34, 4);
-        cc.quadraticCurveTo(-16, -6, -3, -3);
-        cc.moveTo(3, -3);
-        cc.quadraticCurveTo(16, -6, 34, 4);
-      }),
-  },
-  {
-    name: 'Krulsnor',
-    draw(c, o) {
-      fill(c, o.facialHair, (cc) => {
-        cc.moveTo(0, -9);
-        cc.bezierCurveTo(12, -13, 26, -8, 32, 0);
-        cc.bezierCurveTo(22, 0, 10, 2, 0, 2);
-        cc.bezierCurveTo(-10, 2, -22, 0, -32, 0);
-        cc.bezierCurveTo(-26, -8, -12, -13, 0, -9);
-      });
-      stroke(c, o.facialHair, 6, (cc) => {
-        cc.moveTo(30, -1);
-        cc.quadraticCurveTo(48, 4, 48, -8);
-        cc.quadraticCurveTo(47, -15, 40, -13);
-        cc.moveTo(-30, -1);
-        cc.quadraticCurveTo(-48, 4, -48, -8);
-        cc.quadraticCurveTo(-47, -15, -40, -13);
-      });
-    },
-  },
-  {
-    name: 'Walrus',
-    draw: (c, o) =>
-      fill(c, o.facialHair, (cc) => {
-        cc.moveTo(0, -12);
-        cc.bezierCurveTo(20, -17, 44, -6, 46, 22);
-        cc.bezierCurveTo(36, 13, 20, 11, 0, 12);
-        cc.bezierCurveTo(-20, 11, -36, 13, -46, 22);
-        cc.bezierCurveTo(-44, -6, -20, -17, 0, -12);
-      }),
-  },
-  {
-    name: 'Chevron',
-    draw: (c, o) =>
-      fill(c, o.facialHair, (cc) => {
-        cc.moveTo(-38, 8);
-        cc.lineTo(-29, -9);
-        cc.lineTo(29, -9);
-        cc.lineTo(38, 8);
-        cc.quadraticCurveTo(0, 1, -38, 8);
-      }),
-  },
-  {
-    name: 'Klein',
-    draw(c, o) {
-      c.beginPath();
-      c.roundRect(-15, -8, 30, 14, 4);
-      c.fillStyle = o.facialHair;
-      c.fill();
-    },
-  },
-];
+      c.fill(P(a));
+      c.restore();
+    } else if (k === 'K') {
+      c.fillStyle = o.mouthDark;
+      c.fill(P(a));
+    } else if (k === 'L') strokePath(c, P(a), o.mouthLine, b);
+  }
+}
 
 // ---------------------------------------------------------------- beards
 // World-space shapes around the jaw, relative to the mouth height.
 
-function fullBeard(c, my, holeBelowMouth) {
-  worldPoly(c, [
-    [-0.4, 0.04], [-0.47, -0.2], [-0.47, -0.66], [0.47, -0.66], [0.47, -0.2], [0.4, 0.04],
-    [0.33, 0.04], [0.3, -0.12], [0.21, my + 0.07], [0.12, my + 0.075], [0.085, my - holeBelowMouth],
-    [-0.085, my - holeBelowMouth], [-0.12, my + 0.075], [-0.21, my + 0.07], [-0.3, -0.12], [-0.33, 0.04],
-  ]);
+/** Points along a polyline with every other point pushed up, for a bristly edge. */
+function bristly(pts, segments, amp) {
+  const out = [];
+  const n = pts.length - 1;
+  for (let i = 0; i <= segments; i++) {
+    const t = (i / segments) * n;
+    const j = Math.min(n - 1, Math.floor(t));
+    const f = t - j;
+    const x = pts[j][0] + (pts[j + 1][0] - pts[j][0]) * f;
+    const y = pts[j][1] + (pts[j + 1][1] - pts[j][1]) * f;
+    out.push([x, y + (i % 2 ? amp : 0)]);
+  }
+  return out;
 }
 
-function softFill(c, color) {
+function beardFill(c, color) {
   c.save();
   c.fillStyle = color;
   c.shadowColor = color;
-  c.shadowBlur = 10;
+  c.shadowBlur = 4;
   c.fill();
   c.restore();
 }
@@ -711,87 +230,54 @@ function softFill(c, color) {
 export const BEARDS = [
   { name: 'Geen', none: true, draw() {} },
   {
-    name: 'Stoppels',
-    draw(c, L, o) {
-      fullBeard(c, L.mouthWorldY, 0.01);
-      softFill(c, hexAlpha(o.facialHair, 0.2));
-      ellipse(c, CX, faceY(L.mouthWorldY + 0.045), 95, 28);
-      softFill(c, hexAlpha(o.facialHair, 0.18));
-    },
-  },
-  {
     name: 'Sik',
     draw(c, L, o) {
       const my = L.mouthWorldY;
-      worldPoly(c, [[-0.1, my + 0.02], [-0.12, my - 0.08], [-0.05, my - 0.17], [0.05, my - 0.17], [0.12, my - 0.08], [0.1, my + 0.02], [0.06, my - 0.035], [-0.06, my - 0.035]]);
-      softFill(c, o.facialHair);
-    },
-  },
-  {
-    name: 'Volle baard',
-    draw(c, L, o) {
-      fullBeard(c, L.mouthWorldY, 0.035);
-      softFill(c, o.facialHair);
+      worldPoly(c, [[0.09, -0.66], ...bristly([[0.09, my - 0.085], [-0.09, my - 0.085]], 8, 0.035), [-0.09, -0.66]]);
+      beardFill(c, o.facialHair);
     },
   },
   {
     name: 'Kinbaard',
     draw(c, L, o) {
-      worldPoly(c, [
-        [-0.4, 0.04], [-0.47, -0.2], [-0.47, -0.66], [0.47, -0.66], [0.47, -0.2], [0.4, 0.04],
-        [0.35, 0.04], [0.33, -0.16], [0.24, -0.34], [0.12, -0.43], [0, -0.455], [-0.12, -0.43], [-0.24, -0.34], [-0.33, -0.16], [-0.35, 0.04],
-      ]);
-      softFill(c, o.facialHair);
+      const my = L.mouthWorldY;
+      worldPoly(c, [[0.22, -0.66], ...bristly([[0.21, my - 0.11], [0, my - 0.075], [-0.21, my - 0.11]], 12, 0.035), [-0.22, -0.66]]);
+      beardFill(c, o.facialHair);
     },
   },
   {
-    name: 'Matje',
+    name: 'Volle baard',
     draw(c, L, o) {
       const my = L.mouthWorldY;
-      worldPoly(c, [[-0.025, my - 0.035], [0.025, my - 0.035], [0, my - 0.09]]);
-      softFill(c, o.facialHair);
+      const inner = bristly([[0.34, -0.02], [0.31, -0.2], [0.21, my - 0.03], [0, my - 0.075], [-0.21, my - 0.03], [-0.31, -0.2], [-0.34, -0.02]], 22, 0.03);
+      worldPoly(c, [[-0.42, -0.02], [-0.47, -0.66], [0.47, -0.66], [0.42, -0.02], ...inner]);
+      beardFill(c, o.facialHair);
     },
   },
 ];
 
 // ---------------------------------------------------------------- glasses
-// Lens shapes in lens space (outer edge towards +x); pairs are placed by drawGlasses.
+// Lens shapes in lens space (outer edge towards +x); drawGlasses places the pair.
 
-const CLEAR_LENS = 'rgba(214,236,255,0.22)';
-
-const glasses = (name, lens, opts = {}) => ({ name, lens, ...opts });
+const CLEAR = 'rgba(214,236,255,0.2)';
 
 export const GLASSES = [
   { name: 'Geen', none: true },
-  glasses('Rond', (c) => c.arc(0, 0, 44, 0, Math.PI * 2), { half: 44 }),
-  glasses('Vierkant', (c) => c.roundRect(-46, -38, 92, 76, 14), { half: 46 }),
-  glasses('Smal', (c) => c.roundRect(-48, -24, 96, 48, 10), { half: 48 }),
-  glasses(
-    'Piloot',
-    (c) => {
-      c.moveTo(-44, -30);
-      c.lineTo(42, -34);
-      c.quadraticCurveTo(52, -32, 49, -2);
-      c.bezierCurveTo(44, 40, -8, 46, -30, 27);
-      c.bezierCurveTo(-48, 10, -50, -20, -44, -30);
-    },
-    { half: 48, tint: 'rgba(120,84,40,0.42)' },
-  ),
-  glasses(
-    'Kattenoog',
-    (c) => {
-      c.moveTo(-44, -18);
-      c.quadraticCurveTo(-30, -36, 20, -34);
-      c.lineTo(54, -46);
-      c.quadraticCurveTo(54, 10, 30, 30);
-      c.quadraticCurveTo(0, 42, -30, 30);
-      c.quadraticCurveTo(-50, 10, -44, -18);
-    },
-    { half: 50 },
-  ),
-  glasses('Halve rand', (c) => c.roundRect(-46, -30, 92, 62, 12), { half: 46, halfRim: true }),
-  glasses('Zonnebril', (c) => c.roundRect(-48, -34, 96, 68, 22), { half: 48, tint: 'rgba(14,14,20,0.9)', shine: true }),
-  glasses('Groot rond', (c) => c.arc(0, 0, 56, 0, Math.PI * 2), { half: 56 }),
+  { name: 'Vierkant', lens: 'M-44 -32 L44 -32 Q48 -32 48 -28 L46 28 Q46 32 42 32 L-42 32 Q-46 32 -46 28 L-48 -28 Q-48 -32 -44 -32 Z', half: 48, frame: 9 },
+  { name: 'Smal', lens: 'M-46 -20 L46 -20 L46 20 L-46 20 Z', half: 46, frame: 8 },
+  { name: 'Rond', lens: E(0, 0, 42, 42), half: 42, frame: 5 },
+  { name: 'Ovaal', lens: E(0, 0, 50, 34), half: 50, frame: 5 },
+  { name: 'Dik ovaal', lens: E(0, 0, 50, 36, -6), half: 50, frame: 9 },
+  {
+    name: 'Pilotenbril',
+    lens: 'M-46 -26 L46 -30 Q50 -30 50 -20 Q48 22 14 30 Q-30 34 -44 6 Q-50 -8 -46 -26 Z',
+    half: 50,
+    frame: 6,
+    tint: 'rgba(60,60,66,0.62)',
+    topBar: true,
+  },
+  { name: 'Zonnebril', lens: 'M-46 -28 L46 -28 L46 28 L-46 28 Z', half: 46, frame: 9, tint: 'rgba(36,36,40,0.82)' },
+  { name: 'Vlinderbril', lens: 'M-44 -18 Q-20 -30 50 -32 Q52 10 20 24 Q-20 34 -44 10 Z', half: 50, frame: 2, tint: 'gradient' },
 ];
 
 function drawGlasses(c, g, L, color) {
@@ -805,67 +291,45 @@ function drawGlasses(c, g, L, color) {
     c.save();
     c.translate(side * lensX, 0);
     c.scale(side * s, s);
-    c.beginPath();
-    g.lens(c);
-    c.closePath();
-    c.fillStyle = g.tint ?? CLEAR_LENS;
-    c.fill();
-    if (g.shine) {
-      c.save();
-      c.clip();
-      c.fillStyle = 'rgba(255,255,255,0.18)';
-      c.beginPath();
-      c.moveTo(-40, -40);
-      c.lineTo(-10, -40);
-      c.lineTo(-50, 30);
-      c.lineTo(-70, 30);
-      c.fill();
-      c.restore();
-      c.beginPath();
-      g.lens(c);
-      c.closePath();
-    }
-    c.strokeStyle = color;
-    if (g.halfRim) {
-      c.lineWidth = 2;
-      c.globalAlpha = 0.45;
-      c.stroke();
-      c.globalAlpha = 1;
-      c.beginPath();
-      c.moveTo(-46, -4);
-      c.lineTo(-46, -18);
-      c.quadraticCurveTo(-46, -30, -34, -30);
-      c.lineTo(34, -30);
-      c.quadraticCurveTo(46, -30, 46, -18);
-      c.lineTo(46, -4);
-      c.lineWidth = 8;
+    const lens = P(g.lens);
+    if (g.tint === 'gradient') {
+      const grad = c.createLinearGradient(0, -32, 0, 32);
+      grad.addColorStop(0, 'rgba(30,30,36,0.9)');
+      grad.addColorStop(1, 'rgba(110,110,120,0.45)');
+      c.fillStyle = grad;
     } else {
-      c.lineWidth = 6;
+      c.fillStyle = g.tint ?? CLEAR;
     }
-    c.stroke();
+    c.fill(lens);
+    strokePath(c, lens, color, g.frame);
     c.restore();
   }
+  // Bridge and temples.
   const inner = lensX - g.half * s;
   c.strokeStyle = color;
-  c.lineWidth = 5 * s;
+  c.lineWidth = Math.max(5, g.frame * 0.8) * s;
   c.beginPath();
-  c.moveTo(-inner - 2, -8 * s);
-  c.quadraticCurveTo(0, -20 * s, inner + 2, -8 * s);
-  c.moveTo(-lensX - g.half * s + 2, -14 * s);
-  c.lineTo(-CX, -20 * s);
-  c.moveTo(lensX + g.half * s - 2, -14 * s);
-  c.lineTo(CX, -20 * s);
+  c.moveTo(-inner - 2, -10 * s);
+  c.quadraticCurveTo(0, -20 * s, inner + 2, -10 * s);
+  if (g.topBar) {
+    c.moveTo(-lensX, -30 * s);
+    c.lineTo(lensX, -30 * s);
+  }
+  c.moveTo(-lensX - g.half * s + 2, -16 * s);
+  c.lineTo(-CX, -22 * s);
+  c.moveTo(lensX + g.half * s - 2, -16 * s);
+  c.lineTo(CX, -22 * s);
   c.stroke();
   c.restore();
 }
 
-// ---------------------------------------------------------------- facial features
+// ---------------------------------------------------------------- facial features (make-up and wrinkles)
 // Pixel offsets below are world units x 1000.
 
 function cheeks(c, L, color, radius) {
   for (const side of [-1, 1]) {
-    const x = CX + side * (L.eyeX + 55);
-    const y = L.eyeY + 125;
+    const x = CX + side * (L.eyeX + 50);
+    const y = L.eyeY + 120;
     const g = c.createRadialGradient(x, y, 0, x, y, radius);
     g.addColorStop(0, color);
     g.addColorStop(1, 'rgba(255,120,120,0)');
@@ -874,14 +338,43 @@ function cheeks(c, L, color, radius) {
   }
 }
 
+function shadowAbove(c, L, color) {
+  for (const side of [-1, 1]) {
+    const x = CX + side * (L.eyeX + 8);
+    const y = L.eyeY - 40;
+    c.save();
+    c.translate(x, y);
+    c.scale(1, 0.55);
+    const g = c.createRadialGradient(0, 0, 0, 0, 0, 85);
+    g.addColorStop(0, color);
+    g.addColorStop(1, hexAlpha('#000000', 0));
+    c.fillStyle = g;
+    c.fillRect(-90, -90, 180, 180);
+    c.restore();
+  }
+}
+
+function eachSide(c, color, width, fn) {
+  stroke(c, color, width, (cc) => {
+    for (const side of [-1, 1]) fn(cc, side);
+  });
+}
+
 export const FEATURES = [
   { name: 'Geen', none: true, draw() {} },
-  { name: 'Blosjes', draw: (c, L) => cheeks(c, L, 'rgba(255,92,92,0.45)', 75) },
+  { name: 'Blosjes', draw: (c, L) => cheeks(c, L, 'rgba(255,100,110,0.5)', 72) },
+  {
+    name: 'Blos en oogschaduw',
+    draw(c, L) {
+      shadowAbove(c, L, 'rgba(80,215,230,0.65)');
+      cheeks(c, L, 'rgba(255,100,110,0.5)', 72);
+    },
+  },
   {
     name: 'Sproeten',
     draw(c, L, o) {
-      const spots = [[10, 80], [24, 100], [36, 76], [50, 96], [20, 122], [42, 120], [62, 112], [70, 82]];
-      c.fillStyle = mixHex(o.skin, '#5a2a10', 0.42);
+      const spots = [[10, 80], [26, 100], [38, 74], [52, 96], [22, 124], [44, 120], [64, 110], [72, 82]];
+      c.fillStyle = mixHex(o.skin, '#7a3410', 0.5);
       for (const side of [-1, 1]) {
         for (const [dx, dy] of spots) {
           circle(c, CX + side * (L.eyeX * 0.45 + dx), L.eyeY + dy, 6.5);
@@ -891,71 +384,77 @@ export const FEATURES = [
     },
   },
   {
-    name: 'Rimpels',
-    draw(c, L, o) {
-      const col = mixHex(o.skin, '#000000', 0.32);
-      for (const side of [-1, 1]) {
-        const x = CX + side * L.eyeX;
-        stroke(c, col, 5, (cc) => {
-          cc.moveTo(x - 45, L.eyeY + 62);
-          cc.quadraticCurveTo(x, L.eyeY + 82, x + 45, L.eyeY + 62);
-        });
-      }
-      stroke(c, col, 5, (cc) => {
-        for (const y of [0.31, 0.265]) {
-          cc.moveTo(faceX(-0.13), faceY(y - 0.008));
-          cc.quadraticCurveTo(CX, faceY(y + 0.012), faceX(0.13), faceY(y - 0.008));
-        }
-      });
-    },
-  },
-  {
-    name: 'Make-up',
-    draw(c, L) {
-      for (const side of [-1, 1]) {
-        const x = CX + side * L.eyeX;
-        const y = L.eyeY - 35;
-        const g = c.createRadialGradient(x, y, 0, x, y, 80);
-        g.addColorStop(0, 'rgba(150,80,200,0.55)');
-        g.addColorStop(1, 'rgba(150,80,200,0)');
-        c.fillStyle = g;
-        c.fillRect(x - 90, y - 90, 180, 180);
-      }
-      cheeks(c, L, 'rgba(255,110,140,0.38)', 70);
-    },
-  },
-  {
-    name: 'Lachrimpels',
-    draw(c, L, o) {
-      const col = mixHex(o.skin, '#000000', 0.28);
-      for (const side of [-1, 1]) {
-        const x = CX + side * (30 * L.mouthScale + 25);
-        stroke(c, col, 5, (cc) => {
-          cc.moveTo(x - side * 8, L.mouthY - 55);
-          cc.quadraticCurveTo(x + side * 16, L.mouthY, x - side * 4, L.mouthY + 45);
-        });
-      }
-    },
-  },
-  {
-    name: 'Kuiltje',
-    draw(c, L, o) {
-      const y = faceY(L.mouthWorldY - 0.11);
-      stroke(c, mixHex(o.skin, '#000000', 0.3), 5, (cc) => {
-        cc.moveTo(CX - 15, y);
-        cc.quadraticCurveTo(CX, y + 12, CX + 15, y);
-      });
-    },
-  },
-  {
     name: 'Wallen',
-    draw(c, L) {
-      for (const side of [-1, 1]) {
-        ellipse(c, CX + side * L.eyeX, L.eyeY + 58, 66, 20);
-        c.fillStyle = 'rgba(90,50,90,0.2)';
-        c.fill();
-      }
+    draw: (c, L, o) =>
+      eachSide(c, o.wrinkle, 6, (cc, side) => {
+        const x = CX + side * L.eyeX;
+        cc.moveTo(x - 42, L.eyeY + 48);
+        cc.quadraticCurveTo(x, L.eyeY + 82, x + 42, L.eyeY + 48);
+      }),
+  },
+  {
+    name: 'Lachlijnen',
+    draw: (c, L, o) =>
+      eachSide(c, o.wrinkle, 6, (cc, side) => {
+        const x = CX + side * (L.eyeX + 10);
+        cc.moveTo(x - side * 20, L.eyeY + 70);
+        cc.quadraticCurveTo(x + side * 18, L.eyeY + 120, x + side * 6, L.eyeY + 190);
+      }),
+  },
+  {
+    name: 'Wangrimpels',
+    draw: (c, L, o) =>
+      eachSide(c, o.wrinkle, 6, (cc, side) => {
+        const x = CX + side * (L.eyeX + 75);
+        cc.moveTo(x - side * 30, L.eyeY + 80);
+        cc.quadraticCurveTo(x, L.eyeY + 110, x + side * 8, L.eyeY + 150);
+      }),
+  },
+  {
+    name: 'Kinlijn',
+    draw(c, L, o) {
+      const y = faceY(L.mouthWorldY - 0.1);
+      stroke(c, o.wrinkle, 6, (cc) => {
+        cc.moveTo(CX - 32, y);
+        cc.quadraticCurveTo(CX, y + 18, CX + 32, y);
+      });
     },
+  },
+  { name: 'Oogschaduw', draw: (c, L) => shadowAbove(c, L, 'rgba(150,80,50,0.6)') },
+  {
+    name: 'Baardschaduw',
+    draw(c, L) {
+      const my = L.mouthWorldY;
+      worldPoly(c, [[-0.4, -0.04], [-0.47, -0.66], [0.47, -0.66], [0.4, -0.04], [0.33, -0.04], [0.3, -0.2], [0.18, my + 0.06], [0.1, my + 0.065], [0.09, my - 0.04], [-0.09, my - 0.04], [-0.1, my + 0.065], [-0.18, my + 0.06], [-0.3, -0.2], [-0.33, -0.04]]);
+      c.save();
+      c.fillStyle = 'rgba(70,74,84,0.32)';
+      c.shadowColor = 'rgba(70,74,84,0.32)';
+      c.shadowBlur = 14;
+      c.fill();
+      c.restore();
+    },
+  },
+  {
+    name: 'Mondlijnen',
+    draw: (c, L, o) =>
+      eachSide(c, o.wrinkle, 6, (cc, side) => {
+        cc.moveTo(CX + side * 70, L.noseY - 10);
+        cc.quadraticCurveTo(CX + side * 120, L.noseY + 60, CX + side * (30 * L.mouthScale + 22), L.mouthY + 25);
+      }),
+  },
+  {
+    name: 'Rimpels',
+    draw: (c, L, o) =>
+      eachSide(c, o.wrinkle, 5, (cc, side) => {
+        const x = CX + side * (L.eyeX + 95);
+        for (const [a, b] of [[-28, -46], [0, -2], [26, 44]]) {
+          cc.moveTo(x, L.eyeY + a * 0.6);
+          cc.lineTo(x + side * 34, L.eyeY + b * 0.8);
+        }
+        const ux = CX + side * L.eyeX;
+        cc.moveTo(ux - 40, L.eyeY + 56);
+        cc.quadraticCurveTo(ux, L.eyeY + 84, ux + 40, L.eyeY + 56);
+      }),
   },
 ];
 
@@ -967,13 +466,15 @@ export function faceColors(m) {
   const lip = LIP_COLORS[m.mouth.color].hex;
   return {
     skin,
-    lid: mixHex(skin, '#000000', 0.08),
     noseLine: mixHex(skin, '#2a1206', 0.62),
+    wrinkle: mixHex(skin, '#5a2a14', 0.55),
     eye: EYE_COLORS[m.eyes.color].hex,
+    lidColor: mixHex(skin, '#b0283a', 0.55),
     brow: HAIR_COLORS[m.brows.color].hex,
     lip,
+    lipTop: mixHex(lip, '#3a0a06', 0.22),
     mouthLine: mixHex(lip, '#2a0c06', 0.62),
-    tongue: mixHex(lip, '#ff9a9a', 0.55),
+    mouthDark: mixHex(lip, '#1e0604', 0.72),
     facialHair: HAIR_COLORS[m.facialHair.color].hex,
     glasses: GLASSES_COLORS[m.glasses.color].hex,
   };
@@ -1002,21 +503,21 @@ export function drawFace(c, m, { blink = false, only = null } = {}) {
   c.fillRect(-2000, -2000, 6000, 6000);
   if (want('feature')) FEATURES[m.face.feature].draw(c, L, o);
   if (want('beard')) BEARDS[m.facialHair.beard].draw(c, L, o);
-  if (want('nose')) placed(c, CX, L.noseY, L.noseScale, 0, false, () => NOSES[m.nose.type].draw(c, o));
-  if (want('mouth')) placed(c, CX, L.mouthY, L.mouthScale, 0, false, () => MOUTHS[m.mouth.type].draw(c, o));
+  if (want('nose')) placed(c, CX, L.noseY, L.noseScale, 0, false, () => drawFlat(c, NOSES[m.nose.type].layers, o.noseLine));
+  if (want('mouth')) placed(c, CX, L.mouthY, L.mouthScale, 0, false, () => drawMouth(c, MOUTHS[m.mouth.type], o));
   if (want('mustache')) {
-    placed(c, CX, L.mustacheY, L.mustacheScale, 0, false, () => MUSTACHES[m.facialHair.mustache].draw(c, o));
+    placed(c, CX, L.mustacheY, L.mustacheScale, 0, false, () => drawFlat(c, MUSTACHES[m.facialHair.mustache].layers, o.facialHair));
   }
   if (want('eyes')) {
     const type = EYES[m.eyes.type];
     for (const side of [-1, 1]) {
-      placed(c, CX + side * L.eyeX, L.eyeY, L.eyeScale, L.eyeRot, side < 0, () => (blink ? type.blink(c, o) : type.draw(c, o)));
+      placed(c, CX + side * L.eyeX, L.eyeY, L.eyeScale, L.eyeRot, side < 0, () => drawEye(c, type, o, blink));
     }
   }
   if (want('brows')) {
     const type = BROWS[m.brows.type];
     for (const side of [-1, 1]) {
-      placed(c, CX + side * L.browX, L.browY, L.browScale, L.browRot, side < 0, () => type.draw(c, o));
+      placed(c, CX + side * L.browX, L.browY, L.browScale, L.browRot, side < 0, () => drawFlat(c, type.layers, o.brow));
     }
   }
   if (want('mole') && m.mole.on) {
@@ -1039,8 +540,8 @@ export function drawFeatureThumb(canvas, m, kind) {
     mouth: [CX, L.mouthY + 10, 150],
     mustache: [CX, L.mustacheY + 10, 160],
     beard: [CX, faceY(L.mouthWorldY - 0.06), 380],
-    glasses: [CX, L.glassesY, 340],
-    feature: [CX, faceY(-0.1), 330],
+    glasses: [CX, L.glassesY + 10, 260],
+    feature: [CX, faceY(-0.12), 280],
   };
   const [cx, cy, half] = crops[kind];
   c.setTransform(1, 0, 0, 1, 0, 0);

@@ -6,30 +6,29 @@ import { MiiModel } from '../mii/model.js';
 import { RANGES, NAME_MAX, normalizeMii, cloneMii, getPath, setPath, randomMii } from '../mii/data.js';
 import { miiStore } from '../mii/storage.js';
 import { drawFeatureThumb, EYES, BROWS, NOSES, MOUTHS, MUSTACHES, BEARDS, GLASSES, FEATURES } from '../mii/face.js';
-import { FACE_SHAPES } from '../mii/head.js';
+import { FACE_SHAPES, drawFaceShapeIcon } from '../mii/head.js';
 import { HAIR_STYLES } from '../mii/hair.js';
 import { snapshotImage } from '../mii/thumbs.js';
 import { FAVORITE_COLORS, SKIN_COLORS, HAIR_COLORS, EYE_COLORS, LIP_COLORS, GLASSES_COLORS } from '../mii/palette.js';
 
 const MONTHS = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
 
+// The nine tabs of the Wii Mii Channel editor; some have sub-tabs.
 const TABS = [
-  { id: 'profile', label: 'Profiel', view: 'body' },
-  { id: 'body', label: 'Lichaam', view: 'body' },
-  { id: 'face', label: 'Gezicht', view: 'face' },
-  { id: 'hair', label: 'Haar', view: 'face' },
-  { id: 'brows', label: 'Brauwen', view: 'face' },
-  { id: 'eyes', label: 'Ogen', view: 'face' },
-  { id: 'nose', label: 'Neus', view: 'face' },
-  { id: 'mouth', label: 'Mond', view: 'face' },
-  { id: 'beard', label: 'Snor & baard', view: 'face' },
-  { id: 'glasses', label: 'Bril', view: 'face' },
-  { id: 'mole', label: 'Moedervlek', view: 'face' },
+  { id: 'profile', label: 'Profiel', title: 'Profiel', view: 'body' },
+  { id: 'body', label: 'Lichaam', title: 'Lengte en postuur', view: 'body' },
+  { id: 'face', label: 'Gezicht', title: 'Gezicht', view: 'face', subs: [['shape', 'Vorm'], ['makeup', 'Make-up']] },
+  { id: 'hair', label: 'Haar', title: 'Haar', view: 'face' },
+  { id: 'brows', label: 'Brauwen', title: 'Wenkbrauwen', view: 'face' },
+  { id: 'eyes', label: 'Ogen', title: 'Ogen', view: 'face' },
+  { id: 'nose', label: 'Neus', title: 'Neus', view: 'face' },
+  { id: 'mouth', label: 'Mond', title: 'Mond', view: 'face' },
+  { id: 'extra', label: 'Extra', title: 'Bril, snor, baard en moedervlek', view: 'face', subs: [['glasses', 'Bril'], ['mustache', 'Snor'], ['beard', 'Baard'], ['mole', 'Moedervlek']] },
 ];
 
 // Stepper presets: [label, minus icon, minus label, plus icon, plus label]
 const STEP = {
-  size: ['Grootte', 'minus', 'Kleiner', 'plus', 'Groter'],
+  size: ['Grootte', 'smaller', 'Kleiner', 'bigger', 'Groter'],
   y: ['Hoogte', 'up', 'Omhoog', 'down', 'Omlaag'],
   x: ['Links / rechts', 'left', 'Naar links', 'right', 'Naar rechts'],
   spacing: ['Afstand', 'closer', 'Dichter bij elkaar', 'apart', 'Verder uit elkaar'],
@@ -42,6 +41,7 @@ export function editorScreen(root, app, { mii, isNew }) {
   let draft = normalizeMii(cloneMii(mii));
   const original = JSON.stringify(draft);
   let tab = isNew ? 'profile' : lastTab;
+  const subTab = Object.fromEntries(TABS.filter((t) => t.subs).map((t) => [t.id, t.subs[0][0]]));
   let alive = true;
   const cancelled = () => !alive;
 
@@ -115,7 +115,25 @@ export function editorScreen(root, app, { mii, isNew }) {
 
   function renderTab() {
     const focusKey = document.activeElement?.dataset?.key;
-    tabBody.replaceChildren(...RENDER[tab]());
+    const def = TABS.find((t) => t.id === tab);
+    const subs = def.subs
+      ? h('div', { class: 'subtabs', role: 'tablist', 'aria-label': def.title },
+          def.subs.map(([id, label]) =>
+            h('button', {
+              class: `subtab ${subTab[tab] === id ? 'is-on' : ''}`,
+              type: 'button',
+              role: 'tab',
+              'aria-selected': String(subTab[tab] === id),
+              'data-key': `sub:${id}`,
+              onClick: () => {
+                subTab[tab] = id;
+                renderTab();
+              },
+            }, label),
+          ),
+        )
+      : null;
+    tabBody.replaceChildren(...(subs ? [subs] : []), ...RENDER[tab](subTab[tab]));
     if (focusKey) tabBody.querySelector(`[data-key="${CSS.escape(focusKey)}"]`)?.focus();
   }
 
@@ -187,7 +205,13 @@ export function editorScreen(root, app, { mii, isNew }) {
     return c;
   };
 
-  /** Icon rendered in 3D (hairstyles, face shapes). */
+  const shapeThumb = (i) => {
+    const c = h('canvas', { class: 'opt-art', width: 112, height: 112 });
+    drawFaceShapeIcon(c, FACE_SHAPES[i], SKIN_COLORS[draft.face.skin].hex);
+    return c;
+  };
+
+  /** Icon rendered in 3D (hairstyles). */
   const modelThumb = (path, view, tweak = () => {}, yaw = 0) => (i) => {
     const img = h('img', { class: 'opt-art', alt: '', width: 112, height: 112 });
     const variant = cloneMii(draft);
@@ -314,23 +338,25 @@ export function editorScreen(root, app, { mii, isNew }) {
         group('Gemaakt door', h('div', { class: 'field' }, h('label', { for: 'mii-creator' }, 'Maker'), creatorInput)),
         group('Geslacht', gender),
         group('Verjaardag', h('div', { class: 'field-row' }, h('label', { class: 'sr-only', for: 'mii-month' }, 'Maand'), month, day)),
+        group('Lievelingskleur', swatches('favoriteColor', FAVORITE_COLORS, 'Lievelingskleur', true)),
       ];
     },
 
     body: () => [
       group('Lengte', slider('height', 'Lengte', ['Klein', 'Lang'])),
       group('Postuur', slider('weight', 'Postuur', ['Slank', 'Stevig'])),
-      group('Lievelingskleur', swatches('favoriteColor', FAVORITE_COLORS, 'Lievelingskleur', true)),
     ],
 
-    face: () => [
-      group('Gezichtsvorm', options('face.shape', FACE_SHAPES, modelThumb('face.shape', 'face', (v) => (v.hair.style = 3)), 'Gezichtsvorm')),
-      group('Huidskleur', swatches('face.skin', SKIN_COLORS, 'Huidskleur')),
-      group('Kenmerken', options('face.feature', FEATURES, faceThumb('face.feature', 'feature'), 'Kenmerken')),
-    ],
+    face: (sub) =>
+      sub === 'shape'
+        ? [
+            group('Gezichtsvorm', options('face.shape', FACE_SHAPES, shapeThumb, 'Gezichtsvorm')),
+            group('Huidskleur', swatches('face.skin', SKIN_COLORS, 'Huidskleur')),
+          ]
+        : [group('Make-up en rimpels', options('face.feature', FEATURES, faceThumb('face.feature', 'feature'), 'Make-up en rimpels'))],
 
     hair: () => [
-      group('Kapsel', options('hair.style', HAIR_STYLES, modelThumb('hair.style', 'face', () => {}, 0.5), 'Kapsel')),
+      group('Kapsel', options('hair.style', HAIR_STYLES, modelThumb('hair.style', 'face'), 'Kapsel')),
       group('Haarkleur', swatches('hair.color', HAIR_COLORS, 'Haarkleur')),
       group('Scheiding', toggle('Kapsel spiegelen', draft.hair.flip, (on) => commit((d) => (d.hair.flip = on)), 'hair.flip')),
     ],
@@ -338,45 +364,54 @@ export function editorScreen(root, app, { mii, isNew }) {
     brows: () => [
       group('Vorm', options('brows.type', BROWS, faceThumb('brows.type', 'brows'), 'Wenkbrauwvorm')),
       group('Kleur', swatches('brows.color', HAIR_COLORS, 'Wenkbrauwkleur')),
-      group('Aanpassen', stepper('brows.size', 'size'), stepper('brows.y', 'y'), stepper('brows.spacing', 'spacing'), stepper('brows.rotation', 'rotation')),
+      group('Aanpassen', stepper('brows.y', 'y'), stepper('brows.size', 'size'), stepper('brows.rotation', 'rotation'), stepper('brows.spacing', 'spacing')),
     ],
 
     eyes: () => [
       group('Vorm', options('eyes.type', EYES, faceThumb('eyes.type', 'eyes'), 'Oogvorm')),
       group('Kleur', swatches('eyes.color', EYE_COLORS, 'Oogkleur')),
-      group('Aanpassen', stepper('eyes.size', 'size'), stepper('eyes.y', 'y'), stepper('eyes.spacing', 'spacing'), stepper('eyes.rotation', 'rotation')),
+      group('Aanpassen', stepper('eyes.y', 'y'), stepper('eyes.size', 'size'), stepper('eyes.rotation', 'rotation'), stepper('eyes.spacing', 'spacing')),
     ],
 
     nose: () => [
       group('Vorm', options('nose.type', NOSES, faceThumb('nose.type', 'nose'), 'Neusvorm')),
-      group('Aanpassen', stepper('nose.size', 'size'), stepper('nose.y', 'y')),
+      group('Aanpassen', stepper('nose.y', 'y'), stepper('nose.size', 'size')),
     ],
 
     mouth: () => [
       group('Vorm', options('mouth.type', MOUTHS, faceThumb('mouth.type', 'mouth'), 'Mondvorm')),
       group('Lipkleur', swatches('mouth.color', LIP_COLORS, 'Lipkleur')),
-      group('Aanpassen', stepper('mouth.size', 'size'), stepper('mouth.y', 'y')),
+      group('Aanpassen', stepper('mouth.y', 'y'), stepper('mouth.size', 'size')),
     ],
 
-    beard: () => [
-      group('Snor', options('facialHair.mustache', MUSTACHES, faceThumb('facialHair.mustache', 'mustache'), 'Snor')),
-      group('Baard', options('facialHair.beard', BEARDS, faceThumb('facialHair.beard', 'beard'), 'Baard')),
-      group('Kleur', swatches('facialHair.color', HAIR_COLORS, 'Kleur van snor en baard')),
-      group('Snor aanpassen', stepper('facialHair.size', 'size'), stepper('facialHair.y', 'y')),
-    ],
-
-    glasses: () => [
-      group('Montuur', options('glasses.type', GLASSES, faceThumb('glasses.type', 'glasses'), 'Bril')),
-      group('Kleur', swatches('glasses.color', GLASSES_COLORS, 'Brilkleur')),
-      group('Aanpassen', stepper('glasses.size', 'size'), stepper('glasses.y', 'y')),
-    ],
-
-    mole: () => [
-      group('Moedervlek', toggle('Moedervlek tonen', draft.mole.on, (on) => commit((d) => (d.mole.on = on)), 'mole.on')),
-      draft.mole.on
-        ? group('Aanpassen', stepper('mole.size', 'size'), stepper('mole.x', 'x'), stepper('mole.y', 'y'))
-        : h('p', { class: 'hint' }, 'Zet de moedervlek aan om hem te verplaatsen.'),
-    ],
+    extra: (sub) => {
+      if (sub === 'glasses') {
+        return [
+          group('Bril', options('glasses.type', GLASSES, faceThumb('glasses.type', 'glasses'), 'Bril')),
+          group('Kleur', swatches('glasses.color', GLASSES_COLORS, 'Brilkleur')),
+          group('Aanpassen', stepper('glasses.y', 'y'), stepper('glasses.size', 'size')),
+        ];
+      }
+      if (sub === 'mustache') {
+        return [
+          group('Snor', options('facialHair.mustache', MUSTACHES, faceThumb('facialHair.mustache', 'mustache'), 'Snor')),
+          group('Kleur', swatches('facialHair.color', HAIR_COLORS, 'Kleur van snor en baard')),
+          group('Aanpassen', stepper('facialHair.y', 'y'), stepper('facialHair.size', 'size')),
+        ];
+      }
+      if (sub === 'beard') {
+        return [
+          group('Baard', options('facialHair.beard', BEARDS, faceThumb('facialHair.beard', 'beard'), 'Baard')),
+          group('Kleur', swatches('facialHair.color', HAIR_COLORS, 'Kleur van snor en baard')),
+        ];
+      }
+      return [
+        group('Moedervlek', toggle('Moedervlek tonen', draft.mole.on, (on) => commit((d) => (d.mole.on = on)), 'mole.on')),
+        draft.mole.on
+          ? group('Aanpassen', stepper('mole.y', 'y'), stepper('mole.x', 'x'), stepper('mole.size', 'size'))
+          : h('p', { class: 'hint' }, 'Zet de moedervlek aan om hem te verplaatsen.'),
+      ];
+    },
   };
 
   for (const t of TABS) {
@@ -386,8 +421,8 @@ export function editorScreen(root, app, { mii, isNew }) {
         type: 'button',
         role: 'tab',
         'data-tab': t.id,
-        'aria-label': t.id === 'brows' ? 'Wenkbrauwen' : t.label,
-        title: t.id === 'brows' ? 'Wenkbrauwen' : t.label,
+        'aria-label': t.title,
+        title: t.title,
         onClick: () => selectTab(t.id),
         onKeydown: (e) => {
           const i = TABS.findIndex((x) => x.id === tab);

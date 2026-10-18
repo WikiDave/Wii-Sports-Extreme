@@ -82,7 +82,7 @@ export class MiiModel {
     head.add(new THREE.Mesh(geo.crown, this.mats.skin));
     head.add(new THREE.Mesh(geo.back, this.mats.skin));
     if (!HAIR_STYLES[m.hair.style].hideEars) head.add(buildEars(shape, this.mats.skin));
-    const hair = buildHair(m.hair.style, shape, this.mats.hair);
+    const hair = buildHair(m.hair.style, shape, { hair: this.mats.hair, hat: this.mats.shirt });
     if (m.hair.flip) hair.scale.x = -1;
     head.add(hair);
     this.head = head;
