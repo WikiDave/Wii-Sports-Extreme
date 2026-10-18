@@ -24,7 +24,7 @@ export function E(cx, cy, rx, ry, rot = 0) {
 const eye = (name, layers, w = 30, closed = false) => ({ name, layers, w, closed });
 
 export const EYES = [
-  eye('Boog', [['I', 0, 7, 15], ['L', 'M-32 0 Q0 -30 32 0', 7]]),
+  eye('Boog', [['I', 0, 6, 17.5], ['L', 'M-33 2 Q0 -30 33 2', 7]]),
   eye('Boog met wimper', [['I', -2, 7, 17], ['L', 'M-30 6 Q-27 -24 4 -25 Q22 -25 30 -10', 7], ['L', 'M29 -10 L42 -16', 6]]),
   eye('Koepel', [
     ['W', 'M-34 14 L34 14 L34 8 Q31 -24 0 -25 Q-31 -24 -34 8 Z'],
@@ -211,47 +211,47 @@ const BUMP = {
 const nose = (name, bump, layers) => ({ name, bump: BUMP[bump], layers });
 
 export const NOSES = [
-  nose('Haakje', 'normal', [['L', 'M2 -38 Q5 -20 -7 -10 Q-14 -2 -6 1 L8 1', 5]]),
-  nose('Glimlach', 'normal', [['L', 'M-18 -10 Q0 6 18 -10', 5]]),
+  nose('Haakje', 'normal', [['L', 'M2 -38 Q5 -20 -7 -10 Q-14 -2 -6 1 L8 1', 4]]),
+  nose('Glimlach', 'normal', [['L', 'M-18 -10 Q0 6 18 -10', 4]]),
   nose('Stipjes', 'small', [['O', -8, -3, 5], ['O', 8, -3, 5]]),
-  nose('V', 'normal', [['L', 'M-16 -18 Q-8 0 0 2 Q8 0 16 -18', 5]]),
-  nose('Rug en vleugel', 'big', [['L', 'M-6 -40 L-6 -16 L-12 -4 Q-14 2 -6 3 L8 0 Q12 -2 8 -8', 5]]),
+  nose('V', 'normal', [['L', 'M-16 -18 Q-8 0 0 2 Q8 0 16 -18', 4]]),
+  nose('Rug en vleugel', 'big', [['L', 'M-6 -40 L-6 -16 L-12 -4 Q-14 2 -6 3 L8 0 Q12 -2 8 -8', 4]]),
   nose('Driehoekje', 'small', [['F', 'M-14 2 L14 2 L0 -12 Z']]),
-  nose('Emmertje', 'wide', [['L', 'M-12 -14 Q-20 -10 -18 -4 Q-16 4 0 4 Q16 4 18 -4 Q20 -10 12 -14', 5]]),
-  nose('Boogje', 'small', [['L', 'M-14 4 Q-14 -14 0 -14 Q14 -14 14 4', 5]]),
-  nose('Druppel', 'big', [['L', 'M-6 -36 Q-14 -6 -10 0 Q-6 6 0 6 Q6 6 10 0 Q14 -6 6 -36', 5]]),
-  nose('Breed', 'big', [['L', 'M-6 -40 L-6 -14 M6 -40 L6 -14 M-6 -14 Q-20 -12 -16 -4 Q-12 4 0 4 Q12 4 16 -4 Q20 -12 6 -14', 5]]),
+  nose('Emmertje', 'wide', [['L', 'M-12 -14 Q-20 -10 -18 -4 Q-16 4 0 4 Q16 4 18 -4 Q20 -10 12 -14', 4]]),
+  nose('Boogje', 'small', [['L', 'M-14 4 Q-14 -14 0 -14 Q14 -14 14 4', 4]]),
+  nose('Druppel', 'big', [['L', 'M-6 -36 Q-14 -6 -10 0 Q-6 6 0 6 Q6 6 10 0 Q14 -6 6 -36', 4]]),
+  nose('Breed', 'big', [['L', 'M-6 -40 L-6 -14 M6 -40 L6 -14 M-6 -14 Q-20 -12 -16 -4 Q-12 4 0 4 Q12 4 16 -4 Q20 -12 6 -14', 4]]),
   nose('Golfje', 'wide', [['L', 'M-18 -12 L-18 -6 Q-18 2 -10 2 Q-4 2 -2 -4 Q0 4 2 -4 Q4 2 10 2 Q18 2 18 -6 L18 -12', 4]]),
-  nose('Lang', 'big', [['L', 'M-4 -42 L-4 -8 L-14 2 M4 -42 L4 -8 L14 2', 5], ['F', 'M-9 2 L-3 -5 L-3 2 Z M9 2 L3 -5 L3 2 Z']]),
+  nose('Lang', 'big', [['L', 'M-4 -42 L-4 -8 L-14 2 M4 -42 L4 -8 L14 2', 4], ['F', 'M-9 2 L-3 -5 L-3 2 Z M9 2 L3 -5 L3 2 Z']]),
 ];
 
 const teeth4 = 'M-19 -5 L-12 -5 L-12 8 L-19 8 Z M-9 -5 L-1 -5 L-1 11 L-9 11 Z M2 -5 L10 -5 L10 11 L2 11 Z M13 -5 L20 -5 L20 7 L13 7 Z';
 
 export const MOUTHS = [
-  { name: 'Streep', layers: [['L', 'M-28 0 L28 0', 7]] },
+  { name: 'Streep', layers: [['L', 'M-28 0 L28 0', 4.8]] },
   { name: 'Lachende lippen', layers: [['D', 'M-34 -4 Q0 -1 34 -4 Q16 14 0 14 Q-16 14 -34 -4 Z'], ['U', 'M-34 -4 Q-18 -7 -6 -7 Q0 -3 6 -7 Q18 -7 34 -4 Q16 -1 0 0 Q-16 -1 -34 -4 Z']] },
-  { name: 'Glimlach', layers: [['L', 'M-30 -6 Q0 14 30 -6', 7]] },
-  { name: 'Krullachje', layers: [['L', 'M-26 -2 Q0 10 26 -2 M-26 -2 Q-34 -2 -32 -10 M26 -2 Q34 -2 32 -10', 6]] },
+  { name: 'Glimlach', layers: [['L', 'M-30 -6 Q0 14 30 -6', 5]] },
+  { name: 'Krullachje', layers: [['L', 'M-26 -2 Q0 10 26 -2 M-26 -2 Q-34 -2 -32 -10 M26 -2 Q34 -2 32 -10', 4.5]] },
   { name: 'Open lach', layers: [['K', 'M-32 -8 L32 -8 Q28 18 0 18 Q-28 18 -32 -8 Z'], ['T', 'M-26 -5 L26 -5 L22 2 L-22 2 Z']] },
   { name: 'Dunne lippen', layers: [['D', 'M-40 -4 Q0 0 40 -4 Q0 11 -40 -4 Z'], ['U', 'M-40 -6 Q0 -2 40 -6 L40 -4 Q0 0 -40 -4 Z']] },
   { name: 'Gesloten lippen', layers: [['D', 'M-34 2 Q0 20 34 2 Z'], ['U', 'M-34 2 Q0 -16 34 2 Z']] },
-  { name: 'Golf', layers: [['L', 'M-30 4 Q-15 -10 0 0 Q15 10 30 -4', 7]] },
-  { name: 'Meeuw', layers: [['L', 'M-32 8 Q-20 -10 -6 -2 Q0 2 6 -2 Q20 -10 32 8', 7]] },
-  { name: 'Haken', layers: [['L', 'M-24 -14 Q-28 0 -24 14 M24 -14 Q28 0 24 14 M-25 -6 L25 -6', 6]] },
+  { name: 'Golf', layers: [['L', 'M-30 4 Q-15 -10 0 0 Q15 10 30 -4', 5]] },
+  { name: 'Meeuw', layers: [['L', 'M-32 8 Q-20 -10 -6 -2 Q0 2 6 -2 Q20 -10 32 8', 5]] },
+  { name: 'Haken', layers: [['L', 'M-24 -14 Q-28 0 -24 14 M24 -14 Q28 0 24 14 M-25 -6 L25 -6', 4.5]] },
   { name: 'Roepen', layers: [['K', 'M-28 10 Q-26 -16 0 -16 Q26 -16 28 10 Q0 14 -28 10 Z'], ['T', 'M-14 -9 Q0 -15 14 -9 L10 -3 Q0 -7 -10 -3 Z']] },
   { name: 'Volle lippen', layers: [['U', 'M-36 0 Q-20 -18 0 -16 Q20 -18 36 0 Z'], ['D', 'M-36 0 Q0 24 36 0 Z'], ['L', 'M-35 0 L35 0', 4]] },
   { name: 'Bovenlip', layers: [['U', 'M-36 6 Q-20 -2 -6 -4 Q0 0 6 -4 Q20 -2 36 6 Q0 2 -36 6 Z']] },
-  { name: 'Vlakke V', layers: [['L', 'M-32 -8 L0 8 L32 -8', 7]] },
+  { name: 'Vlakke V', layers: [['L', 'M-32 -8 L0 8 L32 -8', 5]] },
   { name: 'O', layers: [['K', E(0, 2, 21, 24)]] },
   { name: 'Tanden onder', layers: [['K', 'M-34 -8 Q0 -2 34 -8 Q26 16 0 16 Q-26 16 -34 -8 Z'], ['T', 'M-14 4 L14 4 L12 12 L-12 12 Z']] },
-  { name: 'Haakjes', layers: [['L', 'M-24 0 L24 0 M-30 -12 Q-22 0 -30 12 M30 -12 Q22 0 30 12', 6]] },
+  { name: 'Haakjes', layers: [['L', 'M-24 0 L24 0 M-30 -12 Q-22 0 -30 12 M30 -12 Q22 0 30 12', 4.5]] },
   { name: 'Kus', layers: [['U', 'M-26 0 Q-26 -24 -6 -24 Q0 -20 6 -24 Q26 -24 26 0 Z'], ['D', 'M-26 0 Q-26 26 0 26 Q26 26 26 0 Z']] },
-  { name: 'Grijns', layers: [['L', 'M-30 4 L8 4 Q22 4 32 -8', 7]] },
+  { name: 'Grijns', layers: [['L', 'M-30 4 L8 4 Q22 4 32 -8', 5]] },
   { name: 'Dikke lippen', layers: [['G', 'M-34 -4 Q-34 -16 0 -16 Q34 -16 34 -4 Q0 -2 -34 -4 Z'], ['G', 'M-34 4 Q0 2 34 4 Q34 18 0 18 Q-34 18 -34 4 Z']] },
-  { name: 'Hoekje', layers: [['L', 'M-30 -4 L22 -4 Q30 -4 28 8', 7]] },
-  { name: 'Sip', layers: [['L', 'M-32 8 Q-14 -2 0 -8 Q14 -2 32 8', 7]] },
+  { name: 'Hoekje', layers: [['L', 'M-30 -4 L22 -4 Q30 -4 28 8', 5]] },
+  { name: 'Sip', layers: [['L', 'M-32 8 Q-14 -2 0 -8 Q14 -2 32 8', 5]] },
   { name: 'Tanden', layers: [['K', 'M-34 -8 Q0 -4 34 -8 Q28 16 0 16 Q-28 16 -34 -8 Z'], ['T', teeth4, 'M-34 -8 Q0 -4 34 -8 Q28 16 0 16 Q-28 16 -34 -8 Z']] },
-  { name: 'Zigzag', layers: [['L', 'M-30 2 L-18 -6 L-6 4 L6 -6 L18 4 L30 -4', 6]] },
+  { name: 'Zigzag', layers: [['L', 'M-30 2 L-18 -6 L-6 4 L6 -6 L18 4 L30 -4', 4.5]] },
 ];
 
 export const MUSTACHES = [

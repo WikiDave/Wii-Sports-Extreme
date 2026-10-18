@@ -126,35 +126,9 @@ function curtain(shape, { to, off }, long) {
   );
 }
 
-function strandTexture() {
-  const c = document.createElement('canvas');
-  c.width = c.height = 256;
-  const g = c.getContext('2d');
-  g.fillStyle = '#ffffff';
-  g.fillRect(0, 0, 256, 256);
-  let seed = 7;
-  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  for (let i = 0; i < 260; i++) {
-    const x = rnd() * 256;
-    const shade = Math.round(205 + rnd() * 40);
-    g.strokeStyle = `rgba(${shade},${shade},${shade},0.55)`;
-    g.lineWidth = 1 + rnd() * 2;
-    g.beginPath();
-    g.moveTo(x, -2);
-    g.bezierCurveTo(x + rnd() * 6 - 3, 90, x + rnd() * 6 - 3, 170, x + rnd() * 4 - 2, 258);
-    g.stroke();
-  }
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(5, 1);
-  return tex;
-}
-
-let strands = null;
+/** Smooth, slightly glossy hair like the Wii models (no strand texture). */
 export function hairMaterial(color) {
-  strands ??= strandTexture();
-  return new THREE.MeshStandardMaterial({ color, map: strands, roughness: 0.62, side: THREE.DoubleSide });
+  return new THREE.MeshStandardMaterial({ color, roughness: 0.42, side: THREE.DoubleSide });
 }
 
 const clipMaterial = new THREE.MeshStandardMaterial({ color: '#c9ced6', roughness: 0.35, metalness: 0.2 });
@@ -263,8 +237,12 @@ function hat(kind, shape, hatMat, hairMat) {
 
 // ---------------------------------------------------------------- styles
 
+// The styles' fringe heights were set for an earlier, shorter head; the Wii fringe
+// ends well above the eyebrows, so all of them move up by this much.
+const FRINGE_LIFT = 10;
+
 function style(o) {
-  const f = o.f ?? 64;
+  const f = (o.f ?? 64) - FRINGE_LIFT;
   const s = o.s ?? 97;
   const b = o.b ?? 128;
   const pf = o.pf ?? 1.4;
@@ -280,11 +258,14 @@ function style(o) {
     return t;
   };
   const off = (t, p, v) => {
-    let k = (o.base ?? 0.07) + (o.vol ?? 0.13) * dome(v) + (o.fvol ?? 0.03) * front(p) * dome(v);
+    // Thickness follows the height on the head (not the position between crown and
+    // edge), so a ragged fringe does not make the crown ripple.
+    const crownT = Math.max(0, 1 - (t / D(125)) ** 2);
+    let k = (o.base ?? 0.07) + (o.vol ?? 0.13) * crownT + (o.fvol ?? 0.03) * front(p) * crownT + (o.svol ?? 0.035) * (1 - front(p)) * (1 - v * v * 0.5);
     if (o.flare) k += o.flare * v ** 3 * (1 - front(p));
     if (o.curl) k += o.curl * Math.sin(11 * p) * Math.sin(13 * t) + o.curl * 0.5;
     if (o.box) k += o.box * gauss(t - D(34), D(14));
-    if (o.part) k -= 0.035 * gauss(wrap(p - D(o.part[0])), 0.07) * dome(v);
+    if (o.part) k -= 0.035 * gauss(wrap(p - D(o.part[0])), 0.07) * crownT;
     return k;
   };
   return { ...o, cover: { from: o.from ?? (() => 0), to: o.to ?? to, off: o.off ?? off } };

@@ -6,21 +6,21 @@ import * as THREE from 'three';
 import { parametric } from '../three/surface.js';
 import { FACE_TEX, NOSES } from './face.js';
 
-/** Head radii in world units: the head is 1 unit tall. */
-export const HEAD = { rx: 0.4, ry: 0.5, rz: 0.44 };
+/** Head radii in world units: ryTop above the eye line, ry below it (before the chin stretch). */
+export const HEAD = { rx: 0.433, ryTop: 0.53, ry: 0.5, rz: 0.45, topSq: 0.75 };
 
 // The eight Wii face shapes. jaw narrows (< 1) or widens the lower half, jp is how
 // fast (1 = straight V), chin stretches it down, sq squares the jaw corners, box
 // squares the whole head and flat flattens the bottom of the chin.
 export const FACE_SHAPES = [
-  { name: 'Ei', w: 0.98, jaw: 0.66, jp: 1.0, chin: 1.06, sq: 0 },
-  { name: 'Rond', w: 1.06, jaw: 0.98, chin: 0.93, sq: 0 },
-  { name: 'Ovaal', w: 0.9, jaw: 0.88, chin: 1.05, sq: 0 },
-  { name: 'Peer', w: 0.97, jaw: 1.14, jp: 1.6, chin: 0.96, sq: 0.35, flat: 0.25 },
-  { name: 'Schild', w: 1.0, jaw: 0.74, jp: 0.9, chin: 1.08, sq: 0, box: 0.5 },
-  { name: 'Trapezium', w: 1.0, jaw: 1.12, chin: 0.96, sq: 0.9, flat: 0.35 },
-  { name: 'Achthoek', w: 1.0, jaw: 0.9, chin: 1.0, sq: 0.8, flat: 0.4, box: 0.3 },
-  { name: 'Rechthoek', w: 0.94, jaw: 1.0, chin: 1.02, sq: 0, box: 0.9 },
+  { name: 'Ei', w: 1.0, jaw: 0.836, jp: 5, chin: 1.26, sq: 0 },
+  { name: 'Rond', w: 1.05, jaw: 0.95, jp: 2, chin: 1.12, sq: 0 },
+  { name: 'Ovaal', w: 0.93, jaw: 0.88, jp: 2.5, chin: 1.3, sq: 0 },
+  { name: 'Peer', w: 0.98, jaw: 1.12, jp: 1.6, chin: 1.18, sq: 0.35, flat: 0.25 },
+  { name: 'Schild', w: 1.0, jaw: 0.74, jp: 1.2, chin: 1.3, sq: 0, box: 0.5 },
+  { name: 'Trapezium', w: 1.0, jaw: 1.1, chin: 1.18, sq: 0.9, flat: 0.35 },
+  { name: 'Achthoek', w: 1.0, jaw: 0.9, chin: 1.22, sq: 0.8, flat: 0.4, box: 0.3 },
+  { name: 'Rechthoek', w: 0.95, jaw: 1.0, chin: 1.24, sq: 0, box: 0.9 },
 ];
 
 const smooth = (a, b, x) => {
@@ -39,7 +39,7 @@ function noseBump(n, x, y) {
 /** Nose parameters for the head surface, from a Mii's nose type, size and height. */
 export function noseShape(type, worldY, scale) {
   const b = NOSES[type].bump;
-  const s = scale / 3.4;
+  const s = scale / 4.3;
   return { y: worldY, A: b.A * s, L: b.L * s, tipW: b.tipW * s, bridgeW: b.bridgeW * s, fall: 0.028 * s };
 }
 
@@ -52,6 +52,14 @@ export function headPoint(shape, theta, phi, scale = 1, out = new THREE.Vector3(
   let x = st * Math.sin(phi);
   let y = Math.cos(theta);
   let z = st * Math.cos(phi);
+  if (y > 0 && HEAD.topSq > 0) {
+    // Broad, squarer crown like the Wii head.
+    const k = Math.pow(x ** 4 + y ** 4 + z ** 4, -0.25);
+    const w = HEAD.topSq * smooth(0, 0.6, y);
+    x *= 1 + (k - 1) * w;
+    y *= 1 + (k - 1) * w * 0.6;
+    z *= 1 + (k - 1) * w * 0.6;
+  }
   if (shape.sq > 0 || shape.box) {
     // Blend towards a rounded box: sq mostly around the jaw, box everywhere.
     const k = Math.pow(x ** 4 + y ** 4 + z ** 4, -0.25);
@@ -67,9 +75,9 @@ export function headPoint(shape, theta, phi, scale = 1, out = new THREE.Vector3(
     y *= shape.chin * (1 - (shape.flat ?? 0) * t ** 4 * 0.5);
   }
   // Slightly fuller cheeks, flatter face front.
-  x *= 1 + 0.04 * Math.exp(-(((y + 0.15) / 0.35) ** 2));
+  x *= 1 + 0.075 * Math.exp(-(((y + 0.231) / 0.35) ** 2));
   z *= 1 - 0.05 * Math.max(0, Math.cos(phi)) ** 4 * st;
-  out.set(x * shape.w * HEAD.rx, y * HEAD.ry, z * HEAD.rz).multiplyScalar(scale);
+  out.set(x * shape.w * HEAD.rx, y * (y > 0 ? HEAD.ryTop : HEAD.ry), z * HEAD.rz).multiplyScalar(scale);
   if (nose && out.z > 0) out.z += noseBump(nose, out.x, out.y);
   return out;
 }

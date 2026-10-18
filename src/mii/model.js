@@ -40,10 +40,10 @@ export class MiiModel {
     this.textureScale = textureScale;
 
     this.mats = {
-      skin: new THREE.MeshStandardMaterial({ roughness: 0.78 }),
+      skin: new THREE.MeshStandardMaterial({ roughness: 0.62 }),
       // The face texture has the skin colour as background, so face and head match.
-      face: new THREE.MeshStandardMaterial({ map: this.face.tex, roughness: 0.78 }),
-      shirt: new THREE.MeshStandardMaterial({ roughness: 0.62 }),
+      face: new THREE.MeshStandardMaterial({ map: this.face.tex, roughness: 0.62 }),
+      shirt: new THREE.MeshStandardMaterial({ roughness: 0.55 }),
       pants: new THREE.MeshStandardMaterial({ color: PANTS_COLOR, roughness: 0.42 }),
       hair: hairMaterial('#000000'),
     };

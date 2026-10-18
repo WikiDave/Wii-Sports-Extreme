@@ -10,13 +10,13 @@ import { EYES, BROWS, NOSES, MOUTHS, MUSTACHES, E } from './parts.js';
 
 export { EYES, BROWS, NOSES, MOUTHS, MUSTACHES };
 
-export const FACE_TEX = { scale: 1000, halfWidth: 0.47, top: 0.45, bottom: -0.62 };
+export const FACE_TEX = { scale: 1000, halfWidth: 0.56, top: 0.62, bottom: -0.74 };
 FACE_TEX.width = Math.round(2 * FACE_TEX.halfWidth * FACE_TEX.scale);
 FACE_TEX.height = Math.round((FACE_TEX.top - FACE_TEX.bottom) * FACE_TEX.scale);
 
 const K = FACE_TEX.scale;
 const CX = FACE_TEX.width / 2;
-const OUTLINE = '#22160f';
+const OUTLINE = '#111111';
 
 /** World coordinates (head space, facing +z) to canvas pixels. */
 export const faceX = (x) => CX + x * K;
@@ -25,30 +25,31 @@ const deg = (d) => (d * Math.PI) / 180;
 
 /** Where every feature sits for the given Mii, in canvas pixels (plus world y for 3D parts). */
 export function faceLayout(m) {
-  const mouthWorldY = -0.21 - m.mouth.y * 0.013;
-  const noseWorldY = -0.09 - m.nose.y * 0.011;
+  // Proportions measured from the official Wii renders (face width about 0.92 units).
+  const mouthWorldY = -0.251 - m.mouth.y * 0.013;
+  const noseWorldY = -0.168 - m.nose.y * 0.011;
   return {
-    eyeX: (0.1 + m.eyes.spacing * 0.016) * K,
-    eyeY: faceY(0.135 - m.eyes.y * 0.012),
-    eyeScale: (0.64 + m.eyes.size * 0.09) * 2.4,
+    eyeX: (0.16 + m.eyes.spacing * 0.016) * K,
+    eyeY: faceY(0.144 - m.eyes.y * 0.012),
+    eyeScale: (0.64 + m.eyes.size * 0.09) * 3.6,
     eyeRot: deg((m.eyes.rotation - 4) * 5),
-    browX: (0.1 + m.brows.spacing * 0.016) * K,
-    browY: faceY(0.27 - m.brows.y * 0.012),
-    browScale: (0.64 + m.brows.size * 0.09) * 2.5,
+    browX: (0.155 + m.brows.spacing * 0.016) * K,
+    browY: faceY(0.295 - m.brows.y * 0.012),
+    browScale: (0.64 + m.brows.size * 0.09) * 3.7,
     browRot: deg((m.brows.rotation - 6) * 4),
     noseWorldY,
     noseY: faceY(noseWorldY),
-    noseScale: (0.6 + m.nose.size * 0.1) * 3.4,
+    noseScale: (0.6 + m.nose.size * 0.1) * 5.2,
     mouthWorldY,
     mouthY: faceY(mouthWorldY),
-    mouthScale: (0.64 + m.mouth.size * 0.09) * 3.8,
-    mustacheY: faceY(-0.2 - m.facialHair.y * 0.012),
-    mustacheScale: (0.64 + m.facialHair.size * 0.09) * 3.4,
+    mouthScale: (0.64 + m.mouth.size * 0.09) * 4.8,
+    mustacheY: faceY(-0.235 - m.facialHair.y * 0.012),
+    mustacheScale: (0.64 + m.facialHair.size * 0.09) * 4.6,
     glassesY: faceY(0.12 - m.glasses.y * 0.012),
-    glassesScale: (0.7 + m.glasses.size * 0.075) * 2.05,
-    moleX: faceX(-0.3 + m.mole.x * 0.0375),
-    moleY: faceY(0.3 - m.mole.y * 0.022),
-    moleScale: (0.5 + m.mole.size * 0.12) * 2,
+    glassesScale: (0.7 + m.glasses.size * 0.075) * 2.8,
+    moleX: faceX(-0.36 + m.mole.x * 0.045),
+    moleY: faceY(0.3 - m.mole.y * 0.025),
+    moleScale: (0.5 + m.mole.size * 0.12) * 2.6,
   };
 }
 
@@ -466,15 +467,15 @@ export function faceColors(m) {
   const lip = LIP_COLORS[m.mouth.color].hex;
   return {
     skin,
-    noseLine: mixHex(skin, '#2a1206', 0.62),
+    noseLine: '#111111',
     wrinkle: mixHex(skin, '#5a2a14', 0.55),
     eye: EYE_COLORS[m.eyes.color].hex,
     lidColor: mixHex(skin, '#b0283a', 0.55),
     brow: HAIR_COLORS[m.brows.color].hex,
     lip,
     lipTop: mixHex(lip, '#3a0a06', 0.22),
-    mouthLine: mixHex(lip, '#2a0c06', 0.62),
-    mouthDark: mixHex(lip, '#1e0604', 0.72),
+    mouthLine: '#111111',
+    mouthDark: mixHex(lip, '#1a0503', 0.8),
     facialHair: HAIR_COLORS[m.facialHair.color].hex,
     glasses: GLASSES_COLORS[m.glasses.color].hex,
   };

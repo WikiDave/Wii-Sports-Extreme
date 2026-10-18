@@ -1,7 +1,7 @@
 // Colour palettes, modelled on the Wii Mii Channel.
 
 export const FAVORITE_COLORS = [
-  { name: 'Rood', hex: '#d21e14' },
+  { name: 'Rood', hex: '#d81c12' },
   { name: 'Oranje', hex: '#ff6e19' },
   { name: 'Geel', hex: '#ffd820' },
   { name: 'Lichtgroen', hex: '#78d220' },
@@ -15,24 +15,25 @@ export const FAVORITE_COLORS = [
   { name: 'Zwart', hex: '#181814' },
 ];
 
+// The Wii base colours; the lighting brightens them by about 15% where the light hits.
 export const SKIN_COLORS = [
-  { name: 'Licht', hex: '#ffd8b8' },
-  { name: 'Perzik', hex: '#ffbc8c' },
-  { name: 'Getint', hex: '#de9866' },
-  { name: 'Roze', hex: '#ffcab0' },
-  { name: 'Bruin', hex: '#ad6a40' },
-  { name: 'Donker', hex: '#64391e' },
+  { name: 'Licht', hex: '#ffd3ad' },
+  { name: 'Perzik', hex: '#ffb66b' },
+  { name: 'Oranje', hex: '#de7942' },
+  { name: 'Roze', hex: '#ffaa8c' },
+  { name: 'Bruin', hex: '#ad5129' },
+  { name: 'Donker', hex: '#632c18' },
 ];
 
 export const HAIR_COLORS = [
-  { name: 'Zwart', hex: '#1e1a18' },
-  { name: 'Donkerbruin', hex: '#3e2416' },
-  { name: 'Roodbruin', hex: '#6a2a14' },
-  { name: 'Bruin', hex: '#7c4a26' },
-  { name: 'Grijs', hex: '#7c7a78' },
-  { name: 'Olijf', hex: '#4e4024' },
-  { name: 'Lichtbruin', hex: '#9c6c34' },
-  { name: 'Blond', hex: '#dcae52' },
+  { name: 'Zwart', hex: '#161210' },
+  { name: 'Donkerbruin', hex: '#3e2212' },
+  { name: 'Roodbruin', hex: '#5e2210' },
+  { name: 'Bruin', hex: '#7a4422' },
+  { name: 'Grijs', hex: '#8c8c8c' },
+  { name: 'Olijf', hex: '#584a1e' },
+  { name: 'Lichtbruin', hex: '#9c5c1e' },
+  { name: 'Blond', hex: '#e8b452' },
 ];
 
 export const EYE_COLORS = [

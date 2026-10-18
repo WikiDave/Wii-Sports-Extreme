@@ -13,8 +13,8 @@ export const weightScale = (w) => (w < 64 ? 0.74 + (w / 64) * 0.26 : 1 + ((w - 6
 const v2 = (pts) => pts.map(([x, y]) => new THREE.Vector2(x, y));
 
 // Shirt profiles (radius, height) for a shirt 0.95 tall.
-const SHIRT_M = v2([[0, 0], [0.245, 0], [0.258, 0.03], [0.252, 0.3], [0.243, 0.6], [0.238, 0.75], [0.22, 0.84], [0.17, 0.905], [0.09, 0.94], [0, 0.95]]);
-const SHIRT_F = v2([[0, 0], [0.33, 0], [0.338, 0.025], [0.305, 0.2], [0.262, 0.45], [0.24, 0.64], [0.235, 0.75], [0.216, 0.84], [0.165, 0.905], [0.085, 0.94], [0, 0.95]]);
+const SHIRT_M = v2([[0, 0], [0.245, 0], [0.258, 0.03], [0.252, 0.3], [0.245, 0.58], [0.234, 0.7], [0.206, 0.8], [0.16, 0.875], [0.1, 0.925], [0, 0.95]]);
+const SHIRT_F = v2([[0, 0], [0.33, 0], [0.338, 0.025], [0.305, 0.2], [0.262, 0.45], [0.242, 0.6], [0.232, 0.7], [0.204, 0.8], [0.158, 0.875], [0.098, 0.925], [0, 0.95]]);
 const HIPS = v2([[0, 0], [0.2, 0], [0.232, 0.04], [0.24, 0.14], [0.232, 0.22], [0, 0.22]]);
 
 const shirtGeo = { m: new THREE.LatheGeometry(SHIRT_M, 40), f: new THREE.LatheGeometry(SHIRT_F, 40) };
@@ -65,11 +65,12 @@ export function buildBody(m, mats) {
     return pivot;
   });
 
-  const shoulderY = torsoTop - 0.14 * hs;
+  // Shoulders sit inside the rounded top of the shirt, so only the sleeves show.
+  const shoulderY = torsoTop - 0.2 * hs;
   const arms = [-1, 1].map((side) => {
     const pivot = new THREE.Group();
-    pivot.position.set(side * (0.225 * ws + 0.02), shoulderY, 0);
-    pivot.rotation.z = side * (0.3 + 0.16 * (ws - 1));
+    pivot.position.set(side * (0.19 * ws + 0.02), shoulderY, 0);
+    pivot.rotation.z = side * (0.13 + 0.16 * (ws - 1));
     const r = 0.07 * limb;
     const len = 0.68 * hs;
     const arm = new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 6, 16), mats.shirt);
@@ -90,6 +91,6 @@ export function buildBody(m, mats) {
     legR: legs[1],
     armL: arms[0],
     armR: arms[1],
-    headY: torsoTop + 0.41,
+    headY: torsoTop + 0.52,
   };
 }

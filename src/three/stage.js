@@ -3,13 +3,14 @@
 
 import * as THREE from 'three';
 
+/** Bright, soft lighting like the Wii Mii renders: key light from the front left. */
 export function addStudioLights(scene) {
-  scene.add(new THREE.HemisphereLight(0xffffff, 0xc4ccd8, 1.7));
-  const key = new THREE.DirectionalLight(0xffffff, 1.8);
-  key.position.set(1.6, 3, 4);
-  const fill = new THREE.DirectionalLight(0xe6eeff, 0.6);
-  fill.position.set(-3, 1, 2);
-  const rim = new THREE.DirectionalLight(0xffffff, 0.9);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xd8d4cc, 2.1));
+  const key = new THREE.DirectionalLight(0xfffbf0, 1.9);
+  key.position.set(-1.4, 1.6, 4);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.45);
+  fill.position.set(3, 0.5, 2);
+  const rim = new THREE.DirectionalLight(0xffffff, 0.7);
   rim.position.set(0, 2.5, -4);
   scene.add(key, fill, rim);
 }
@@ -45,7 +46,7 @@ export function framing(model, view, fov = 26, aspect = 1) {
   const tanV = Math.tan(THREE.MathUtils.degToRad(fov / 2));
   const tanH = tanV * aspect;
   if (view === 'face' || !model.parts) {
-    return { target: new THREE.Vector3(0, model.headY + 0.05, 0), dist: Math.max(0.74 / tanV, 0.62 / tanH) };
+    return { target: new THREE.Vector3(0, model.headY - 0.02, 0), dist: Math.max(0.78 / tanV, 0.64 / tanH) };
   }
   const top = model.headY + 0.68;
   return { target: new THREE.Vector3(0, top / 2 - 0.02, 0), dist: Math.max((top * 0.56) / tanV, 0.8 / tanH) };
