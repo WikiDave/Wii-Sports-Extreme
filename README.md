@@ -18,10 +18,10 @@ JavaScript en [three.js](https://threejs.org/). Geen build-stap nodig.
 
 - **Mii-plein** met al je Mii's: maken, bewerken, kopiëren en verwijderen.
 - **Nieuwe Mii**: begin met een leeg gezicht (man of vrouw) of kies een lookalike.
-- **Editor** met een live 3D-voorbeeld (sleep om de Mii te draaien) en tabbladen voor
-  profiel, lengte en postuur, lievelingskleur, gezichtsvorm, huidskleur, kenmerken,
-  alle onderdelen van het Wii Mii-kanaal in dezelfde volgorde: 8 gezichtsvormen, 12 soorten make-up/rimpels,
-  72 kapsels, 24 wenkbrauwen, 48 ogen, 12 neuzen, 24 monden, 9 brillen, 3 snorren, 3 baarden en een moedervlek.
+- **Editor** met een live 3D-voorbeeld (sleep om de Mii te draaien) en dezelfde negen
+  tabbladen als op de Wii. Alle onderdelen van het Wii Mii-kanaal zitten erin, in dezelfde
+  volgorde: 8 gezichtsvormen, 12 soorten make-up en rimpels, 72 kapsels, 24 wenkbrauwen,
+  48 ogen, 12 neuzen, 24 monden, 9 brillen, 3 snorren, 3 baarden en een moedervlek.
   Ogen, wenkbrauwen, mond, snor en bril kun je groter, kleiner, hoger, lager,
   verder uit elkaar en schuiner zetten, net als op de Wii.
 - Mii's worden bewaard in de browser (`localStorage`), zodat de sporten ze straks
