@@ -87,12 +87,15 @@ function ground(x, z, minH = 0.9) {
   return y >= minH ? y : null;
 }
 
-/** Scatters props over the island and returns the group plus the lamp material (for night). */
+/** Scatters props over the island: the group, the lamp material (for night) and the colliders. */
 export function buildProps() {
   const group = new THREE.Group();
   const rand = rng(42);
 
-  const place = (obj, x, z, y, rot = rand() * Math.PI * 2, s = 1) => {
+  // Round obstacles for the player: { x, z, r }.
+  const colliders = [];
+  const place = (obj, x, z, y, rot = rand() * Math.PI * 2, s = 1, r = 0) => {
+    if (r) colliders.push({ x, z, r: r * s });
     obj.position.set(x, y, z);
     obj.rotation.y = rot;
     obj.scale.setScalar(s);
@@ -108,7 +111,7 @@ export function buildProps() {
     const zone = zoneAt(x, z);
     if (zone === 'vulkaan' || (y > 5 && rand() < 0.55)) continue;
     const obj = palm();
-    place(obj, x, z, y - 0.2, undefined, 0.8 + rand() * 0.6);
+    place(obj, x, z, y - 0.2, undefined, 0.8 + rand() * 0.6, 0.5);
     obj.rotation.z = (rand() - 0.5) * 0.12;
   }
 
@@ -133,7 +136,7 @@ export function buildProps() {
       if (group.children.some((c) => c.userData.house && Math.hypot(c.position.x - x, c.position.z - z) < 14)) continue;
       const obj = house(rand() < 0.5 ? M.wall : M.wallB, rand() < 0.5 ? M.roof : M.roofB);
       obj.userData.house = true;
-      place(obj, x, z, y - 0.3, Math.round(rand() * 4) * (Math.PI / 2));
+      place(obj, x, z, y - 0.3, Math.round(rand() * 4) * (Math.PI / 2), 1, 4.4);
       placed++;
     }
   }
@@ -142,7 +145,7 @@ export function buildProps() {
   const lh = lighthouse();
   const lx = -270;
   const lz = -150;
-  place(lh, lx, lz, ground(lx, lz, 0) ?? 24, 0);
+  place(lh, lx, lz, ground(lx, lz, 0) ?? 24, 0, 1, 3.2);
   const lamp = lh.getObjectByName('lamp').material;
 
   // Rocks along the shores and the mountain.
@@ -152,8 +155,8 @@ export function buildProps() {
     const y = heightAt(x, z);
     if (y < -0.5 || (y > 3 && zoneAt(x, z) !== 'vulkaan')) continue;
     const obj = rock();
-    place(obj, x, z, y, undefined, 0.7 + rand() * 2.2);
+    place(obj, x, z, y, undefined, 0.7 + rand() * 2.2, 1.1);
   }
 
-  return { group, lamp };
+  return { group, lamp, colliders };
 }

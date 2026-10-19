@@ -28,12 +28,18 @@ export const MII_HAIR_LIGHT = {
 };
 
 const vertexShader = /* glsl */ `
+  #include <skinning_pars_vertex>
   varying vec3 vNormal;
   varying vec2 vUv;
   void main() {
     vUv = uv;
-    vNormal = normalize(normalMatrix * normal);
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    vec3 objectNormal = normal;
+    #include <skinbase_vertex>
+    #include <skinnormal_vertex>
+    vec3 transformed = position;
+    #include <skinning_vertex>
+    vNormal = normalize(normalMatrix * objectNormal);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(transformed, 1.0);
   }
 `;
 
