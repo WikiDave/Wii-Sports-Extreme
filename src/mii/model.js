@@ -6,10 +6,13 @@ import { FAVORITE_COLORS, SKIN_COLORS, HAIR_COLORS, PANTS_COLOR } from './palett
 import { paintFaceTexture, faceLayout } from './face.js';
 import { CAPTURE_UNIT, FACE_TEX, MASK } from './mask.js';
 import { HEAD_CENTER } from './head-data.js';
-import { FACE_SHAPES, headGeometries, noseShape } from './head.js';
+import { FACE_SHAPES, headGeometries, faceSurface } from './head.js';
+import { NOSES } from './parts.js';
+import { noseGeometry } from './nose.js';
+import { buildBeard } from './beard.js';
 import { buildHair, hairMaterial } from './hair.js';
 import { buildBody } from './body.js';
-import { MiiMaterial } from '../three/miiMaterial.js';
+import { MiiMaterial, MII_HAIR_LIGHT } from '../three/miiMaterial.js';
 
 function disposeTree(obj) {
   obj.traverse((o) => {
@@ -49,6 +52,7 @@ export class MiiModel {
       shirt: new MiiMaterial(),
       pants: new MiiMaterial({ color: PANTS_COLOR }),
       hair: hairMaterial('#000000'),
+      beard: new MiiMaterial({ light: MII_HAIR_LIGHT }),
     };
     this.parts = null;
     this.keys = {};
@@ -62,8 +66,9 @@ export class MiiModel {
     this.mats.shirt.color.set(FAVORITE_COLORS[m.favoriteColor].hex);
     this.mats.hair.color.set(HAIR_COLORS[m.hair.color].hex);
     this.mats.hair.color2.set(FAVORITE_COLORS[m.favoriteColor].hex);
+    this.mats.beard.color.set(HAIR_COLORS[m.facialHair.color].hex);
 
-    const headKey = JSON.stringify([m.face.shape, m.hair.style, m.hair.flip, m.nose]);
+    const headKey = JSON.stringify([m.face.shape, m.hair.style, m.hair.flip, m.nose, m.facialHair.beard]);
     const bodyKey = JSON.stringify([m.gender, m.height, m.weight]);
     const faceKey = JSON.stringify([m.face, m.eyes, m.brows, m.mouth, m.facialHair, m.glasses, m.mole]);
 
@@ -81,8 +86,13 @@ export class MiiModel {
     const shape = FACE_SHAPES[m.face.shape];
     const head = new THREE.Group();
     const L = faceLayout(m);
-    const geo = headGeometries(shape, noseShape(m.nose.type, MASK.y(L.nose.v) + shape.lift, 5.2 * L.nose.s));
+    const geo = headGeometries(shape, null);
     head.add(new THREE.Mesh(geo.face, this.mats.face));
+    // The 3D nose carries the face texture too, so the nose line lies on it.
+    const nose = noseGeometry(NOSES[m.nose.type].id, m.nose.y, m.nose.size, MASK.y(L.nose.v) + shape.lift, faceSurface(shape));
+    if (nose) head.add(new THREE.Mesh(nose, this.mats.face));
+    const beard = buildBeard(m.facialHair.beard, m.face.shape, this.mats.beard);
+    if (beard) head.add(beard);
     head.add(new THREE.Mesh(geo.crown, this.mats.skin));
     head.add(new THREE.Mesh(geo.back, this.mats.skin));
     const hair = buildHair(m.hair.style, this.mats.hair);

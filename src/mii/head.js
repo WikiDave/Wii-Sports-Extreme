@@ -76,6 +76,37 @@ export function headPoint(shape, theta, phi, scale = 1, out = new THREE.Vector3(
   return out;
 }
 
+/**
+ * Front surface of the head: z (world) at world (x, y), found by Newton steps on (theta, phi).
+ * Used to place the nose. Returns a function (x, y) => z.
+ */
+export function faceSurface(shape) {
+  const p = new THREE.Vector3();
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const e = 1e-4;
+  return (x, y) => {
+    let theta = Math.PI * 0.6;
+    let phi = 0;
+    for (let k = 0; k < 8; k++) {
+      headPoint(shape, theta, phi, 1, p);
+      const fx = p.x - x;
+      const fy = p.y - y;
+      if (Math.abs(fx) + Math.abs(fy) < 1e-6) break;
+      headPoint(shape, theta + e, phi, 1, a);
+      headPoint(shape, theta, phi + e, 1, b);
+      const j11 = (a.x - p.x) / e;
+      const j12 = (b.x - p.x) / e;
+      const j21 = (a.y - p.y) / e;
+      const j22 = (b.y - p.y) / e;
+      const det = j11 * j22 - j12 * j21 || 1e-9;
+      theta -= (j22 * fx - j12 * fy) / det;
+      phi -= (-j21 * fx + j11 * fy) / det;
+    }
+    return headPoint(shape, theta, phi, 1, p).z;
+  };
+}
+
 const _q = new THREE.Vector3();
 const _q2 = new THREE.Vector3();
 

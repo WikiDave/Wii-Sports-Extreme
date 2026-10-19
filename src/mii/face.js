@@ -11,6 +11,9 @@ import { GLASSES_DATA } from './glasses-data.js';
 import { SKIN_COLORS, HAIR_COLORS, EYE_COLORS, LIP_COLORS, GLASSES_COLORS } from './palette.js';
 import { EYES, BROWS, NOSES, MOUTHS, MUSTACHES, MOLE, BLINK_EYE } from './parts.js';
 import { FACE_TEX } from './mask.js';
+import { drawFaceTex } from './facetex.js';
+import { drawNoseLine, noseAnchorV, noseScale } from './nose.js';
+import { drawBeardIcon } from './beard.js';
 import * as legacy from './legacy.js';
 
 export { EYES, BROWS, NOSES, MOUTHS, MUSTACHES };
@@ -48,13 +51,12 @@ export function faceLayout(m) {
     mouth: { u: 32, v: 29.25885 + STEP * m.mouth.y, w: 6.1875 * mouth, h: 4.5 * mouth, a: 0 },
     mustache: { u: 32, v: 31.763554 + STEP * m.facialHair.y, w: 4.5 * hair, h: 9 * hair, a: 0 },
     mole: { u: 17.766165 + 1.7792293 * m.mole.x, v: 17.95986 + STEP * m.mole.y, w: mole, h: mole, a: 0 },
-    // Not measured yet: nose and glasses follow the Wii's 3D formulas approximately.
-    nose: { u: 32, v: 40.1 + 0.96 * (m.nose.y - 9), s: (0.4 + 0.175 * m.nose.size) / 1.1 },
-    glasses: { u: 32, v: 31.7 + 0.9557 * (m.glasses.y - 10) + (LIFTED_FACES.has(m.face.shape) ? -1.902 : 0), s: (0.4 + 0.175 * m.glasses.size) / 1.1 },
+    // Nose and glasses, measured in Studio's face-0 frame. The lifted face shapes (2, 6, 7) raise
+    // them by the same amount as the whole face texture, so no extra offset here.
+    nose: { u: 32, v: noseAnchorV(m.nose.y), s: noseScale(m.nose.size) },
+    glasses: { u: 32, v: 31.7 + 0.9557 * (m.glasses.y - 10), s: (0.4 + 0.175 * m.glasses.size) / 1.1 },
   };
 }
-
-const LIFTED_FACES = new Set([2, 6, 7]);
 
 /** All colours used by the face drawings, for one Mii (Mii Studio palette). */
 export function faceColors(m) {
@@ -214,8 +216,10 @@ export function drawFace(c, m, { blink = false, only = null } = {}) {
 
   c.fillStyle = o.skin;
   c.fillRect(-64, -64, 192, 192);
-  if (want('feature')) inOldSpace(c, () => FEATURES[m.face.feature].draw(c, old, oldColors));
-  if (want('beard')) inOldSpace(c, () => BEARDS[m.facialHair.beard].draw(c, old, oldColors));
+  // Make-up and wrinkles (measured rasters; the old drawing while they load).
+  if (want('feature') && !drawFaceTex(c, m.face.feature, m.face.shape)) inOldSpace(c, () => FEATURES[m.face.feature].draw(c, old, oldColors));
+  // Beards are 3D (beard.js); only the option icon shows one here.
+  if (only === 'beard') drawBeardIcon(c, m.facialHair.beard, o.hair.F);
   // The Wii draws the mask parts so that the first one stays on top: moustache, mouth,
   // eyebrows, eyes, mole. Here they are painted bottom first.
   if (want('mole') && m.mole.on) centred(c, L.mole, () => fillLayers(c, MOLE.layers, o.mole));
@@ -223,9 +227,7 @@ export function drawFace(c, m, { blink = false, only = null } = {}) {
   if (want('brows')) drawBrows(c, m, L, o);
   if (want('mouth')) drawMouth(c, m, L, o);
   if (want('mustache')) drawMustache(c, m, L, o);
-  if (want('nose')) {
-    inOldSpace(c, () => legacy.placed(c, legacy.CX, old.noseY, old.noseScale, 0, false, () => legacy.drawFlat(c, NOSES[m.nose.type].layers, o.noseLine)));
-  }
+  if (want('nose')) drawNoseLine(c, NOSES[m.nose.type].id, m.nose.y, m.nose.size, o.noseLine);
   if (want('glasses') && !GLASSES[m.glasses.type].none) {
     c.save();
     c.translate(L.glasses.u, L.glasses.v);
