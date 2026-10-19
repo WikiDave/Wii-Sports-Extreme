@@ -9,6 +9,7 @@ import { Sky } from '../game/world/sky.js';
 import { heightAt } from '../game/world/island.js';
 import { Player } from '../game/player.js';
 import { FollowCamera } from '../game/camera.js';
+import { Minimap } from '../game/ui/minimap.js';
 import { Input } from '../game/input.js';
 import { miiStore } from '../mii/storage.js';
 import { defaultMii } from '../mii/data.js';
@@ -72,6 +73,7 @@ export function islandScreen(root, app) {
   const follow = new FollowCamera(camera);
   follow.yaw = player.heading + Math.PI;
   const input = new Input(screen, renderer.domElement, { onLook: (dx, dy) => follow.look(dx, dy), onZoom: (f) => follow.zoom(f) });
+  const minimap = new Minimap(screen);
   window.__game = { player, follow }; // for tests
 
   const resize = () => {
@@ -94,6 +96,7 @@ export function islandScreen(root, app) {
     const move = input.move();
     player.update(move, follow.yaw, dt, t);
     follow.update(player, move, dt);
+    minimap.draw(player);
     sky.follow(camera);
     renderer.render(scene, camera);
   };
@@ -103,6 +106,7 @@ export function islandScreen(root, app) {
     unmount() {
       cancelAnimationFrame(raf);
       input.dispose();
+      minimap.dispose();
       player.dispose();
       ro.disconnect();
       scene.traverse((o) => {
