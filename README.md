@@ -1,20 +1,23 @@
-# Wii Sports Extreme
+# Wii Sports Extreme (werktitel)
 
-Een fan-remake van Wii Sports in de browser, stap voor stap gebouwd met
+Een fan-game in de browser, gebouwd met
 JavaScript en [three.js](https://threejs.org/). Geen build-stap nodig.
 
-## Stappenplan
+## Plan
 
-| Stap | Onderdeel | Status |
+Een fan-game in de stijl van Wii Sports Resort: een Mii-maker en een open Wuhu-achtig
+eiland waarop je een (parodie-)handelsimperium opbouwt. Het stappenplan staat in
+`CLAUDE.md`.
+
+| Fase | Onderdeel | Status |
 | ---- | --------- | ------ |
-| 1 | Mii-kanaal (Mii's maken en bewaren) | klaar |
-| 2 | Tennis | gepland |
-| 3 | Bowling | gepland |
-| 4 | Honkbal | gepland |
-| 5 | Golf | gepland |
-| 6 | Boksen | gepland |
+| 0 | Voorbereiding | bezig |
+| 1 | Eiland en beweging | gepland |
+| 2 | Economie | gepland |
+| 3 | Uitbreiding | gepland |
+| 4 | Afwerking | gepland |
 
-## Stap 1: het Mii-kanaal
+## Het Mii-kanaal (klaar)
 
 - **Mii-plein** met al je Mii's: maken, bewerken, kopiëren en verwijderen.
 - **Nieuwe Mii**: begin met een leeg gezicht (man of vrouw) of kies een lookalike.
@@ -24,8 +27,8 @@ JavaScript en [three.js](https://threejs.org/). Geen build-stap nodig.
   48 ogen, 12 neuzen, 24 monden, 9 brillen, 3 snorren, 3 baarden en een moedervlek.
   Ogen, wenkbrauwen, mond, snor en bril kun je groter, kleiner, hoger, lager,
   verder uit elkaar en schuiner zetten, net als op de Wii.
-- Mii's worden bewaard in de browser (`localStorage`), zodat de sporten ze straks
-  kunnen gebruiken.
+- Mii's worden bewaard in de browser (`localStorage`), zodat het spel ze straks
+  kan gebruiken.
 
 ## Spelen
 
@@ -51,7 +54,7 @@ src/mii/parts.js      de Wii-gezichtsonderdelen (ogen, wenkbrauwen, neuzen, mond
 src/mii/face.js       tekent het gezicht: onderdelen, baard, bril en make-up
 src/mii/head.js       3D-hoofd (eivorm), gezichtsvormen, neusbultje en oren
 src/mii/hair.js       de 72 kapsels (plus pet en muts)
-src/mii/body.js       het lichaam (met gewrichten voor animaties in de sporten)
+src/mii/body.js       het lichaam (gemeten uit Mii Studio)
 src/mii/model.js      zet alles samen tot één 3D-Mii
 src/mii/thumbs.js     portretten en 3D-icoontjes
 src/three/            3D-hulpmiddelen en de draaibare voorbeeldweergave

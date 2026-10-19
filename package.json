@@ -2,7 +2,7 @@
   "name": "wii-sports-extreme",
   "version": "0.1.0",
   "private": true,
-  "description": "Fan-remake van Wii Sports in de browser, stap voor stap gebouwd.",
+  "description": "Fan-game in Wii Sports Resort-stijl met een Mii-maker, in de browser.",
   "type": "module",
   "scripts": {
     "start": "npx --yes http-server -c-1 -p 8080 ."
