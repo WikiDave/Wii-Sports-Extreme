@@ -7,13 +7,29 @@ import { buildIsland } from '../game/world/island.js';
 import { buildProps } from '../game/world/props.js';
 import { Sky } from '../game/world/sky.js';
 import { heightAt } from '../game/world/island.js';
+import { buildHut } from '../game/world/hut.js';
 import { Player } from '../game/player.js';
 import { FollowCamera } from '../game/camera.js';
 import { Game, formatClock, RANKS } from '../game/state.js';
+import { Interactions } from '../game/interact.js';
+import { openHutMenu } from '../game/ui/hutMenu.js';
 import { Minimap } from '../game/ui/minimap.js';
 import { Input } from '../game/input.js';
 import { miiStore } from '../mii/storage.js';
 import { defaultMii } from '../mii/data.js';
+
+/** A dry spot on the beach at least 14 m from `from`, away from other props, for the hut. */
+function findHutSpot(from, colliders) {
+  for (let i = 0; i < 600; i++) {
+    const a = i * 2.4;
+    const r = 14 + i * 0.5;
+    const x = from.x + Math.cos(a) * r;
+    const z = from.z + Math.sin(a) * r;
+    const y = heightAt(x, z);
+    if (y > 2.4 && y < 4 && colliders.every((c) => Math.hypot(c.x - x, c.z - z) > c.r + 9)) return { x, z, y };
+  }
+  return { x: from.x + 14, z: from.z, y: heightAt(from.x + 14, from.z) };
+}
 
 function safeStorage() {
   try {
@@ -90,6 +106,14 @@ export function islandScreen(root, app) {
   // The player's Mii, on the beach in the south.
   const mii = miiStore.get(game.state.player.miiId) ?? miiStore.all()[0] ?? defaultMii('m');
   game.state.player.miiId = mii.id ?? null;
+  // The beach hut: home base, a few metres from where the player starts.
+  const hutPos = findHutSpot(findSpawn(props.colliders), props.colliders);
+  const hut = buildHut();
+  hut.position.set(hutPos.x, hutPos.y - 0.2, hutPos.z);
+  scene.add(hut);
+  props.colliders.push({ x: hutPos.x, z: hutPos.z, r: 4.8 });
+  const interactions = new Interactions(screen);
+  interactions.add({ x: hutPos.x, z: hutPos.z, r: 9, label: 'Strandhut', run: () => openHutMenu(game) });
   const saved = game.state.player;
   const spawn = saved.x != null && heightAt(saved.x, saved.z) > 0.3 ? { x: saved.x, z: saved.z } : findSpawn(props.colliders);
   const player = new Player(mii, { ...spawn, colliders: props.colliders });
@@ -98,7 +122,7 @@ export function islandScreen(root, app) {
   follow.yaw = player.heading + Math.PI;
   const input = new Input(screen, renderer.domElement, { onLook: (dx, dy) => follow.look(dx, dy), onZoom: (f) => follow.zoom(f) });
   const minimap = new Minimap(screen);
-  window.__game = { player, follow }; // for tests
+  window.__game = { player, follow, game, hutPos, interactions }; // for tests
 
   const resize = () => {
     const w = view.clientWidth || 1;
@@ -121,6 +145,7 @@ export function islandScreen(root, app) {
     const move = input.move();
     player.update(move, follow.yaw, dt, t);
     follow.update(player, move, dt);
+    interactions.update(player.pos);
     minimap.draw(player);
     sky.follow(camera);
     renderer.render(scene, camera);
@@ -135,6 +160,7 @@ export function islandScreen(root, app) {
       game.save();
       input.dispose();
       minimap.dispose();
+      interactions.dispose();
       player.dispose();
       ro.disconnect();
       scene.traverse((o) => {
