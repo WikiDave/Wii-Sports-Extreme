@@ -7,13 +7,15 @@
 //
 // drawFace() draws in mask units: the caller maps the FACE_TEX rectangle onto its canvas.
 
+import { GLASSES_DATA } from './glasses-data.js';
 import { SKIN_COLORS, HAIR_COLORS, EYE_COLORS, LIP_COLORS, GLASSES_COLORS } from './palette.js';
 import { EYES, BROWS, NOSES, MOUTHS, MUSTACHES, MOLE, BLINK_EYE } from './parts.js';
 import { FACE_TEX } from './mask.js';
 import * as legacy from './legacy.js';
 
 export { EYES, BROWS, NOSES, MOUTHS, MUSTACHES };
-export const { BEARDS, GLASSES, FEATURES } = legacy;
+export const { BEARDS, FEATURES } = legacy;
+export const GLASSES = [{ name: 'Geen', none: true }, ...['Vierkant', 'Smal', 'Rond', 'Ovaal', 'Dik ovaal', 'Pilotenbril', 'Zonnebril', 'Vlinderbril'].map((name, i) => ({ name, layers: GLASSES_DATA[i + 1] }))];
 
 const SX = 0.88961464;
 const SY = 0.9276675;
@@ -48,9 +50,11 @@ export function faceLayout(m) {
     mole: { u: 17.766165 + 1.7792293 * m.mole.x, v: 17.95986 + STEP * m.mole.y, w: mole, h: mole, a: 0 },
     // Not measured yet: nose and glasses follow the Wii's 3D formulas approximately.
     nose: { u: 32, v: 40.1 + 0.96 * (m.nose.y - 9), s: (0.4 + 0.175 * m.nose.size) / 1.1 },
-    glasses: { u: 32, v: 31.6 + 0.96 * (m.glasses.y - 10), s: (0.4 + 0.15 * m.glasses.size) / 1.0 },
+    glasses: { u: 32, v: 31.7 + 0.9557 * (m.glasses.y - 10) + (LIFTED_FACES.has(m.face.shape) ? -1.902 : 0), s: (0.4 + 0.175 * m.glasses.size) / 1.1 },
   };
 }
+
+const LIFTED_FACES = new Set([2, 6, 7]);
 
 /** All colours used by the face drawings, for one Mii (Mii Studio palette). */
 export function faceColors(m) {
@@ -222,7 +226,17 @@ export function drawFace(c, m, { blink = false, only = null } = {}) {
   if (want('nose')) {
     inOldSpace(c, () => legacy.placed(c, legacy.CX, old.noseY, old.noseScale, 0, false, () => legacy.drawFlat(c, NOSES[m.nose.type].layers, o.noseLine)));
   }
-  if (want('glasses') && !GLASSES[m.glasses.type].none) inOldSpace(c, () => legacy.drawGlasses(c, GLASSES[m.glasses.type], old, o.glasses));
+  if (want('glasses') && !GLASSES[m.glasses.type].none) {
+    c.save();
+    c.translate(L.glasses.u, L.glasses.v);
+    c.scale(L.glasses.s / 100, L.glasses.s / 100);
+    for (const [, d, color, alpha] of GLASSES[m.glasses.type].layers) {
+      c.globalAlpha = alpha;
+      c.fillStyle = color === 'glass' ? o.glasses : color;
+      c.fill(P(d), 'evenodd');
+    }
+    c.restore();
+  }
 }
 
 /** Paints the face onto a FACE_TEX-sized canvas context at the given resolution scale. */

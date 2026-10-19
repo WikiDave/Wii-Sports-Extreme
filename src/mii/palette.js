@@ -54,11 +54,11 @@ export const LIP_COLORS = [
 
 export const GLASSES_COLORS = [
   { name: 'Zwart', hex: '#000000' },
-  { name: 'Bruin', hex: '#603810' },
-  { name: 'Rood', hex: '#a81008' },
-  { name: 'Blauw', hex: '#203068' },
-  { name: 'Goud', hex: '#a86000' },
-  { name: 'Grijs', hex: '#787068' },
+  { name: 'Bruin', hex: '#7a4011' },
+  { name: 'Rood', hex: '#d51208' },
+  { name: 'Blauw', hex: '#29376e' },
+  { name: 'Goud', hex: '#d56d00' },
+  { name: 'Grijs', hex: '#987f6e' },
 ];
 
 export const PANTS_COLOR = '#484846';
