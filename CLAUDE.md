@@ -1,7 +1,7 @@
 # Wii Sports Extreme (werktitel)
 
 Fan-game in de browser: Wii Sports Resort-stijl, Mii-maker, open eiland, parodie-handelsspel
-(duidelijk nepproducten, geen echte drugs). Statische web-app, three.js 0.180 in `lib/`, geen
+in verboden limonade/snoep/ijs (geen echte drugs). Ontwerp: `docs/ONTWERP.md`. Statische web-app, three.js 0.180 in `lib/`, geen
 build-stap, Nederlandse UI. Start met `npm start` of `python3 -m http.server 8080`.
 
 ## Regels
@@ -26,4 +26,4 @@ minigame (O/medium) - 2.4 klanten (S/medium)
 ## Status
 - Mii-maker: klaar (hoofden, 72 kapsels, ogen/brauwen/monden, brillen, lichamen, 27 officiele
   Miis). Nog niet 1:1: neus, baarden, make-up/rimpels.
-- Stap 0.1 klaar. Volgende: 0.2 spelontwerp.
+- Stap 0.1 en 0.2 klaar. Ontwerp: `docs/ONTWERP.md` (lees dit eerst). Volgende: 1.1 eiland.
