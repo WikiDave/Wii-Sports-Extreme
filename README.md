@@ -38,7 +38,7 @@ ES-modules werken niet via `file://`, dus start een kleine webserver in deze map
 npm start              # of: python3 -m http.server 8080
 ```
 
-Open daarna <http://localhost:8080>. Met `#mii` achter de URL ga je direct naar het Mii-kanaal.
+Open daarna <http://localhost:8080>. Met `#mii` achter de URL ga je direct naar het Mii-kanaal, met `#eiland` naar het eiland.
 
 ## Projectstructuur
 
@@ -68,7 +68,14 @@ import { MiiModel } from './src/mii/model.js';
 import { miiStore } from './src/mii/storage.js';
 
 const mii = new MiiModel(miiStore.all()[0]);
-scene.add(mii.group); // voeten op y = 0; mii.parts.armR enz. kun je animeren
+scene.add(mii.group); // voeten op y = 0; mii.parts.armR, legL enz. animeren
+```
+
+## Tests
+
+```sh
+for t in tests/*.test.mjs; do node "$t"; done
+node tests/balance.sim.mjs   # geen test: een simulatie van de balans
 ```
 
 ## Let op
