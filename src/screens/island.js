@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { h, icon } from '../ui/dom.js';
 import { buildIsland } from '../game/world/island.js';
+import { buildProps } from '../game/world/props.js';
 import { Sky } from '../game/world/sky.js';
 
 export function islandScreen(root, app) {
@@ -14,7 +15,8 @@ export function islandScreen(root, app) {
   const camera = new THREE.PerspectiveCamera(45, 1, 1, 9000);
   const sky = new Sky(scene);
   const island = buildIsland();
-  scene.add(island.group);
+  const props = buildProps();
+  scene.add(island.group, props.group);
 
   let hour = 10;
   const label = h('span', { class: 'island-time' });
@@ -22,6 +24,7 @@ export function islandScreen(root, app) {
   const setHour = (v) => {
     hour = +v;
     sky.setTime(hour);
+    props.lamp.emissiveIntensity = hour < 6.5 || hour > 18.5 ? 1.6 : 0;
     const hh = Math.floor(hour) % 24;
     label.textContent = `${String(hh).padStart(2, '0')}:${String(Math.floor((hour % 1) * 60)).padStart(2, '0')}`;
   };
@@ -44,6 +47,7 @@ export function islandScreen(root, app) {
 
   // Orbit camera around the island.
   const orbit = { yaw: 0.6, pitch: 0.55, dist: 1300, target: new THREE.Vector3(30, 0, 0) };
+  window.__islandOrbit = orbit; // for tests
   const pointers = new Map();
   let pinch = 0;
   const canvas = renderer.domElement;

@@ -26,4 +26,4 @@ minigame (O/medium) - 2.4 klanten (S/medium)
 ## Status
 - Mii-maker: klaar (hoofden, 72 kapsels, ogen/brauwen/monden, brillen, lichamen, 27 officiele
   Miis). Nog niet 1:1: neus, baarden, make-up/rimpels.
-- Stap 0.1, 0.2, 1.1 klaar. Ontwerp: `docs/ONTWERP.md` (lees dit eerst). Eiland: `src/game/world/` (zones.js, island.js heightAt/zoneAt, sky.js setTime), scherm `src/screens/island.js` (#eiland, orbit-camera + tijdschuif). Volgende: 1.2 props.
+- Stap 0.1, 0.2, 1.1, 1.2 klaar. Ontwerp: `docs/ONTWERP.md` (lees dit eerst). Eiland: `src/game/world/` (zones.js, island.js heightAt/zoneAt, sky.js setTime), scherm `src/screens/island.js` (#eiland, orbit-camera + tijdschuif). Props: `src/game/world/props.js` (palmen, huizen, vuurtoren met lamp, rotsen; seeded). Volgende: 1.3 Mii lopen.
