@@ -4,7 +4,8 @@ import * as THREE from 'three';
 import { normalizeMii } from './data.js';
 import { FAVORITE_COLORS, SKIN_COLORS, HAIR_COLORS, PANTS_COLOR } from './palette.js';
 import { paintFaceTexture, faceLayout } from './face.js';
-import { FACE_TEX, MASK } from './mask.js';
+import { CAPTURE_UNIT, FACE_TEX, MASK } from './mask.js';
+import { HEAD_CENTER } from './head-data.js';
 import { FACE_SHAPES, headGeometries, noseShape } from './head.js';
 import { buildHair, hairMaterial } from './hair.js';
 import { buildBody } from './body.js';
@@ -85,8 +86,10 @@ export class MiiModel {
     head.add(new THREE.Mesh(geo.crown, this.mats.skin));
     head.add(new THREE.Mesh(geo.back, this.mats.skin));
     const hair = buildHair(m.hair.style, this.mats.hair);
-    if (m.hair.flip) hair.scale.x = -1;
-    hair.position.y = shape.lift;
+    // Slightly larger than the head so the crown never pokes through the decimated hair mesh.
+    const grow = 1.022;
+    hair.scale.set((m.hair.flip ? -1 : 1) * grow, grow, grow);
+    hair.position.set(0, shape.lift + HEAD_CENTER[1] * CAPTURE_UNIT * (1 - grow), HEAD_CENTER[2] * CAPTURE_UNIT * (1 - grow));
     head.add(hair);
     this.head = head;
     this.headPivot.add(head);
