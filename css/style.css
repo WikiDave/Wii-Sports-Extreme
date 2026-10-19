@@ -1485,5 +1485,18 @@ button {
 @media (max-width: 560px) {
   .island-bar {
     flex-wrap: wrap;
+    gap: 8px;
+  }
+  .island-clock {
+    padding: 6px 10px;
+    font-size: 0.9rem;
+  }
+  .hud-money {
+    margin-left: 0;
+  }
+  .minimap {
+    top: calc(max(12px, env(safe-area-inset-top)) + 100px);
+    width: 96px;
+    height: 96px;
   }
 }

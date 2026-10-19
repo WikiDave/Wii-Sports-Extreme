@@ -10,6 +10,7 @@ import { heightAt } from '../game/world/island.js';
 import { buildHut } from '../game/world/hut.js';
 import { CustomerView } from '../game/world/customerView.js';
 import { openDealMenu } from '../game/ui/dealMenu.js';
+import { Audio } from '../game/audio.js';
 import { WeatherFx } from '../game/world/weatherFx.js';
 import { dayInfo, WEATHER, EVENTS, priceFactor } from '../game/weather.js';
 import { Guards } from '../game/world/guards.js';
@@ -98,6 +99,23 @@ export function islandScreen(root, app) {
     heat.dataset.level = lvl;
   };
   const weatherFx = new WeatherFx(scene, sky);
+  const audio = new Audio();
+  const muteBtn = h('button', { class: 'btn btn-round', type: 'button', 'aria-label': 'Geluid aan of uit' });
+  const showMute = () => (muteBtn.textContent = audio.muted ? '🔇' : '🔊');
+  muteBtn.addEventListener('click', () => (audio.setMuted(!audio.muted), showMute()));
+  showMute();
+  // Sounds from what happens in the game.
+  let lastCash = game.state.cash;
+  game.on('change', () => {
+    const d = game.state.cash - lastCash;
+    lastCash = game.state.cash;
+    audio.play(d > 0 ? 'cash' : d < 0 ? 'spend' : 'click');
+  });
+  game.on('rank', () => audio.play('rank'));
+  game.on('newday', () => audio.play('newday'));
+  game.on('heat', (l) => audio.play(l >= 4 ? 'alarm' : 'alert'));
+  const onClick = (e) => e.target.closest?.('.btn, .interact-btn') && audio.play('click');
+  document.addEventListener('click', onClick);
   const refreshSky = () => {
     weatherFx.setWeather(dayInfo(game.state.day).weather);
     sky.setTime(game.hour);
@@ -125,6 +143,7 @@ export function islandScreen(root, app) {
       h('div', { class: 'island-clock' }, day, clock),
       h('div', { class: 'island-clock hud-money' }, cash, rank),
       heat,
+      muteBtn,
     ),
   );
   root.append(screen);
@@ -224,6 +243,7 @@ export function islandScreen(root, app) {
     minimap.draw(player);
     sky.follow(camera);
     weatherFx.update(dt, camera, t);
+    audio.setAmbience({ nearSea: Math.max(0, 1 - heightAt(player.pos.x, player.pos.z) / 8), rain: weatherFx.level.rain });
     renderer.render(scene, camera);
   };
   frame();
@@ -238,6 +258,8 @@ export function islandScreen(root, app) {
       minimap.dispose();
       stopDaily();
       weatherFx.dispose();
+      document.removeEventListener('click', onClick);
+      audio.dispose();
       guards.dispose();
       rival.dispose();
       interactions.dispose();
