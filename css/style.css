@@ -1445,3 +1445,9 @@ button {
   opacity: 0.65;
   font-size: 0.9em;
 }
+.deal-msg {
+  font-weight: 800;
+}
+.deal-row {
+  flex-wrap: wrap;
+}

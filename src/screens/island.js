@@ -8,6 +8,8 @@ import { buildProps } from '../game/world/props.js';
 import { Sky } from '../game/world/sky.js';
 import { heightAt } from '../game/world/island.js';
 import { buildHut } from '../game/world/hut.js';
+import { CustomerView } from '../game/world/customerView.js';
+import { openDealMenu } from '../game/ui/dealMenu.js';
 import { Player } from '../game/player.js';
 import { FollowCamera } from '../game/camera.js';
 import { Game, formatClock, RANKS } from '../game/state.js';
@@ -128,6 +130,11 @@ export function islandScreen(root, app) {
     props.colliders.push({ x: spot.x, z: spot.z, r: 2.6 });
     interactions.add({ x: spot.x, z: spot.z, r: 5.5, label, run });
   }
+  // Customers wait near the beach stand and the market.
+  const standSpot = interactions.items.find((i) => i.label === 'Strandtent');
+  const marketSpot = interactions.items.find((i) => i.label === 'Markt');
+  const spotNear = (a) => findHutSpot({ x: a.x + 8, z: a.z + 8 }, props.colliders, 14);
+  const customers = new CustomerView(scene, { strand: spotNear(standSpot), haven: spotNear(marketSpot) }, interactions, game, (c) => openDealMenu(game, c));
   const saved = game.state.player;
   const spawn = saved.x != null && heightAt(saved.x, saved.z) > 0.3 ? { x: saved.x, z: saved.z } : findSpawn(props.colliders);
   const player = new Player(mii, { ...spawn, colliders: props.colliders });
@@ -159,6 +166,7 @@ export function islandScreen(root, app) {
     const move = input.move();
     player.update(move, follow.yaw, dt, t);
     follow.update(player, move, dt);
+    customers.update(t, player.pos);
     interactions.update(player.pos);
     minimap.draw(player);
     sky.follow(camera);
@@ -175,6 +183,7 @@ export function islandScreen(root, app) {
       input.dispose();
       minimap.dispose();
       interactions.dispose();
+      customers.dispose();
       player.dispose();
       ro.disconnect();
       scene.traverse((o) => {

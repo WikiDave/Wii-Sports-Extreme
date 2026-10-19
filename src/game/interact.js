@@ -1,5 +1,5 @@
 // Things the player can use by walking up to them: a prompt shows the nearest one,
-// E (or a tap on the prompt) runs it. Items are { x, z, r, label, run }.
+// E (or a tap on the prompt) runs it. Items are { x, z, r, label, run, enabled? }.
 
 import { h } from '../ui/dom.js';
 
@@ -25,10 +25,11 @@ export class Interactions {
     let best = null;
     let bestD = Infinity;
     for (const it of this.items) {
+      if (it.enabled && !it.enabled()) continue;
       const d = Math.hypot(it.x - pos.x, it.z - pos.z);
       if (d < it.r && d < bestD) [best, bestD] = [it, d];
     }
-    if (best === this.current) return;
+    if (best === this.current && (!best || this.button.textContent === `E · ${best.label}`)) return;
     this.current = best;
     this.button.hidden = !best;
     if (best) this.button.textContent = `E · ${best.label}`;
