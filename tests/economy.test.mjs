@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import { Game } from '../src/game/state.js';
+import { mix, recipeEffects, unitPrice, itemKey, parseItem, itemName, canMake, makeBatch, buy, sell } from '../src/game/economy.js';
+
+assert.deepEqual(mix(['fris'], 'suiker'), ['fris', 'zoet']);
+assert.deepEqual(recipeEffects('limonade', ['suiker', 'munt']), ['fris', 'bruisend', 'verkoelend']);
+assert.deepEqual(recipeEffects('limonade', ['suiker', 'munt', 'kokos']), ['zonnig', 'giechel', 'verkoelend', 'tropisch']);
+assert.equal(unitPrice('limonade', ['fris']), 22);
+assert.equal(unitPrice('limonade', ['fris'], 1.2), 26);
+const k = itemKey('limonade', ['fris', 'zoet'], 1.05);
+assert.equal(k, 'p:limonade:fris+zoet:105');
+assert.deepEqual(parseItem(k), { product: 'limonade', effects: ['fris', 'zoet'], quality: 1.05 });
+assert.equal(parseItem('citroen'), null);
+assert.match(itemName(k), /Limonade \(Fris, Zoet\)/);
+
+const g = new Game(null);
+assert.equal(canMake(g.state.inventory, 'limonade', []), false);
+assert.equal(buy(g, 'citroen', 2), true); assert.equal(buy(g, 'suiker'), true);
+assert.equal(g.state.cash, 250 - 8 - 3);
+assert.equal(canMake(g.state.inventory, 'limonade', ['suiker']), true);
+assert.equal(canMake(g.state.inventory, 'limonade', ['munt']), false);
+const made = makeBatch(g, 'limonade', ['suiker'], 1);
+assert.equal(made, 'p:limonade:fris+zoet:100');
+assert.deepEqual(g.state.inventory, { [made]: 4 });
+const money = sell(g, made, 2, 0.5);
+assert.equal(money, 2 * Math.round(unitPrice('limonade', ['fris', 'zoet']) * 0.5));
+assert.equal(g.state.inventory[made], 2);
+assert.equal(sell(g, made, 5), 0);
+assert.equal(buy(g, 'kokos', 1000), false);
+console.log('ok');

@@ -13,20 +13,22 @@ import { FollowCamera } from '../game/camera.js';
 import { Game, formatClock, RANKS } from '../game/state.js';
 import { Interactions } from '../game/interact.js';
 import { openHutMenu } from '../game/ui/hutMenu.js';
+import { openMarket, openStand } from '../game/ui/tradeMenus.js';
+import { buildStall } from '../game/world/stall.js';
 import { Minimap } from '../game/ui/minimap.js';
 import { Input } from '../game/input.js';
 import { miiStore } from '../mii/storage.js';
 import { defaultMii } from '../mii/data.js';
 
 /** A dry spot on the beach at least 14 m from `from`, away from other props, for the hut. */
-function findHutSpot(from, colliders) {
+function findHutSpot(from, colliders, maxH = 4) {
   for (let i = 0; i < 600; i++) {
     const a = i * 2.4;
     const r = 14 + i * 0.5;
     const x = from.x + Math.cos(a) * r;
     const z = from.z + Math.sin(a) * r;
     const y = heightAt(x, z);
-    if (y > 2.4 && y < 4 && colliders.every((c) => Math.hypot(c.x - x, c.z - z) > c.r + 9)) return { x, z, y };
+    if (y > 2.4 && y < maxH && colliders.every((c) => Math.hypot(c.x - x, c.z - z) > c.r + 9)) return { x, z, y };
   }
   return { x: from.x + 14, z: from.z, y: heightAt(from.x + 14, from.z) };
 }
@@ -114,6 +116,18 @@ export function islandScreen(root, app) {
   props.colliders.push({ x: hutPos.x, z: hutPos.z, r: 4.8 });
   const interactions = new Interactions(screen);
   interactions.add({ x: hutPos.x, z: hutPos.z, r: 9, label: 'Strandhut', run: () => openHutMenu(game) });
+  // The market in Havenstad and the beach stand that buys your products.
+  for (const [where, label, color, run] of [
+    [{ x: 250, z: 70 }, 'Markt', '#3a9ad9', () => openMarket(game)],
+    [{ x: hutPos.x, z: hutPos.z }, 'Strandtent', '#e2513f', () => openStand(game)],
+  ]) {
+    const spot = findHutSpot(where, props.colliders, 14);
+    const stall = buildStall(color);
+    stall.position.set(spot.x, spot.y - 0.1, spot.z);
+    scene.add(stall);
+    props.colliders.push({ x: spot.x, z: spot.z, r: 2.6 });
+    interactions.add({ x: spot.x, z: spot.z, r: 5.5, label, run });
+  }
   const saved = game.state.player;
   const spawn = saved.x != null && heightAt(saved.x, saved.z) > 0.3 ? { x: saved.x, z: saved.z } : findSpawn(props.colliders);
   const player = new Player(mii, { ...spawn, colliders: props.colliders });
@@ -122,7 +136,7 @@ export function islandScreen(root, app) {
   follow.yaw = player.heading + Math.PI;
   const input = new Input(screen, renderer.domElement, { onLook: (dx, dy) => follow.look(dx, dy), onZoom: (f) => follow.zoom(f) });
   const minimap = new Minimap(screen);
-  window.__game = { player, follow, game, hutPos, interactions }; // for tests
+  window.__game = { player, follow, game, hutPos, interactions, teleport: (it) => { player.pos.set(it.x, 0, it.z + 4); player.group.position.copy(player.pos); } }; // for tests
 
   const resize = () => {
     const w = view.clientWidth || 1;

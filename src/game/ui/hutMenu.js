@@ -1,10 +1,10 @@
-// The menu of the beach hut (home base): sleep to the next morning, look at the stock,
-// save the game.
+// The menu of the beach hut (home base): make lemonade, sleep to the next morning, look
+// at the stock, save the game.
 
 import { h, modal, toast } from '../../ui/dom.js';
 import { formatClock, RANKS, RANK_XP } from '../state.js';
-
-const ITEM_NAMES = {};
+import { itemName } from '../economy.js';
+import { openMixMenu } from './tradeMenus.js';
 
 /** Opens the hut menu for a Game. */
 export function openHutMenu(game) {
@@ -17,7 +17,7 @@ export function openHutMenu(game) {
     h('p', {}, `Rang: ${RANKS[game.rank]} (${s.xp} ervaring${game.rank < RANKS.length - 1 ? `, volgende rang bij ${RANK_XP[game.rank + 1]}` : ''}).`),
     h('h3', {}, 'Voorraad'),
     stock.length
-      ? h('ul', { class: 'hut-stock' }, stock.map(([id, n]) => h('li', {}, `${ITEM_NAMES[id] ?? id}: ${n}`)))
+      ? h('ul', { class: 'hut-stock' }, stock.map(([id, n]) => h('li', {}, `${itemName(id)}: ${n}`)))
       : h('p', { class: 'hut-empty' }, 'Nog niets op voorraad.'),
   );
   modal({
@@ -25,6 +25,7 @@ export function openHutMenu(game) {
     body,
     actions: [
       { label: 'Sluiten' },
+      { label: 'Limonade maken', onClick: () => openMixMenu(game) },
       {
         label: 'Opslaan',
         onClick: () => {
