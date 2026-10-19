@@ -10,9 +10,11 @@ import { heightAt } from '../game/world/island.js';
 import { buildHut } from '../game/world/hut.js';
 import { CustomerView } from '../game/world/customerView.js';
 import { openDealMenu } from '../game/ui/dealMenu.js';
+import { WeatherFx } from '../game/world/weatherFx.js';
+import { dayInfo, WEATHER, EVENTS, priceFactor } from '../game/weather.js';
 import { Guards } from '../game/world/guards.js';
 import { RivalView } from '../game/world/rivalView.js';
-import { onDeal, onRefused, tickHeat, frisk, caught, escaped, heatLevel, LEVEL_NAMES } from '../game/police.js';
+import { addHeat, onDeal, onRefused, tickHeat, frisk, caught, escaped, heatLevel, LEVEL_NAMES } from '../game/police.js';
 import { rollRival, spotFactor } from '../game/rivals.js';
 import { RIVALS } from '../game/data/rivals.js';
 import { Player } from '../game/player.js';
@@ -83,7 +85,9 @@ export function islandScreen(root, app) {
   const refreshHud = () => {
     const st = game.state;
     clock.textContent = formatClock(st.minutes);
-    day.textContent = `Dag ${st.day}`;
+    const info = dayInfo(st.day);
+    day.textContent = `Dag ${st.day} ${WEATHER[info.weather].icon}`;
+    day.title = `${WEATHER[info.weather].name}${EVENTS[info.event].text ? ' · ' + EVENTS[info.event].name : ''}`;
     cash.textContent = `€${st.cash.toLocaleString('nl-NL')}`;
     rank.textContent = RANKS[game.rank];
     const lvl = heatLevel(st);
@@ -93,7 +97,9 @@ export function islandScreen(root, app) {
     );
     heat.dataset.level = lvl;
   };
+  const weatherFx = new WeatherFx(scene, sky);
   const refreshSky = () => {
+    weatherFx.setWeather(dayInfo(game.state.day).weather);
     sky.setTime(game.hour);
     props.lamp.emissiveIntensity = game.isNight ? 1.6 : 0;
   };
@@ -157,11 +163,15 @@ export function islandScreen(root, app) {
   const rival = new RivalView(scene, game, spots, interactions);
   const talk = (c) =>
     openDealMenu(game, c, {
-      factor: spotFactor(game.state, c.spot),
+      factor: spotFactor(game.state, c.spot) * priceFactor(game.state.day),
       onDone: (r) => (r.ok ? onDeal(game, guards.sees(player.pos)) : onRefused(game, game.state.customers[c.id]?.loyalty ?? 0)),
     });
   const customers = new CustomerView(scene, spots, interactions, game, talk);
-  game.on('newday', () => {
+  game.on('newday', (d) => {
+    const info = dayInfo(d);
+    const ev = EVENTS[info.event];
+    if (ev.heat) addHeat(game, ev.heat);
+    setTimeout(() => toast(`${WEATHER[info.weather].icon} ${WEATHER[info.weather].name}.${ev.text ? ' ' + ev.text : ''}`), 1800);
     const r = rollRival(game);
     if (r) setTimeout(() => toast(`${RIVALS.find((x) => x.id === r.id).name} staat vandaag bij ${r.spot === 'strand' ? 'het strand' : 'de markt'}.`), 5200);
   });
@@ -183,7 +193,7 @@ export function islandScreen(root, app) {
   follow.yaw = player.heading + Math.PI;
   const input = new Input(screen, renderer.domElement, { onLook: (dx, dy) => follow.look(dx, dy), onZoom: (f) => follow.zoom(f) });
   const minimap = new Minimap(screen);
-  window.__game = { player, follow, game, hutPos, interactions, guards, teleport: (it) => { player.pos.set(it.x, 0, it.z + 4); player.group.position.copy(player.pos); } }; // for tests
+  window.__game = { player, follow, game, weatherFx, hutPos, interactions, guards, teleport: (it) => { player.pos.set(it.x, 0, it.z + 4); player.group.position.copy(player.pos); } }; // for tests
 
   const resize = () => {
     const w = view.clientWidth || 1;
@@ -213,6 +223,7 @@ export function islandScreen(root, app) {
     interactions.update(player.pos);
     minimap.draw(player);
     sky.follow(camera);
+    weatherFx.update(dt, camera, t);
     renderer.render(scene, camera);
   };
   frame();
@@ -226,6 +237,7 @@ export function islandScreen(root, app) {
       input.dispose();
       minimap.dispose();
       stopDaily();
+      weatherFx.dispose();
       guards.dispose();
       rival.dispose();
       interactions.dispose();

@@ -34,3 +34,16 @@ const full = Math.round(Math.round(20 * 1.1) * 1 ); assert.equal(g.state.cash - 
 g.state.cash = 100; assert.equal(bribe(g), false); g.state.cash = 200; assert.equal(bribe(g), true); assert.equal(g.state.cash, 80);
 rollRival(g, () => 0.1); const h2 = g.state.heat; assert.equal(tipOff(g), true); assert.equal(g.state.rival, null); assert.ok(g.state.heat > h2);
 console.log('ok');
+
+// weather
+import { dayInfo, priceFactor, staysHome, viewFactor, WEATHER, EVENTS } from '../src/game/weather.js';
+assert.deepEqual(dayInfo(1), { weather: 'zon', event: 'rustig' });
+assert.deepEqual(dayInfo(37), dayInfo(37));
+const counts = {}; for (let d = 2; d < 2002; d++) { const w = dayInfo(d).weather; counts[w] = (counts[w] ?? 0) + 1; assert.ok(WEATHER[w] && EVENTS[dayInfo(d).event]); }
+assert.ok(counts.zon > 900 && counts.zon < 1250 && counts.regen > 250 && counts.storm > 40 && counts.storm < 150, JSON.stringify(counts));
+assert.equal(priceFactor(1), 1.1);
+const stormDay = [...Array(500).keys()].map((i) => i + 2).find((d) => dayInfo(d).weather === 'storm');
+assert.equal(viewFactor(stormDay), 0.6);
+assert.ok([...Array(200).keys()].filter((i) => staysHome(stormDay, 'c' + i)).length > 120);
+assert.equal(staysHome(1, 'saburo'), false);
+console.log('weather ok');

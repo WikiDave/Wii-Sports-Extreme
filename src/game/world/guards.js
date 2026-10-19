@@ -9,6 +9,7 @@ import { OFFICIAL_MIIS } from '../../mii/official.js';
 import { MII_SCALE } from '../player.js';
 import { heightAt } from './island.js';
 import { GUARDS, MAX_LEVEL, heatLevel, carried, inCone, viewRange } from '../police.js';
+import { viewFactor } from '../weather.js';
 
 const LOOKS = ['Gast A', 'Gast B', 'Gast C', 'Gast D', 'Gast E', 'Gast F', 'Kentaro'];
 const PATROL = 2.2;
@@ -80,7 +81,7 @@ export class Guards {
 
   /** Whether any guard sees point p (for deals in plain sight). */
   sees(p) {
-    const range = viewRange(heatLevel(this.game.state));
+    const range = viewRange(heatLevel(this.game.state), viewFactor(this.game.state.day));
     return this.list.some((g) => inCone(g.x, g.z, g.heading, p.x, p.z, range, FOV));
   }
 
@@ -90,7 +91,7 @@ export class Guards {
    */
   update(dt, player, hidden, on) {
     const level = heatLevel(this.game.state);
-    const range = viewRange(level);
+    const range = viewRange(level, viewFactor(this.game.state.day));
     const p = player.pos;
     const hasGoods = carried(this.game.state) > 0;
     let seenNow = false;
@@ -172,7 +173,7 @@ export class Guards {
     parts.armL.rotation.x = -s * 0.5 * f;
     parts.armR.rotation.x = s * 0.5 * f;
     g.mii.group.position.y += Math.abs(Math.cos(g.phase)) * 0.05 * f;
-    const range = viewRange(level) * (this.chasing ? 1.5 : 1);
+    const range = viewRange(level, viewFactor(this.game.state.day)) * (this.chasing ? 1.5 : 1);
     g.cone.position.set(g.x, y + 0.25, g.z);
     g.cone.rotation.y = g.heading;
     g.cone.scale.setScalar(range);

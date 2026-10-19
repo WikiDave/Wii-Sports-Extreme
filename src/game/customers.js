@@ -2,6 +2,7 @@
 
 import { CUSTOMERS } from './data/customers.js';
 import { parseItem, unitPrice } from './economy.js';
+import { staysHome } from './weather.js';
 
 export const MAX_LOYALTY = 100;
 /** Price offers: multiplier of the fair value. */
@@ -35,7 +36,7 @@ export function isPresent(c, hour) {
 
 /** Customers you can trade with right now (unlocked, present, not served today). */
 export function available(state, rank, hour) {
-  return CUSTOMERS.filter((c) => isUnlocked(state, c, rank) && isPresent(c, hour) && (state.customers[c.id]?.lastDay ?? 0) < state.day);
+  return CUSTOMERS.filter((c) => isUnlocked(state, c, rank) && isPresent(c, hour) && !staysHome(state.day, c.id) && (state.customers[c.id]?.lastDay ?? 0) < state.day);
 }
 
 /** What one unit of an item is worth to this customer: fair value plus 15% per liked effect. */

@@ -106,4 +106,4 @@ export function inCone(x, z, heading, px, pz, range, fov = 0.9) {
 }
 
 /** View range of a guard at a heat level (metres). */
-export const viewRange = (level) => 11 + 3 * level;
+export const viewRange = (level, factor = 1) => (11 + 3 * level) * factor;
