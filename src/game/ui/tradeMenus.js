@@ -75,7 +75,7 @@ export function openMixMenu(game, productId = 'limonade') {
 /** The market: buy base goods and ingredients. */
 export function openMarket(game) {
   const list = h('div', { class: 'shop' });
-  const all = [...Object.entries(GOODS), ...Object.entries(INGREDIENTS)];
+  const all = [...Object.entries(GOODS), ...Object.entries(INGREDIENTS)].filter(([id]) => !PRODUCTS[id]);
   const refresh = () => {
     list.replaceChildren(
       h('p', { class: 'shop-cash' }, `Je hebt €${game.state.cash}.`),

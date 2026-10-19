@@ -5,6 +5,7 @@ import { h, modal, toast } from '../../ui/dom.js';
 import { formatClock, RANKS, RANK_XP } from '../state.js';
 import { itemName } from '../economy.js';
 import { openMixMenu } from './tradeMenus.js';
+import { PRODUCTS } from '../data/products.js';
 
 /** Opens the hut menu for a Game. */
 export function openHutMenu(game) {
@@ -20,12 +21,13 @@ export function openHutMenu(game) {
       ? h('ul', { class: 'hut-stock' }, stock.map(([id, n]) => h('li', {}, `${itemName(id)}: ${n}`)))
       : h('p', { class: 'hut-empty' }, 'Nog niets op voorraad.'),
   );
+  const makeable = Object.entries(PRODUCTS).filter(([, p]) => p.rank <= game.rank);
   modal({
     title: 'Strandhut',
     body,
     actions: [
       { label: 'Sluiten' },
-      { label: 'Limonade maken', onClick: () => openMixMenu(game) },
+      ...makeable.map(([id, p]) => ({ label: `${p.name} maken`, onClick: () => openMixMenu(game, id) })),
       {
         label: 'Opslaan',
         onClick: () => {
