@@ -7,7 +7,8 @@ import { OFFERS, deal, valueFor, record, MAX_LOYALTY } from '../customers.js';
 
 const OFFER_LABELS = { laag: 'Voordelig', eerlijk: 'Eerlijk', hoog: 'Duur' };
 
-export function openDealMenu(game, c) {
+/** opts.factor: price factor (a rival at the spot); opts.onDone(result) after a deal. */
+export function openDealMenu(game, c, { factor = 1, onDone } = {}) {
   const items = Object.keys(game.state.inventory).filter((k) => parseItem(k));
   if (!items.length) {
     toast(`${c.name} wil graag iets kopen, maar je hebt niets bij je.`);
@@ -20,6 +21,7 @@ export function openDealMenu(game, c) {
   const render = () => {
     body.replaceChildren(
       h('p', {}, `Houdt van: ${likes}. Budget: €${c.budget}. Vertrouwen: ${rec.loyalty}/${MAX_LOYALTY}.`),
+      factor < 1 ? h('p', { class: 'deal-msg' }, 'Er staat een rivaal: hier betalen ze vandaag minder.') : '',
       ...items
         .filter((k) => game.state.inventory[k])
         .map((key) =>
@@ -34,12 +36,13 @@ export function openDealMenu(game, c) {
                   class: 'btn btn-small',
                   type: 'button',
                   onClick: () => {
-                    const r = deal(game, c, key, 3, offer);
+                    const r = deal(game, c, key, 3, offer, factor);
                     toast(r.message);
+                    onDone?.(r);
                     dlg.close();
                   },
                 },
-                `${OFFER_LABELS[offer]} €${Math.round(valueFor(c, key) * OFFERS[offer])}`,
+                `${OFFER_LABELS[offer]} €${Math.round(valueFor(c, key) * OFFERS[offer] * factor)}`,
               ),
             ),
           ),

@@ -10,9 +10,14 @@ import { heightAt } from '../game/world/island.js';
 import { buildHut } from '../game/world/hut.js';
 import { CustomerView } from '../game/world/customerView.js';
 import { openDealMenu } from '../game/ui/dealMenu.js';
+import { Guards } from '../game/world/guards.js';
+import { RivalView } from '../game/world/rivalView.js';
+import { onDeal, onRefused, tickHeat, frisk, caught, escaped, heatLevel, LEVEL_NAMES } from '../game/police.js';
+import { rollRival, spotFactor } from '../game/rivals.js';
+import { RIVALS } from '../game/data/rivals.js';
 import { Player } from '../game/player.js';
 import { FollowCamera } from '../game/camera.js';
-import { Game, formatClock, RANKS } from '../game/state.js';
+import { Game, formatClock, RANKS, MINUTES_PER_SECOND } from '../game/state.js';
 import { Interactions } from '../game/interact.js';
 import { openHutMenu } from '../game/ui/hutMenu.js';
 import { openMarket, openStand } from '../game/ui/tradeMenus.js';
@@ -74,12 +79,19 @@ export function islandScreen(root, app) {
   const day = h('span', { class: 'hud-day' });
   const cash = h('span', { class: 'hud-cash' });
   const rank = h('span', { class: 'hud-rank' });
+  const heat = h('div', { class: 'island-clock hud-heat', title: 'Reglement-meter' });
   const refreshHud = () => {
     const st = game.state;
     clock.textContent = formatClock(st.minutes);
     day.textContent = `Dag ${st.day}`;
     cash.textContent = `€${st.cash.toLocaleString('nl-NL')}`;
     rank.textContent = RANKS[game.rank];
+    const lvl = heatLevel(st);
+    heat.replaceChildren(
+      ...[1, 2, 3, 4].map((i) => h('span', { class: `heat-dot ${i <= lvl ? 'is-on' : ''}` })),
+      h('span', { class: 'heat-name' }, LEVEL_NAMES[lvl]),
+    );
+    heat.dataset.level = lvl;
   };
   const refreshSky = () => {
     sky.setTime(game.hour);
@@ -106,6 +118,7 @@ export function islandScreen(root, app) {
       h('button', { class: 'btn btn-round', type: 'button', 'aria-label': 'Terug naar het menu', onClick: () => app.go('menu') }, icon('back')),
       h('div', { class: 'island-clock' }, day, clock),
       h('div', { class: 'island-clock hud-money' }, cash, rank),
+      heat,
     ),
   );
   root.append(screen);
@@ -138,7 +151,30 @@ export function islandScreen(root, app) {
   const standSpot = interactions.items.find((i) => i.label === 'Strandtent');
   const marketSpot = interactions.items.find((i) => i.label === 'Markt');
   const spotNear = (a) => findHutSpot({ x: a.x + 8, z: a.z + 8 }, props.colliders, 14);
-  const customers = new CustomerView(scene, { strand: spotNear(standSpot), haven: spotNear(marketSpot) }, interactions, game, (c) => openDealMenu(game, c));
+  const spots = { strand: spotNear(standSpot), haven: spotNear(marketSpot) };
+  // Guards patrol the spots, the hut and the market; rivals take a spot some days.
+  const guards = new Guards(scene, game, props.colliders, [spots.strand, spots.haven, hutPos, marketSpot]);
+  const rival = new RivalView(scene, game, spots, interactions);
+  const talk = (c) =>
+    openDealMenu(game, c, {
+      factor: spotFactor(game.state, c.spot),
+      onDone: (r) => (r.ok ? onDeal(game, guards.sees(player.pos)) : onRefused(game, game.state.customers[c.id]?.loyalty ?? 0)),
+    });
+  const customers = new CustomerView(scene, spots, interactions, game, talk);
+  game.on('newday', () => {
+    const r = rollRival(game);
+    if (r) setTimeout(() => toast(`${RIVALS.find((x) => x.id === r.id).name} staat vandaag bij ${r.spot === 'strand' ? 'het strand' : 'de markt'}.`), 5200);
+  });
+  const hidden = (p) => Math.hypot(p.x - hutPos.x, p.z - hutPos.z) < 7;
+  const police = {
+    frisk: () => toast(frisk(game)),
+    caught: () => toast(caught(game)),
+    escaped: () => {
+      escaped(game);
+      toast(hidden(player.pos) ? 'Je verstopt je in de hut. Ze zijn je kwijt!' : 'Je bent ze kwijt!');
+    },
+    chase: () => toast('De bewaking zit achter je aan! Ren of verstop je in je hut.'),
+  };
   const saved = game.state.player;
   const spawn = saved.x != null && heightAt(saved.x, saved.z) > 0.3 ? { x: saved.x, z: saved.z } : findSpawn(props.colliders);
   const player = new Player(mii, { ...spawn, colliders: props.colliders });
@@ -147,7 +183,7 @@ export function islandScreen(root, app) {
   follow.yaw = player.heading + Math.PI;
   const input = new Input(screen, renderer.domElement, { onLook: (dx, dy) => follow.look(dx, dy), onZoom: (f) => follow.zoom(f) });
   const minimap = new Minimap(screen);
-  window.__game = { player, follow, game, hutPos, interactions, teleport: (it) => { player.pos.set(it.x, 0, it.z + 4); player.group.position.copy(player.pos); } }; // for tests
+  window.__game = { player, follow, game, hutPos, interactions, guards, teleport: (it) => { player.pos.set(it.x, 0, it.z + 4); player.group.position.copy(player.pos); } }; // for tests
 
   const resize = () => {
     const w = view.clientWidth || 1;
@@ -170,6 +206,9 @@ export function islandScreen(root, app) {
     const move = input.move();
     player.update(move, follow.yaw, dt, t);
     follow.update(player, move, dt);
+    tickHeat(game, dt * MINUTES_PER_SECOND, game.isNight);
+    guards.update(dt, player, hidden, police);
+    rival.update(t);
     customers.update(t, player.pos);
     interactions.update(player.pos);
     minimap.draw(player);
@@ -187,6 +226,8 @@ export function islandScreen(root, app) {
       input.dispose();
       minimap.dispose();
       stopDaily();
+      guards.dispose();
+      rival.dispose();
       interactions.dispose();
       customers.dispose();
       player.dispose();

@@ -52,17 +52,18 @@ export function maxPrice(c, key, loyalty = 0) {
 }
 
 /**
- * Tries a deal of up to `qty` units at offer ('laag' | 'eerlijk' | 'hoog'). Returns
+ * Tries a deal of up to `qty` units at offer ('laag' | 'eerlijk' | 'hoog'); factor scales
+ * the prices (a rival at the spot). Returns
  * { ok, sold, money, message }. On success the customer's loyalty grows (more for a
  * low offer), on a refusal it drops.
  */
-export function deal(game, c, key, qty, offer) {
+export function deal(game, c, key, qty, offer, factor = 1) {
   const state = game.state;
   const rec = record(state, c.id);
-  const price = Math.round(valueFor(c, key) * OFFERS[offer]);
+  const price = Math.round(valueFor(c, key) * OFFERS[offer] * factor);
   const have = state.inventory[key] ?? 0;
   const n = Math.min(qty, have, Math.floor(c.budget / Math.max(1, price)));
-  if (price > maxPrice(c, key, rec.loyalty)) {
+  if (price > maxPrice(c, key, rec.loyalty) * factor) {
     rec.loyalty = Math.max(0, rec.loyalty - 5);
     rec.lastDay = state.day;
     game.emit('change');

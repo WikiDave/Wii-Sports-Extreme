@@ -5,6 +5,7 @@ import { h, modal, toast } from '../../ui/dom.js';
 import { formatClock, RANKS, RANK_XP } from '../state.js';
 import { itemName } from '../economy.js';
 import { openMixMenu } from './tradeMenus.js';
+import { disguise } from '../police.js';
 import { PRODUCTS } from '../data/products.js';
 
 /** Opens the hut menu for a Game. */
@@ -33,6 +34,10 @@ export function openHutMenu(game) {
         onClick: () => {
           toast(game.save() ? 'Opgeslagen' : 'Opslaan lukt niet in deze browser');
         },
+      },
+      {
+        label: 'Omkleden (€20)',
+        onClick: () => toast(disguise(game) ? 'Andere kleren aan: de bewaking herkent je minder snel.' : 'Omkleden helpt nu niet (één keer per dag, en alleen als ze je zoeken).'),
       },
       {
         label: 'Slapen tot de ochtend',

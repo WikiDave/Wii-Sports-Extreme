@@ -29,7 +29,9 @@ export function newGame(miiId = null) {
     properties: ['hut'],
     staff: [],
     customers: {}, // customer id -> { loyalty, unlocked }
-    heat: 0, // Reglement-meter 0..4
+    heat: 0, // Reglement-meter 0..5 (level = floor, see police.js)
+    rival: null, // { id, spot } for today
+    disguisedDay: 0,
   };
 }
 
@@ -127,6 +129,7 @@ export class Game {
     s.day += 1;
     s.minutes = DAY_START;
     s.heat = Math.max(0, s.heat - 1);
+    this.emit('heat', Math.floor(s.heat));
     this.lastSave = s.minutes;
     this.emit('newday', s.day);
     this.save();
