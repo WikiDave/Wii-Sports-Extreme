@@ -60,8 +60,9 @@ export class MiiModel {
     this.mats.skin.color.set(SKIN_COLORS[m.face.skin].hex);
     this.mats.shirt.color.set(FAVORITE_COLORS[m.favoriteColor].hex);
     this.mats.hair.color.set(HAIR_COLORS[m.hair.color].hex);
+    this.mats.hair.color2.set(FAVORITE_COLORS[m.favoriteColor].hex);
 
-    const headKey = JSON.stringify([m.face.shape, m.hair, m.nose]);
+    const headKey = JSON.stringify([m.face.shape, m.hair.style, m.hair.flip, m.nose]);
     const bodyKey = JSON.stringify([m.gender, m.height, m.weight]);
     const faceKey = JSON.stringify([m.face, m.eyes, m.brows, m.mouth, m.facialHair, m.glasses, m.mole]);
 
@@ -79,12 +80,13 @@ export class MiiModel {
     const shape = FACE_SHAPES[m.face.shape];
     const head = new THREE.Group();
     const L = faceLayout(m);
-    const geo = headGeometries(shape, noseShape(m.nose.type, MASK.y(L.nose.v), 5.2 * L.nose.s));
+    const geo = headGeometries(shape, noseShape(m.nose.type, MASK.y(L.nose.v) + shape.lift, 5.2 * L.nose.s));
     head.add(new THREE.Mesh(geo.face, this.mats.face));
     head.add(new THREE.Mesh(geo.crown, this.mats.skin));
     head.add(new THREE.Mesh(geo.back, this.mats.skin));
-    const hair = buildHair(m.hair.style, shape, { hair: this.mats.hair, hat: this.mats.shirt });
+    const hair = buildHair(m.hair.style, this.mats.hair);
     if (m.hair.flip) hair.scale.x = -1;
+    hair.position.y = shape.lift;
     head.add(hair);
     this.head = head;
     this.headPivot.add(head);
@@ -123,8 +125,8 @@ export class MiiModel {
     this.parts.torso.scale.y = 1 + breathe * 0.012;
     this.headPivot.rotation.z = Math.sin(t * 0.9) * 0.035;
     this.headPivot.rotation.x = Math.sin(t * 0.7 + 1) * 0.025;
-    this.parts.armL.rotation.x = Math.sin(t * 1.3) * 0.04;
-    this.parts.armR.rotation.x = -Math.sin(t * 1.3) * 0.04;
+    if (this.parts.armL) this.parts.armL.rotation.x = Math.sin(t * 1.3) * 0.04;
+    if (this.parts.armR) this.parts.armR.rotation.x = -Math.sin(t * 1.3) * 0.04;
   }
 
   dispose() {

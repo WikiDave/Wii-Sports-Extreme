@@ -1,9 +1,13 @@
 // Saved Miis live in localStorage. If storage is unavailable (private window,
 // blocked site data) everything keeps working in memory for this visit.
 
-import { defaultMii, normalizeMii } from './data.js';
+import { normalizeMii } from './data.js';
+import { OFFICIAL_MIIS } from './official.js';
 
-const KEY = 'wii-sports-extreme.miis.v1';
+const KEY = 'wii-sports-extreme.miis.v2';
+// Version 1 started with five home-made example Miis; their own Miis are carried over.
+const OLD_KEY = 'wii-sports-extreme.miis.v1';
+const OLD_EXAMPLES = ['Daan', 'Emma', 'Opa Kees', 'Fleur', 'Jayden'];
 let miis = null;
 let persistent = true;
 const listeners = new Set();
@@ -30,34 +34,19 @@ function write() {
   for (const fn of listeners) fn(miis);
 }
 
-function mii(gender, overrides) {
-  const m = defaultMii(gender);
-  for (const [k, v] of Object.entries(overrides)) m[k] = typeof v === 'object' ? { ...m[k], ...v } : v;
-  return normalizeMii(m);
+/** The Wii Sports guests and a few of its players, so the plaza is not empty on the first visit. */
+function examples() {
+  return OFFICIAL_MIIS.slice(0, 12).map((m) => normalizeMii(m));
 }
 
-/** A few example Miis so the plaza is not empty on the first visit. */
-function examples() {
-  return [
-    mii('m', { name: 'Daan', favoriteColor: 5, hair: { style: 1, color: 3 }, brows: { type: 0, color: 3 }, eyes: { type: 9, color: 2 }, mouth: { type: 2 } }),
-    mii('f', {
-      name: 'Emma', favoriteColor: 7, height: 56, face: { shape: 2, skin: 3, feature: 1 }, hair: { style: 39, color: 7 },
-      brows: { type: 5, color: 6 }, eyes: { type: 22, color: 4 }, nose: { type: 1 }, mouth: { type: 1, color: 2 },
-    }),
-    mii('m', {
-      name: 'Opa Kees', favoriteColor: 9, height: 50, weight: 96, face: { shape: 1, feature: 11 }, hair: { style: 31, color: 4 },
-      brows: { type: 17, color: 4 }, eyes: { type: 5 }, nose: { type: 4 }, mouth: { type: 0 },
-      facialHair: { mustache: 1, color: 4, size: 5 }, glasses: { type: 3, color: 1 },
-    }),
-    mii('f', {
-      name: 'Fleur', favoriteColor: 3, height: 74, weight: 52, face: { shape: 2, skin: 1, feature: 3 }, hair: { style: 50, color: 2 },
-      brows: { type: 1, color: 2 }, eyes: { type: 36, color: 5 }, mouth: { type: 2, color: 1 },
-    }),
-    mii('m', {
-      name: 'Jayden', favoriteColor: 1, height: 88, face: { shape: 5, skin: 4 }, hair: { style: 29, color: 0 }, brows: { type: 14, color: 0 },
-      eyes: { type: 4, color: 2 }, nose: { type: 9 }, mouth: { type: 22 },
-    }),
-  ];
+/** Miis the user made in version 1 of the app. */
+function carriedOver() {
+  try {
+    const list = JSON.parse(localStorage.getItem(OLD_KEY) ?? '[]');
+    return Array.isArray(list) ? list.filter((m) => !OLD_EXAMPLES.includes(m?.name)).map(normalizeMii) : [];
+  } catch {
+    return [];
+  }
 }
 
 export const miiStore = {
@@ -65,7 +54,7 @@ export const miiStore = {
     if (!miis) {
       miis = read();
       if (miis == null) {
-        miis = examples();
+        miis = [...carriedOver(), ...examples()];
         write();
       }
     }

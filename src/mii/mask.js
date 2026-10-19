@@ -20,3 +20,6 @@ export const MASK = {
 export const FACE_TEX = { px: 24, u0: 12, u1: 52, v0: 8, v1: 56 };
 FACE_TEX.width = (FACE_TEX.u1 - FACE_TEX.u0) * FACE_TEX.px;
 FACE_TEX.height = (FACE_TEX.v1 - FACE_TEX.v0) * FACE_TEX.px;
+
+/** Face types 2, 6 and 7 carry their face mask, nose and hair higher on the head (world units). */
+export const FACE_LIFT = [0, 0, 1, 0, 0, 0, 1, 1].map((k) => k * 4.62 * CAPTURE_UNIT);

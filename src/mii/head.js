@@ -6,12 +6,13 @@
 import * as THREE from 'three';
 import { parametric } from '../three/surface.js';
 import { NOSES } from './face.js';
-import { CAPTURE_UNIT, FACE_TEX, MASK } from './mask.js';
+import { CAPTURE_UNIT, FACE_TEX, FACE_LIFT, MASK } from './mask.js';
 import { HEAD_CENTER, HEAD_STEP, HEAD_MAPS } from './head-data.js';
 
-export const FACE_SHAPES = ['Ovaal', 'Rond', 'Spits', 'Breed', 'Driehoek', 'Peer', 'Hoekig', 'Vierkant'].map((name, i) => ({
+export const FACE_SHAPES = ['Ei', 'Rond', 'Ovaal', 'Peer', 'Schild', 'Trapezium', 'Achthoek', 'Rechthoek'].map((name, i) => ({
   name,
   map: HEAD_MAPS[i],
+  lift: FACE_LIFT[i],
 }));
 
 const N = 180 / HEAD_STEP + 1;
@@ -107,7 +108,7 @@ export function headGeometries(shape, nose) {
   const uv = face.attributes.uv;
   for (let i = 0; i < pos.count; i++) {
     const u = MASK.u(pos.getX(i));
-    const v = MASK.v(pos.getY(i));
+    const v = MASK.v(pos.getY(i) - shape.lift);
     uv.setXY(i, (u - FACE_TEX.u0) / (FACE_TEX.u1 - FACE_TEX.u0), 1 - (v - FACE_TEX.v0) / (FACE_TEX.v1 - FACE_TEX.v0));
   }
   return { face, crown, back };
