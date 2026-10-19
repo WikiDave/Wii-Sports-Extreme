@@ -1451,3 +1451,9 @@ button {
 .deal-row {
   flex-wrap: wrap;
 }
+.staff-row {
+  flex-wrap: wrap;
+}
+.shop h3 {
+  margin: 14px 0 2px;
+}

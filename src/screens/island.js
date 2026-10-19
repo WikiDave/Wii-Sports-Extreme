@@ -16,6 +16,8 @@ import { Game, formatClock, RANKS } from '../game/state.js';
 import { Interactions } from '../game/interact.js';
 import { openHutMenu } from '../game/ui/hutMenu.js';
 import { openMarket, openStand } from '../game/ui/tradeMenus.js';
+import { openOffice } from '../game/ui/officeMenu.js';
+import { attachDaily } from '../game/empire.js';
 import { buildStall } from '../game/world/stall.js';
 import { Minimap } from '../game/ui/minimap.js';
 import { Input } from '../game/input.js';
@@ -89,6 +91,7 @@ export function islandScreen(root, app) {
   });
   game.on('change', refreshHud);
   game.on('newday', (d) => toast(`Een nieuwe dag: dag ${d}`));
+  const stopDaily = attachDaily(game, (lines) => setTimeout(() => toast(lines.join(' ')), 2500));
   refreshHud();
   refreshSky();
 
@@ -122,6 +125,7 @@ export function islandScreen(root, app) {
   for (const [where, label, color, run] of [
     [{ x: 250, z: 70 }, 'Markt', '#3a9ad9', () => openMarket(game)],
     [{ x: hutPos.x, z: hutPos.z }, 'Strandtent', '#e2513f', () => openStand(game)],
+    [{ x: 270, z: 60 }, 'Kantoor', '#4fb43f', () => openOffice(game)],
   ]) {
     const spot = findHutSpot(where, props.colliders, 14);
     const stall = buildStall(color);
@@ -182,6 +186,7 @@ export function islandScreen(root, app) {
       game.save();
       input.dispose();
       minimap.dispose();
+      stopDaily();
       interactions.dispose();
       customers.dispose();
       player.dispose();

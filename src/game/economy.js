@@ -6,6 +6,9 @@
 import { EFFECTS } from './data/effects.js';
 import { INGREDIENTS } from './data/ingredients.js';
 import { PRODUCTS, GOODS } from './data/products.js';
+import { PROPERTIES } from './data/properties.js';
+
+const STORAGE = Object.fromEntries(Object.entries(PROPERTIES).map(([id, p]) => [id, p.storage]));
 
 export const MAX_EFFECTS = 6;
 
@@ -60,6 +63,7 @@ export function canMake(inventory, productId, ingredients) {
 export function makeBatch(game, productId, ingredients, quality) {
   if (!canMake(game.state.inventory, productId, ingredients)) return null;
   const p = PRODUCTS[productId];
+  if (limit(game) < p.yield) return null;
   for (const [id, n] of Object.entries(p.needs)) game.addItem(id, -n);
   for (const i of ingredients) game.addItem(i, -1);
   const key = itemKey(productId, recipeEffects(productId, ingredients), quality);
@@ -68,8 +72,16 @@ export function makeBatch(game, productId, ingredients, quality) {
   return key;
 }
 
+/** Free room in the stock (Infinity without properties, as in the tests of economy.js alone). */
+function limit(game) {
+  const st = game.state;
+  const cap = st.properties.reduce((s, id) => s + (STORAGE[id] ?? 0), 0);
+  return cap - Object.values(st.inventory).reduce((a, b) => a + b, 0);
+}
+
 /** Buys n of a good or ingredient. */
 export function buy(game, id, n = 1) {
+  if (limit(game) < n) return false;
   const price = (GOODS[id] ?? INGREDIENTS[id]).price * n;
   if (!game.addCash(-price)) return false;
   game.addItem(id, n);
