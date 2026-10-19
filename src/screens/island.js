@@ -106,10 +106,14 @@ export function islandScreen(root, app) {
   showMute();
   // Sounds from what happens in the game.
   let lastCash = game.state.cash;
+  let lastSound = 0;
   game.on('change', () => {
     const d = game.state.cash - lastCash;
     lastCash = game.state.cash;
-    audio.play(d > 0 ? 'cash' : d < 0 ? 'spend' : 'click');
+    // One sound per burst of changes (a deal changes cash, stock and xp at once).
+    if (!d || performance.now() - lastSound < 120) return;
+    lastSound = performance.now();
+    audio.play(d > 0 ? 'cash' : 'spend');
   });
   game.on('rank', () => audio.play('rank'));
   game.on('newday', () => audio.play('newday'));
@@ -231,12 +235,16 @@ export function islandScreen(root, app) {
     raf = requestAnimationFrame(frame);
     const dt = Math.min(timer.getDelta(), 0.05);
     const t = timer.elapsedTime;
-    game.tick(dt);
-    const move = input.move();
+    // A menu or minigame pauses the island: no clock, no guards, no walking.
+    const paused = !!document.querySelector('.modal-backdrop, .minigame, .fullmap-wrap:not([hidden])');
+    if (!paused) game.tick(dt);
+    const move = paused ? { x: 0, y: 0, run: false } : input.move();
     player.update(move, follow.yaw, dt, t);
     follow.update(player, move, dt);
-    tickHeat(game, dt * MINUTES_PER_SECOND, game.isNight);
-    guards.update(dt, player, hidden, police);
+    if (!paused) {
+      tickHeat(game, dt * MINUTES_PER_SECOND, game.isNight);
+      guards.update(dt, player, hidden, police);
+    }
     rival.update(t);
     customers.update(t, player.pos);
     interactions.update(player.pos);

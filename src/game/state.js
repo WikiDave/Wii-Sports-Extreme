@@ -13,7 +13,7 @@ export const MINUTES_PER_SECOND = 1;
 
 export const RANKS = ['Strandjutter', 'Kraamhouder', 'Zoetekauw', 'Suikerbaron', 'Limonadekoning', 'Eilandlegende'];
 /** XP needed to reach each rank (index = rank). */
-export const RANK_XP = [0, 100, 400, 1200, 3500, 9000];
+export const RANK_XP = [0, 60, 250, 800, 2500, 7000];
 
 export function newGame(miiId = null) {
   return {
@@ -29,6 +29,7 @@ export function newGame(miiId = null) {
     properties: ['hut'],
     staff: [],
     customers: {}, // customer id -> { loyalty, unlocked }
+    stand: null, // { day, n } units sold to the beach stand today
     heat: 0, // Reglement-meter 0..5 (level = floor, see police.js)
     rival: null, // { id, spot } for today
     disguisedDay: 0,

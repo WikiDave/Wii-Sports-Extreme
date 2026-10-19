@@ -111,7 +111,7 @@ export class Guards {
         tx = p.x;
         tz = p.z;
         speed = CHASE;
-      } else if (sees && hasGoods && !g.cooldown) {
+      } else if (sees && hasGoods && level >= 1 && !g.cooldown) {
         // Suspicious: stop, look at the player, then come and frisk.
         g.suspicion = Math.min(1, g.suspicion + dt * (0.5 + 0.15 * level));
         tx = p.x;

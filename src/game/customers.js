@@ -74,7 +74,7 @@ export function deal(game, c, key, qty, offer, factor = 1) {
   game.addItem(key, -n);
   const money = price * n;
   game.addCash(money);
-  game.addXp(Math.ceil(money / 8));
+  game.addXp(Math.ceil(money / 4));
   rec.loyalty = Math.min(MAX_LOYALTY, rec.loyalty + (offer === 'laag' ? 12 : offer === 'eerlijk' ? 8 : 4));
   rec.deals++;
   rec.lastDay = state.day;

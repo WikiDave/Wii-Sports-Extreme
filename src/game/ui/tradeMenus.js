@@ -9,7 +9,9 @@ import { recipeEffects, unitPrice, canMake, makeBatch, buy, sell, itemName, pars
 import { playPour } from '../minigames/pour.js';
 
 const MAX_MIX = 3;
-const STAND_SHARE = 0.6;
+const STAND_SHARE = 0.5;
+/** The stand only takes this many units a day, so customers stay the better deal. */
+export const STAND_PER_DAY = 8;
 
 const chip = (effect) => h('span', { class: 'fx-chip', style: { '--fx': EFFECTS[effect].color } }, EFFECTS[effect].name);
 
@@ -24,7 +26,7 @@ export function openMixMenu(game, productId = 'limonade') {
     const fx = recipeEffects(productId, chosen);
     const have = (id) => game.state.inventory[id] ?? 0;
     preview.replaceChildren(
-      h('p', {}, `Nodig: ${Object.entries(p.needs).map(([id, n]) => `${n} ${GOODS[id].name.toLowerCase()} (je hebt ${have(id)})`).join(', ')}${chosen.length ? ' + ' + chosen.map((c) => INGREDIENTS[c].name.toLowerCase()).join(', ') : ''}.`),
+      h('p', {}, `Nodig: ${Object.entries(p.needs).map(([id, n]) => `${n} ${itemName(id).toLowerCase()} (je hebt ${have(id)})`).join(', ')}${chosen.length ? ' + ' + chosen.map((c) => INGREDIENTS[c].name.toLowerCase()).join(', ') : ''}.`),
       h('div', { class: 'fx-row' }, fx.map(chip)),
       h('p', { class: 'mix-price' }, `${p.yield} flesjes van ongeveer €${unitPrice(productId, fx)} per stuk.`),
     );
@@ -62,7 +64,7 @@ export function openMixMenu(game, productId = 'limonade') {
           const mixIn = [...chosen];
           playPour(document.body, { color: EFFECTS[recipeEffects(productId, mixIn).at(-1)].color }).then((quality) => {
             const key = makeBatch(game, productId, mixIn, quality);
-            if (key) toast(`${p.yield}× ${itemName(key)}`);
+            toast(key ? `${p.yield}× ${itemName(key)}` : 'Geen ruimte in je voorraad. Koop een groter pand in het Kantoor.');
           });
         },
       },
@@ -93,7 +95,7 @@ export function openMarket(game) {
                 type: 'button',
                 disabled: game.state.cash < item.price * n,
                 onClick: () => {
-                  buy(game, id, n);
+                  if (!buy(game, id, n)) toast('Je voorraad is vol. Koop een groter pand in het Kantoor.');
                   refresh();
                 },
               },
@@ -108,14 +110,24 @@ export function openMarket(game) {
   modal({ title: 'Markt van Havenstad', body: list, actions: [{ label: 'Klaar', kind: 'primary' }] });
 }
 
-/** The beach stand buys your products at a fixed share of their value. */
+/** The beach stand buys your products at a fixed share of their value, a few a day. */
 export function openStand(game) {
   const list = h('div', { class: 'shop' });
+  const st = game.state;
+  const soldToday = () => (st.stand?.day === st.day ? st.stand.n : 0);
+  const sellHere = (key, n) => {
+    const k = Math.min(n, STAND_PER_DAY - soldToday());
+    if (k <= 0) return 0;
+    const money = sell(game, key, k, STAND_SHARE);
+    if (money) st.stand = { day: st.day, n: soldToday() + k };
+    return money;
+  };
   const refresh = () => {
-    const items = Object.entries(game.state.inventory).filter(([k]) => parseItem(k));
+    const items = Object.entries(st.inventory).filter(([k]) => parseItem(k));
+    const left = STAND_PER_DAY - soldToday();
     list.replaceChildren(
-      h('p', {}, `De strandtent koopt je waar voor ${Math.round(STAND_SHARE * 100)}% van de waarde. Klanten betalen straks meer.`),
-      ...(items.length
+      h('p', {}, `De strandtent koopt je waar voor ${Math.round(STAND_SHARE * 100)}% van de waarde, ${STAND_PER_DAY} stuks per dag (vandaag nog ${left}). Klanten betalen meer.`),
+      ...(items.length && left > 0
         ? items.map(([key, n]) => {
             const it = parseItem(key);
             const each = Math.round(unitPrice(it.product, it.effects, it.quality) * STAND_SHARE);
@@ -124,11 +136,11 @@ export function openStand(game) {
               { class: 'shop-row' },
               h('span', { class: 'shop-name' }, itemName(key)),
               h('span', { class: 'shop-have' }, `${n}× €${each}`),
-              h('button', { class: 'btn btn-small', type: 'button', onClick: () => (sell(game, key, 1, STAND_SHARE), refresh()) }, 'Verkoop 1'),
-              h('button', { class: 'btn btn-small btn-primary', type: 'button', onClick: () => (toast(`+€${sell(game, key, n, STAND_SHARE)}`), refresh()) }, 'Alles'),
+              h('button', { class: 'btn btn-small', type: 'button', onClick: () => (sellHere(key, 1), refresh()) }, 'Verkoop 1'),
+              h('button', { class: 'btn btn-small btn-primary', type: 'button', onClick: () => (toast(`+€${sellHere(key, n)}`), refresh()) }, 'Zoveel mogelijk'),
             );
           })
-        : [h('p', { class: 'hut-empty' }, 'Je hebt niets om te verkopen.')]),
+        : [h('p', { class: 'hut-empty' }, left > 0 ? 'Je hebt niets om te verkopen.' : 'De strandtent heeft vandaag genoeg. Kom morgen terug.')]),
     );
   };
   refresh();

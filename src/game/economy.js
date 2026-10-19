@@ -68,7 +68,7 @@ export function makeBatch(game, productId, ingredients, quality) {
   for (const i of ingredients) game.addItem(i, -1);
   const key = itemKey(productId, recipeEffects(productId, ingredients), quality);
   game.addItem(key, p.yield);
-  game.addXp(5);
+  game.addXp(8);
   return key;
 }
 

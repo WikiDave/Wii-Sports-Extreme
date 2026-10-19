@@ -5,6 +5,11 @@ import { STAFF } from './data/staff.js';
 import { PRODUCTS } from './data/products.js';
 import { canMake, makeBatch, parseItem, unitPrice } from './economy.js';
 
+export const GARDENER_LEMONS = 8;
+export const COOK_BATCHES = 3;
+export const PACKER_EXTRA = 2;
+export const SELLER_UNITS = 12;
+
 export const stockLimit = (state) => state.properties.reduce((s, id) => s + PROPERTIES[id].storage, 0);
 export const staffLimit = (state) => state.properties.reduce((s, id) => s + PROPERTIES[id].slots, 0);
 export const stockUsed = (state) => Object.values(state.inventory).reduce((a, b) => a + b, 0);
@@ -56,22 +61,23 @@ export function dailyWork(game) {
       continue;
     }
     if (id === 'tuinier') {
-      const n = Math.min(4, Math.max(0, stockFree(s)));
+      const n = Math.min(GARDENER_LEMONS, Math.max(0, stockFree(s)));
       if (n) game.addItem('citroen', n);
       log.push(`${w.name} plukte ${n} citroenen.`);
     } else if (id === 'kok') {
-      const product = cookProduct(game);
-      const room = stockFree(s) >= PRODUCTS[product ?? 'limonade'].yield;
-      if (product && room) {
-        makeBatch(game, product, [], 1.05);
-        if (s.staff.includes('inpakker')) {
-          const extra = Object.keys(s.inventory).filter((k) => parseItem(k)?.product === product).sort().at(-1);
-          if (extra && stockFree(s) >= 2) game.addItem(extra, 2);
-        }
-        log.push(`${w.name} maakte een batch ${PRODUCTS[product].name.toLowerCase()}.`);
-      } else log.push(`${w.name} had geen grondstoffen of ruimte.`);
+      let made = 0;
+      let name = '';
+      for (let b = 0; b < COOK_BATCHES; b++) {
+        const product = cookProduct(game);
+        const key = product && makeBatch(game, product, [], 1.05);
+        if (!key) break;
+        made++;
+        name = PRODUCTS[product].name.toLowerCase();
+        if (s.staff.includes('inpakker') && stockFree(s) >= PACKER_EXTRA) game.addItem(key, PACKER_EXTRA);
+      }
+      log.push(made ? `${w.name} maakte ${made} batch${made > 1 ? 'es' : ''} ${name}.` : `${w.name} had geen grondstoffen of ruimte.`);
     } else if (id === 'verkoper') {
-      let left = 6;
+      let left = SELLER_UNITS;
       let money = 0;
       for (const [key, n] of Object.entries(s.inventory)) {
         const p = parseItem(key);
