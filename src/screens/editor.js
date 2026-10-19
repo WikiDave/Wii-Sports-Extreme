@@ -3,7 +3,7 @@
 import { h, icon, modal, toast } from '../ui/dom.js';
 import { MiiStage } from '../three/stage.js';
 import { MiiModel } from '../mii/model.js';
-import { RANGES, NAME_MAX, normalizeMii, cloneMii, getPath, setPath, randomMii } from '../mii/data.js';
+import { RANGES, NAME_MAX, normalizeMii, cloneMii, getPath, setPath, setPartType, randomMii } from '../mii/data.js';
 import { miiStore } from '../mii/storage.js';
 import { drawFeatureThumb, EYES, BROWS, NOSES, MOUTHS, MUSTACHES, BEARDS, GLASSES, FEATURES } from '../mii/face.js';
 import { FACE_SHAPES, drawFaceShapeIcon } from '../mii/head.js';
@@ -14,6 +14,12 @@ import { FAVORITE_COLORS, SKIN_COLORS, HAIR_COLORS, EYE_COLORS, LIP_COLORS, GLAS
 const MONTHS = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
 
 // The nine tabs of the Wii Mii Channel editor; some have sub-tabs.
+/** Picks option i for path; eye and eyebrow types keep their tilt like on the Wii. */
+function choose(m, path, i) {
+  if (path === 'eyes.type' || path === 'brows.type') setPartType(m, path.split('.')[0], i);
+  else setPath(m, path, i);
+}
+
 const TABS = [
   { id: 'profile', label: 'Profiel', title: 'Profiel', view: 'body' },
   { id: 'body', label: 'Lichaam', title: 'Lengte en postuur', view: 'body' },
@@ -187,7 +193,7 @@ export function editorScreen(root, app, { mii, isNew }) {
             'aria-label': item.name,
             title: item.name,
             'data-key': `${path}:${i}`,
-            onClick: () => commit((d) => setPath(d, path, i)),
+            onClick: () => commit((d) => choose(d, path, i)),
           },
           thumb(i),
           item.none ? h('span', { class: 'opt-text' }, item.name) : null,
@@ -200,7 +206,7 @@ export function editorScreen(root, app, { mii, isNew }) {
   const faceThumb = (path, kind) => (i) => {
     const c = h('canvas', { class: 'opt-art', width: 112, height: 112 });
     const variant = cloneMii(draft);
-    setPath(variant, path, i);
+    choose(variant, path, i);
     drawFeatureThumb(c, variant, kind);
     return c;
   };

@@ -1,32 +1,52 @@
-// The head: an egg-shaped surface (taller than wide, like a Wii Mii) whose front
-// carries the face texture and a small nose bulge. Angles: theta runs down from
-// the crown (0) to the chin (PI); phi runs around the head, phi = 0 facing +z.
+// The head: the eight Wii face shapes, measured from rotated renders of bald Miis
+// (head-data.js). Each shape is a radial map around HEAD_CENTER; the front carries the
+// face texture and a small nose bulge. Angles: theta runs down from the crown (0) to
+// the chin (PI); phi runs around the head, phi = 0 facing +z.
 
 import * as THREE from 'three';
 import { parametric } from '../three/surface.js';
-import { FACE_TEX, NOSES } from './face.js';
+import { NOSES } from './face.js';
+import { CAPTURE_UNIT, FACE_TEX, MASK } from './mask.js';
+import { HEAD_CENTER, HEAD_STEP, HEAD_MAPS } from './head-data.js';
 
-/** Head radii in world units: ryTop above the eye line, ry below it (before the chin stretch). */
-export const HEAD = { rx: 0.433, ryTop: 0.53, ry: 0.5, rz: 0.45, topSq: 0.75 };
+export const FACE_SHAPES = ['Ovaal', 'Rond', 'Spits', 'Breed', 'Driehoek', 'Peer', 'Hoekig', 'Vierkant'].map((name, i) => ({
+  name,
+  map: HEAD_MAPS[i],
+}));
 
-// The eight Wii face shapes. jaw narrows (< 1) or widens the lower half, jp is how
-// fast (1 = straight V), chin stretches it down, sq squares the jaw corners, box
-// squares the whole head and flat flattens the bottom of the chin.
-export const FACE_SHAPES = [
-  { name: 'Ei', w: 1.0, jaw: 0.836, jp: 5, chin: 1.26, sq: 0 },
-  { name: 'Rond', w: 1.05, jaw: 0.95, jp: 2, chin: 1.12, sq: 0 },
-  { name: 'Ovaal', w: 0.93, jaw: 0.88, jp: 2.5, chin: 1.3, sq: 0 },
-  { name: 'Peer', w: 0.98, jaw: 1.12, jp: 1.6, chin: 1.18, sq: 0.35, flat: 0.25 },
-  { name: 'Schild', w: 1.0, jaw: 0.74, jp: 1.2, chin: 1.3, sq: 0, box: 0.5 },
-  { name: 'Trapezium', w: 1.0, jaw: 1.1, chin: 1.18, sq: 0.9, flat: 0.35 },
-  { name: 'Achthoek', w: 1.0, jaw: 0.9, chin: 1.22, sq: 0.8, flat: 0.4, box: 0.3 },
-  { name: 'Rechthoek', w: 0.95, jaw: 1.0, chin: 1.24, sq: 0, box: 0.9 },
-];
+const N = 180 / HEAD_STEP + 1;
+const center = new THREE.Vector3(...HEAD_CENTER).multiplyScalar(CAPTURE_UNIT);
 
-const smooth = (a, b, x) => {
-  const t = THREE.MathUtils.clamp((x - a) / (b - a), 0, 1);
-  return t * t * (3 - 2 * t);
-};
+/** Catmull-Rom weights for fraction t. */
+function cr(t) {
+  const t2 = t * t;
+  const t3 = t2 * t;
+  return [(-t3 + 2 * t2 - t) / 2, (3 * t3 - 5 * t2 + 2) / 2, (-3 * t3 + 4 * t2 + t) / 2, (t3 - t2) / 2];
+}
+
+/** Distance from the centre to the surface (world units), smoothly interpolated. */
+function radius(map, theta, phi) {
+  // The head is symmetric: fold phi into 0..PI.
+  phi = Math.abs(((phi + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI);
+  const ft = THREE.MathUtils.clamp((theta * 180) / Math.PI / HEAD_STEP, 0, N - 1);
+  const fp = (phi * 180) / Math.PI / HEAD_STEP;
+  const it = Math.min(Math.floor(ft), N - 2);
+  const ip = Math.min(Math.floor(fp), N - 2);
+  const wt = cr(ft - it);
+  const wp = cr(fp - ip);
+  let r = 0;
+  for (let a = 0; a < 4; a++) {
+    const row = THREE.MathUtils.clamp(it - 1 + a, 0, N - 1) * N;
+    for (let b = 0; b < 4; b++) {
+      // Mirror across phi = 0 and phi = PI.
+      let col = ip - 1 + b;
+      if (col < 0) col = -col;
+      if (col > N - 1) col = 2 * (N - 1) - col;
+      r += wt[a] * wp[b] * map[row + col];
+    }
+  }
+  return r * 0.1 * CAPTURE_UNIT;
+}
 
 /** Height of the nose bulge at world (x, y) on the face. */
 function noseBump(n, x, y) {
@@ -48,36 +68,9 @@ export function noseShape(type, worldY, scale) {
  * nose (from noseShape) adds the nose bulge to the face.
  */
 export function headPoint(shape, theta, phi, scale = 1, out = new THREE.Vector3(), nose = null) {
+  const r = radius(shape.map, theta, phi) * scale;
   const st = Math.sin(theta);
-  let x = st * Math.sin(phi);
-  let y = Math.cos(theta);
-  let z = st * Math.cos(phi);
-  if (y > 0 && HEAD.topSq > 0) {
-    // Broad, squarer crown like the Wii head.
-    const k = Math.pow(x ** 4 + y ** 4 + z ** 4, -0.25);
-    const w = HEAD.topSq * smooth(0, 0.6, y);
-    x *= 1 + (k - 1) * w;
-    y *= 1 + (k - 1) * w * 0.6;
-    z *= 1 + (k - 1) * w * 0.6;
-  }
-  if (shape.sq > 0 || shape.box) {
-    // Blend towards a rounded box: sq mostly around the jaw, box everywhere.
-    const k = Math.pow(x ** 4 + y ** 4 + z ** 4, -0.25);
-    const w = shape.sq * 0.5 * smooth(0.5, -0.5, y) + (shape.box ?? 0) * 0.4;
-    x *= 1 + (k - 1) * w;
-    y *= 1 + (k - 1) * w * 0.8;
-    z *= 1 + (k - 1) * w * 0.4;
-  }
-  if (y < 0) {
-    const t = Math.min(1, -y);
-    x *= 1 + (shape.jaw - 1) * t ** (shape.jp ?? 1.5);
-    z *= 1 + (shape.jaw - 1) * t * t * 0.5;
-    y *= shape.chin * (1 - (shape.flat ?? 0) * t ** 4 * 0.5);
-  }
-  // Slightly fuller cheeks, flatter face front.
-  x *= 1 + 0.075 * Math.exp(-(((y + 0.231) / 0.35) ** 2));
-  z *= 1 - 0.05 * Math.max(0, Math.cos(phi)) ** 4 * st;
-  out.set(x * shape.w * HEAD.rx, y * (y > 0 ? HEAD.ryTop : HEAD.ry), z * HEAD.rz).multiplyScalar(scale);
+  out.set(st * Math.sin(phi), Math.cos(theta), st * Math.cos(phi)).multiplyScalar(r).add(center);
   if (nose && out.z > 0) out.z += noseBump(nose, out.x, out.y);
   return out;
 }
@@ -91,7 +84,7 @@ export function headNormal(shape, theta, phi, out = new THREE.Vector3()) {
   const du = headPoint(shape, theta, phi + e, 1, _q).sub(headPoint(shape, theta, phi - e, 1, _q2)).clone();
   const dv = headPoint(shape, theta + e, phi, 1, _q).sub(headPoint(shape, theta - e, phi, 1, _q2));
   out.crossVectors(du, dv).normalize();
-  if (out.dot(headPoint(shape, theta, phi, 1, _q)) < 0) out.negate();
+  if (out.dot(headPoint(shape, theta, phi, 1, _q).sub(center)) < 0) out.negate();
   return out;
 }
 
@@ -109,69 +102,54 @@ export function headGeometries(shape, nose) {
   const crown = parametric((u, v, out) => at(t0 * v, -Math.PI / 2 + Math.PI * u, out), FRONT_COLS, FACE_ROW0);
   const back = parametric((u, v, out) => at(Math.PI * v, Math.PI / 2 + Math.PI * u, out), 64, ROWS);
 
-  // Front-view UVs: the face canvas is a straight-on picture of the face.
+  // Front-view UVs: the face texture is the Wii face mask, projected straight on.
   const pos = face.attributes.position;
   const uv = face.attributes.uv;
-  const height = FACE_TEX.top - FACE_TEX.bottom;
   for (let i = 0; i < pos.count; i++) {
-    uv.setXY(i, 0.5 + pos.getX(i) / (2 * FACE_TEX.halfWidth), (pos.getY(i) - FACE_TEX.bottom) / height);
+    const u = MASK.u(pos.getX(i));
+    const v = MASK.v(pos.getY(i));
+    uv.setXY(i, (u - FACE_TEX.u0) / (FACE_TEX.u1 - FACE_TEX.u0), 1 - (v - FACE_TEX.v0) / (FACE_TEX.v1 - FACE_TEX.v0));
   }
   return { face, crown, back };
-}
-
-const unitSphere = new THREE.SphereGeometry(1, 28, 20);
-unitSphere.userData.shared = true;
-
-export function buildEars(shape, material) {
-  const group = new THREE.Group();
-  for (const side of [-1, 1]) {
-    const phi = side * THREE.MathUtils.degToRad(88);
-    const theta = THREE.MathUtils.degToRad(97);
-    const ear = new THREE.Mesh(unitSphere, material);
-    ear.scale.set(0.035, 0.085, 0.06);
-    ear.position.copy(headPoint(shape, theta, phi)).add(new THREE.Vector3(side * 0.008, 0, -0.01));
-    ear.rotation.y = side * 0.3;
-    ear.rotation.z = -side * 0.1;
-    group.add(ear);
-  }
-  return group;
 }
 
 /** Draws a face-shape icon like the Wii one: the outline of the head seen from the front. */
 export function drawFaceShapeIcon(canvas, shape, skin) {
   const c = canvas.getContext('2d');
   const W = canvas.width;
-  const pts = [];
+  // Front silhouette: the widest point of every row of the head.
+  const rows = 60;
+  const half = new Array(rows + 1).fill(0);
   const p = new THREE.Vector3();
-  for (let i = 0; i <= 60; i++) {
-    headPoint(shape, (i / 60) * Math.PI, Math.PI / 2, 1, p);
-    pts.push([p.x, p.y]);
+  let top = -Infinity;
+  let bottom = Infinity;
+  for (let i = 0; i <= 90; i++) {
+    for (let j = 0; j <= 36; j++) {
+      headPoint(shape, (i / 90) * Math.PI, (j / 36) * Math.PI, 1, p);
+      top = Math.max(top, p.y);
+      bottom = Math.min(bottom, p.y);
+    }
   }
-  const k = W * 0.78;
+  for (let i = 0; i <= 90; i++) {
+    for (let j = 0; j <= 36; j++) {
+      headPoint(shape, (i / 90) * Math.PI, (j / 36) * Math.PI, 1, p);
+      const k = Math.round(((top - p.y) / (top - bottom)) * rows);
+      half[k] = Math.max(half[k], Math.abs(p.x));
+    }
+  }
+  const k = (W * 0.84) / (top - bottom);
   const ox = W / 2;
-  const oy = W / 2 + 0.02 * k;
+  const oy = W * 0.08;
+  const y = (i) => oy + (i / rows) * (top - bottom) * k;
   c.clearRect(0, 0, W, W);
   c.beginPath();
-  pts.forEach(([x, y], i) => (i ? c.lineTo(ox + x * k, oy - y * k) : c.moveTo(ox + x * k, oy - y * k)));
-  for (let i = pts.length - 1; i >= 0; i--) c.lineTo(ox - pts[i][0] * k, oy - pts[i][1] * k);
+  half.forEach((x, i) => (i ? c.lineTo(ox + x * k, y(i)) : c.moveTo(ox + x * k, y(i))));
+  for (let i = rows; i >= 0; i--) c.lineTo(ox - half[i] * k, y(i));
   c.closePath();
   c.fillStyle = skin;
   c.fill();
   c.lineWidth = W * 0.05;
   c.lineJoin = 'round';
   c.strokeStyle = '#2a2a2e';
-  c.stroke();
-  c.fillStyle = 'rgba(40,40,46,0.35)';
-  for (const sx of [-1, 1]) {
-    c.beginPath();
-    c.arc(ox + sx * 0.12 * k, oy, W * 0.035, 0, Math.PI * 2);
-    c.fill();
-  }
-  c.beginPath();
-  c.moveTo(ox - 0.12 * k, oy + 0.2 * k);
-  c.quadraticCurveTo(ox, oy + 0.29 * k, ox + 0.12 * k, oy + 0.2 * k);
-  c.lineWidth = W * 0.035;
-  c.lineCap = 'round';
-  c.strokeStyle = 'rgba(40,40,46,0.35)';
   c.stroke();
 }

@@ -15,10 +15,11 @@
 import { FACE_SHAPES } from './head.js';
 import { HAIR_STYLES } from './hair.js';
 import { EYES, BROWS, NOSES, MOUTHS, MUSTACHES, BEARDS, GLASSES, FEATURES } from './face.js';
+import { neutralRotation } from './parts.js';
 import { FAVORITE_COLORS, SKIN_COLORS, HAIR_COLORS, EYE_COLORS, LIP_COLORS, GLASSES_COLORS } from './palette.js';
 
 export const NAME_MAX = 10;
-const VERSION = 2;
+const VERSION = 3;
 
 // Version 1 Miis used an earlier, smaller set of parts; map them to the closest Wii part.
 const V1_MAP = {
@@ -32,16 +33,33 @@ const V1_MAP = {
 };
 
 function migrate(raw) {
-  if (raw.version !== 1) return raw;
+  if (raw.version !== 1 && raw.version !== 2) return raw;
   const m = JSON.parse(JSON.stringify(raw));
-  for (const [group, fields] of Object.entries(V1_MAP)) {
-    for (const [field, map] of Object.entries(fields)) {
-      const v = m[group]?.[field];
-      if (Number.isInteger(v) && v in map) m[group][field] = map[v];
+  if (raw.version === 1) {
+    for (const [group, fields] of Object.entries(V1_MAP)) {
+      for (const [field, map] of Object.entries(fields)) {
+        const v = m[group]?.[field];
+        if (Number.isInteger(v) && v in map) m[group][field] = map[v];
+      }
     }
+  }
+  // Version 2 stored eye and eyebrow rotation around a fixed level value (4 and 6);
+  // version 3 stores the Wii's own value, whose level position depends on the type.
+  for (const [group, list, level] of [['eyes', EYES, 4], ['brows', BROWS, 6]]) {
+    const part = m[group];
+    if (part && Number.isInteger(part.rotation) && list[part.type]) part.rotation = neutralRotation(list[part.type]) + part.rotation - level;
   }
   m.version = VERSION;
   return m;
+}
+
+/** Changes an eye or eyebrow type and keeps its tilt, like the Wii editor. */
+export function setPartType(m, group, type) {
+  const list = group === 'eyes' ? EYES : BROWS;
+  const max = group === 'eyes' ? 7 : 11;
+  const part = m[group];
+  part.rotation = Math.min(max, Math.max(0, part.rotation + list[part.type].rot - list[type].rot));
+  part.type = type;
 }
 
 const last = (list) => list.length - 1;
@@ -61,7 +79,7 @@ export const RANGES = {
   'brows.type': [0, last(BROWS)],
   'brows.color': [0, last(HAIR_COLORS)],
   'brows.size': [0, 8],
-  'brows.y': [0, 18],
+  'brows.y': [3, 18],
   'brows.spacing': [0, 12],
   'brows.rotation': [0, 11],
   'eyes.type': [0, last(EYES)],
@@ -107,15 +125,16 @@ export function defaultMii(gender = 'm') {
     favoriteColor: 0,
     height: 64,
     weight: 64,
+    // The Wii's starting Mii (Guest C for boys, Guest F for girls, with light skin).
     face: { shape: 0, skin: 0, feature: 0 },
-    hair: { style: f ? 44 : 0, color: 1, flip: false },
-    brows: { type: f ? 5 : 0, color: 1, size: 4, y: 10, spacing: 4, rotation: 6 },
-    eyes: { type: f ? 39 : 9, color: 0, size: 4, y: 12, spacing: 4, rotation: 4 },
+    hair: { style: f ? 36 : 0, color: 1, flip: false },
+    brows: { type: f ? 1 : 0, color: 1, size: 4, y: 10, spacing: 2, rotation: 6 },
+    eyes: { type: f ? 1 : 0, color: 0, size: 4, y: 12, spacing: 2, rotation: f ? 3 : 4 },
     nose: { type: 0, size: 4, y: 9 },
-    mouth: { type: 0, color: f ? 2 : 0, size: 4, y: 9 },
-    facialHair: { mustache: 0, beard: 0, color: 1, size: 4, y: 8 },
+    mouth: { type: 0, color: 0, size: 4, y: 13 },
+    facialHair: { mustache: 0, beard: 0, color: 1, size: 4, y: 10 },
     glasses: { type: 0, color: 0, size: 4, y: 10 },
-    mole: { on: false, size: 4, x: 11, y: 20 },
+    mole: { on: false, size: 4, x: 2, y: 20 },
   };
 }
 
@@ -212,30 +231,32 @@ export function randomMii(gender = null, rng = Math.random) {
   m.hair = { style: pick(HAIR_POOL[g]), color: hairColor, flip: rng() < 0.5 };
   if (m.hair.style === 4 && rng() < 0.6) m.hair.color = 4;
 
+  const browType = pick(BROW_POOL[g]);
+  const eyeType = pick(EYE_POOL[g]);
   m.brows = {
-    type: pick(BROW_POOL[g]),
+    type: browType,
     color: m.hair.color,
-    size: around(4, 3, R['brows.size']),
-    y: around(10, 4, R['brows.y']),
-    spacing: around(4, 4, R['brows.spacing']),
-    rotation: around(6, 4, R['brows.rotation']),
+    size: around(4, 2, R['brows.size']),
+    y: around(10, 3, R['brows.y']),
+    spacing: around(2, 2, R['brows.spacing']),
+    rotation: around(neutralRotation(BROWS[browType]), 2, R['brows.rotation']),
   };
   m.eyes = {
-    type: pick(EYE_POOL[g]),
+    type: eyeType,
     color: pick([0, 0, 0, 1, 2, 2, 3, 4, 5]),
-    size: around(4, 3, R['eyes.size']),
-    y: around(12, 4, R['eyes.y']),
-    spacing: around(4, 4, R['eyes.spacing']),
-    rotation: around(4, 3, R['eyes.rotation']),
+    size: around(4, 2, R['eyes.size']),
+    y: around(12, 3, R['eyes.y']),
+    spacing: around(2, 2, R['eyes.spacing']),
+    rotation: around(neutralRotation(EYES[eyeType]), 1.5, R['eyes.rotation']),
   };
   m.nose = { type: int(0, R['nose.type'][1]), size: around(4, 3, R['nose.size']), y: around(9, 4, R['nose.y']) };
   m.mouth = {
     type: pick(MOUTH_POOL[g]),
     color: g === 'f' ? int(0, 2) : 0,
-    size: around(4, 3, R['mouth.size']),
-    y: around(9, 4, R['mouth.y']),
+    size: around(4, 2, R['mouth.size']),
+    y: around(13, 3, R['mouth.y']),
   };
-  m.facialHair = { mustache: 0, beard: 0, color: m.hair.color, size: around(4, 2, R['facialHair.size']), y: 8 };
+  m.facialHair = { mustache: 0, beard: 0, color: m.hair.color, size: around(4, 2, R['facialHair.size']), y: 10 };
   if (g === 'm' && rng() < 0.3) {
     if (rng() < 0.7) m.facialHair.mustache = int(1, R['facialHair.mustache'][1]);
     if (rng() < 0.5) m.facialHair.beard = int(1, R['facialHair.beard'][1]);

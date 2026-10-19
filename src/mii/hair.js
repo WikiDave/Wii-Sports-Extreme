@@ -23,6 +23,7 @@
 import * as THREE from 'three';
 import { parametric, taperedTube } from '../three/surface.js';
 import { headPoint, headNormal } from './head.js';
+import { MiiMaterial } from '../three/miiMaterial.js';
 
 const D = THREE.MathUtils.degToRad;
 const TAU = Math.PI * 2;
@@ -128,7 +129,7 @@ function curtain(shape, { to, off }, long) {
 
 /** Smooth, slightly glossy hair like the Wii models (no strand texture). */
 export function hairMaterial(color) {
-  return new THREE.MeshStandardMaterial({ color, roughness: 0.42, side: THREE.DoubleSide });
+  return new MiiMaterial({ color, side: THREE.DoubleSide });
 }
 
 const clipMaterial = new THREE.MeshStandardMaterial({ color: '#c9ced6', roughness: 0.35, metalness: 0.2 });

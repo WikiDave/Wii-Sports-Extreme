@@ -1,5 +1,6 @@
-// The face parts of the Wii Mii Channel, in the same order as on the Wii, redrawn
-// as vector shapes. Every part is a list of layers in a local space where y points
+// The face parts of the Wii Mii Channel, in the same order as on the Wii. Traced Wii
+// shapes come from parts-data.js (by internal Wii id); parts not traced yet fall back
+// to the hand-drawn shapes below. Every part is a list of layers in a local space where y points
 // down; eyes and eyebrows are drawn for the right side of the picture, with their
 // outer end towards +x (the other side is mirrored).
 //
@@ -12,6 +13,8 @@
 //           K dark fill, L dark line
 //   moustaches: F fill, B line                 (in the facial hair colour)
 
+import * as TRACED from './parts-data.js';
+
 /** SVG path of an ellipse, optionally rotated (degrees). */
 export function E(cx, cy, rx, ry, rot = 0) {
   const a = (rot * Math.PI) / 180;
@@ -23,7 +26,7 @@ export function E(cx, cy, rx, ry, rot = 0) {
 
 const eye = (name, layers, w = 30, closed = false) => ({ name, layers, w, closed });
 
-export const EYES = [
+const OLD_EYES = [
   eye('Boog', [['I', 0, 6, 17.5], ['L', 'M-33 2 Q0 -30 33 2', 7]]),
   eye('Boog met wimper', [['I', -2, 7, 17], ['L', 'M-30 6 Q-27 -24 4 -25 Q22 -25 30 -10', 7], ['L', 'M29 -10 L42 -16', 6]]),
   eye('Koepel', [
@@ -173,7 +176,7 @@ export const EYES = [
   eye('Dichtgeknepen', [['L', 'M30 -16 L-24 2 L30 20', 8], ['L', 'M-24 2 L30 2', 7]], 30, true),
 ];
 
-export const BROWS = [
+const OLD_BROWS = [
   { name: 'Wig', layers: [['F', 'M-38 10 L-36 6 L24 -16 L36 -6 Z']] },
   { name: 'Dunne boog', layers: [['F', 'M-36 8 Q0 -16 36 4 Q0 -7 -36 8 Z']] },
   { name: 'Blok', layers: [['F', 'M-36 -2 L22 -10 L36 4 L32 7 L-34 10 Z']] },
@@ -227,7 +230,7 @@ export const NOSES = [
 
 const teeth4 = 'M-19 -5 L-12 -5 L-12 8 L-19 8 Z M-9 -5 L-1 -5 L-1 11 L-9 11 Z M2 -5 L10 -5 L10 11 L2 11 Z M13 -5 L20 -5 L20 7 L13 7 Z';
 
-export const MOUTHS = [
+const OLD_MOUTHS = [
   { name: 'Streep', layers: [['L', 'M-28 0 L28 0', 4.8]] },
   { name: 'Lachende lippen', layers: [['D', 'M-34 -4 Q0 -1 34 -4 Q16 14 0 14 Q-16 14 -34 -4 Z'], ['U', 'M-34 -4 Q-18 -7 -6 -7 Q0 -3 6 -7 Q18 -7 34 -4 Q16 -1 0 0 Q-16 -1 -34 -4 Z']] },
   { name: 'Glimlach', layers: [['L', 'M-30 -6 Q0 14 30 -6', 5]] },
@@ -254,9 +257,37 @@ export const MOUTHS = [
   { name: 'Zigzag', layers: [['L', 'M-30 2 L-18 -6 L-6 4 L6 -6 L18 4 L30 -4', 4.5]] },
 ];
 
-export const MUSTACHES = [
+const OLD_MUSTACHES = [
   { name: 'Geen', none: true, layers: [] },
   { name: 'Borstel', layers: [['F', 'M-34 10 Q-32 -12 0 -14 Q32 -12 34 10 Q29 4 24 10 Q19 4 14 10 Q9 4 4 10 Q0 4 -4 10 Q-9 4 -14 10 Q-19 4 -24 10 Q-29 4 -34 10 Z']] },
   { name: 'Dun', layers: [['B', 'M-30 6 Q-20 -5 -4 -4 M4 -4 Q20 -5 30 6', 6]] },
   { name: 'Hoefijzer', layers: [['B', 'M-30 40 L-30 0 Q-30 -12 0 -12 Q30 -12 30 0 L30 40', 13]] },
 ];
+
+// Internal Wii id of every editor position (inverse of the libmii tables on wiibrew).
+const ids = (toEditor) => toEditor.reduce((out, editor, id) => ((out[editor] = id), out), []);
+const EYE_IDS = ids([2, 6, 0, 42, 1, 24, 29, 36, 3, 16, 45, 13, 17, 26, 46, 9, 8, 5, 33, 14, 11, 20, 44, 18, 30, 21, 7, 10, 34, 41, 31, 32, 15, 12, 19, 23, 27, 28, 38, 4, 22, 25, 39, 43, 37, 40, 35, 47]);
+const BROW_IDS = ids([1, 3, 14, 15, 11, 10, 0, 6, 8, 4, 13, 12, 2, 19, 16, 18, 22, 9, 21, 5, 17, 7, 20, 23]);
+const NOSE_IDS = ids([5, 0, 2, 3, 7, 6, 4, 10, 8, 9, 1, 11]);
+const MOUTH_IDS = ids([6, 1, 14, 16, 17, 5, 10, 12, 7, 13, 8, 19, 23, 11, 22, 18, 9, 15, 21, 2, 20, 3, 4, 0]);
+
+// Rotation offsets by internal id (RFLi_Config.h): the angle is 11.25 * ((rotate + rot) % 32).
+const EYE_ROT = [29, 28, 28, 28, 29, 28, 28, 28, 29, 28, 28, 28, 28, 29, 29, 28, 28, 28, 29, 29, 28, 29, 28, 29, 29, 28, 29, 28, 28, 29, 28, 28, 28, 29, 29, 29, 28, 28, 29, 29, 29, 28, 28, 29, 29, 29, 29, 29];
+const BROW_ROT = [26, 26, 27, 25, 26, 25, 26, 25, 28, 25, 26, 24, 27, 27, 26, 26, 25, 25, 26, 26, 27, 26, 25, 27];
+
+const part = (old, id, traced, extra = {}) => ({ name: old.name, id, layers: traced?.[id] ?? null, old, ...extra });
+
+export const EYES = OLD_EYES.map((old, i) => part(old, EYE_IDS[i], TRACED.EYES, { rot: EYE_ROT[EYE_IDS[i]] }));
+export const BROWS = OLD_BROWS.map((old, i) => part(old, BROW_IDS[i], TRACED.BROWS, { rot: BROW_ROT[BROW_IDS[i]] }));
+export const MOUTHS = OLD_MOUTHS.map((old, i) => part(old, MOUTH_IDS[i], TRACED.MOUTHS));
+export const MUSTACHES = OLD_MUSTACHES.map((old, i) => part(old, i, TRACED.MUSTACHES, { none: old.none }));
+NOSES.forEach((n, i) => (n.id = NOSE_IDS[i]));
+
+/** The eye the Wii shows while blinking (internal eye 26). */
+export const BLINK_EYE = EYES.find((e) => e.id === 26);
+
+/** The mole: one dot, centred in its 1 x 1 quad. */
+export const MOLE = { layers: TRACED.MOLE ?? [['F', 'M850 500 A350 350 0 1 1 150 500 A350 350 0 1 1 850 500 Z']] };
+
+/** Rotation that puts a part of the given type level (angle 0). */
+export const neutralRotation = (type) => (32 - type.rot) % 32;

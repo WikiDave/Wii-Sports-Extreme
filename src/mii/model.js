@@ -3,10 +3,12 @@
 import * as THREE from 'three';
 import { normalizeMii } from './data.js';
 import { FAVORITE_COLORS, SKIN_COLORS, HAIR_COLORS, PANTS_COLOR } from './palette.js';
-import { drawFace, faceLayout, FACE_TEX } from './face.js';
-import { FACE_SHAPES, headGeometries, noseShape, buildEars } from './head.js';
-import { HAIR_STYLES, buildHair, hairMaterial } from './hair.js';
+import { paintFaceTexture, faceLayout } from './face.js';
+import { FACE_TEX, MASK } from './mask.js';
+import { FACE_SHAPES, headGeometries, noseShape } from './head.js';
+import { buildHair, hairMaterial } from './hair.js';
 import { buildBody } from './body.js';
+import { MiiMaterial } from '../three/miiMaterial.js';
 
 function disposeTree(obj) {
   obj.traverse((o) => {
@@ -17,7 +19,7 @@ function disposeTree(obj) {
 export class MiiModel {
   /**
    * @param data Mii data (see data.js)
-   * @param options.textureScale resolution of the face texture (1 = 1000 pixels per unit)
+   * @param options.textureScale resolution of the face texture (1 = 24 pixels per mask unit)
    * @param options.body false builds only the head (for portraits)
    */
   constructor(data, { textureScale = 1, body = true } = {}) {
@@ -40,11 +42,11 @@ export class MiiModel {
     this.textureScale = textureScale;
 
     this.mats = {
-      skin: new THREE.MeshStandardMaterial({ roughness: 0.62 }),
+      skin: new MiiMaterial(),
       // The face texture has the skin colour as background, so face and head match.
-      face: new THREE.MeshStandardMaterial({ map: this.face.tex, roughness: 0.62 }),
-      shirt: new THREE.MeshStandardMaterial({ roughness: 0.55 }),
-      pants: new THREE.MeshStandardMaterial({ color: PANTS_COLOR, roughness: 0.42 }),
+      face: new MiiMaterial({ map: this.face.tex }),
+      shirt: new MiiMaterial(),
+      pants: new MiiMaterial({ color: PANTS_COLOR }),
       hair: hairMaterial('#000000'),
     };
     this.parts = null;
@@ -77,11 +79,10 @@ export class MiiModel {
     const shape = FACE_SHAPES[m.face.shape];
     const head = new THREE.Group();
     const L = faceLayout(m);
-    const geo = headGeometries(shape, noseShape(m.nose.type, L.noseWorldY, L.noseScale));
+    const geo = headGeometries(shape, noseShape(m.nose.type, MASK.y(L.nose.v), 5.2 * L.nose.s));
     head.add(new THREE.Mesh(geo.face, this.mats.face));
     head.add(new THREE.Mesh(geo.crown, this.mats.skin));
     head.add(new THREE.Mesh(geo.back, this.mats.skin));
-    if (!HAIR_STYLES[m.hair.style].hideEars) head.add(buildEars(shape, this.mats.skin));
     const hair = buildHair(m.hair.style, shape, { hair: this.mats.hair, hat: this.mats.shirt });
     if (m.hair.flip) hair.scale.x = -1;
     head.add(hair);
@@ -101,10 +102,7 @@ export class MiiModel {
 
   paintFace(m) {
     for (const [target, blink] of [[this.face, false], [this.faceBlink, true]]) {
-      const ctx = target.canvas.getContext('2d');
-      ctx.setTransform(this.textureScale, 0, 0, this.textureScale, 0, 0);
-      ctx.clearRect(0, 0, FACE_TEX.width, FACE_TEX.height);
-      drawFace(ctx, m, { blink });
+      paintFaceTexture(target.canvas.getContext('2d'), m, { scale: this.textureScale, blink });
       target.tex.needsUpdate = true;
     }
   }
