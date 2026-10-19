@@ -1,18 +1,27 @@
 // Wahoe-eiland: walk your Mii around the island (WASD or the touch stick, drag to look
-// around, scroll or pinch to zoom); the slider sets the time of day.
+// around, scroll or pinch to zoom); time runs by itself (1 s = 1 game minute), and the game state is saved.
 
 import * as THREE from 'three';
-import { h, icon } from '../ui/dom.js';
+import { h, icon, toast } from '../ui/dom.js';
 import { buildIsland } from '../game/world/island.js';
 import { buildProps } from '../game/world/props.js';
 import { Sky } from '../game/world/sky.js';
 import { heightAt } from '../game/world/island.js';
 import { Player } from '../game/player.js';
 import { FollowCamera } from '../game/camera.js';
+import { Game, formatClock, RANKS } from '../game/state.js';
 import { Minimap } from '../game/ui/minimap.js';
 import { Input } from '../game/input.js';
 import { miiStore } from '../mii/storage.js';
 import { defaultMii } from '../mii/data.js';
+
+function safeStorage() {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
 
 /** A free, dry spot on Strand-Zuid, searched in a spiral from the beach centre. */
 function findSpawn(colliders) {
@@ -38,18 +47,30 @@ export function islandScreen(root, app) {
   const props = buildProps();
   scene.add(island.group, props.group);
 
-  let hour = 10;
-  const label = h('span', { class: 'island-time' });
-  const slider = h('input', { type: 'range', min: 0, max: 24, step: 0.1, value: hour, 'aria-label': 'Tijd van de dag' });
-  const setHour = (v) => {
-    hour = +v;
-    sky.setTime(hour);
-    props.lamp.emissiveIntensity = hour < 6.5 || hour > 18.5 ? 1.6 : 0;
-    const hh = Math.floor(hour) % 24;
-    label.textContent = `${String(hh).padStart(2, '0')}:${String(Math.floor((hour % 1) * 60)).padStart(2, '0')}`;
+  const game = new Game(safeStorage());
+  const clock = h('span', { class: 'hud-clock' });
+  const day = h('span', { class: 'hud-day' });
+  const cash = h('span', { class: 'hud-cash' });
+  const rank = h('span', { class: 'hud-rank' });
+  const refreshHud = () => {
+    const st = game.state;
+    clock.textContent = formatClock(st.minutes);
+    day.textContent = `Dag ${st.day}`;
+    cash.textContent = `€${st.cash.toLocaleString('nl-NL')}`;
+    rank.textContent = RANKS[game.rank];
   };
-  slider.addEventListener('input', () => setHour(slider.value));
-  setHour(hour);
+  const refreshSky = () => {
+    sky.setTime(game.hour);
+    props.lamp.emissiveIntensity = game.isNight ? 1.6 : 0;
+  };
+  game.on('time', () => {
+    refreshHud();
+    refreshSky();
+  });
+  game.on('change', refreshHud);
+  game.on('newday', (d) => toast(`Een nieuwe dag: dag ${d}`));
+  refreshHud();
+  refreshSky();
 
   const view = h('div', { class: 'island-view' }, renderer.domElement);
   const screen = h(
@@ -60,14 +81,17 @@ export function islandScreen(root, app) {
       'div',
       { class: 'island-bar' },
       h('button', { class: 'btn btn-round', type: 'button', 'aria-label': 'Terug naar het menu', onClick: () => app.go('menu') }, icon('back')),
-      h('div', { class: 'island-clock' }, label, slider),
+      h('div', { class: 'island-clock' }, day, clock),
+      h('div', { class: 'island-clock hud-money' }, cash, rank),
     ),
   );
   root.append(screen);
 
   // The player's Mii, on the beach in the south.
-  const mii = miiStore.all()[0] ?? defaultMii('m');
-  const spawn = findSpawn(props.colliders);
+  const mii = miiStore.get(game.state.player.miiId) ?? miiStore.all()[0] ?? defaultMii('m');
+  game.state.player.miiId = mii.id ?? null;
+  const saved = game.state.player;
+  const spawn = saved.x != null && heightAt(saved.x, saved.z) > 0.3 ? { x: saved.x, z: saved.z } : findSpawn(props.colliders);
   const player = new Player(mii, { ...spawn, colliders: props.colliders });
   scene.add(player.group);
   const follow = new FollowCamera(camera);
@@ -88,11 +112,12 @@ export function islandScreen(root, app) {
   resize();
 
   let raf = 0;
-  const clock = new THREE.Clock();
+  const timer = new THREE.Clock();
   const frame = () => {
     raf = requestAnimationFrame(frame);
-    const dt = Math.min(clock.getDelta(), 0.05);
-    const t = clock.elapsedTime;
+    const dt = Math.min(timer.getDelta(), 0.05);
+    const t = timer.elapsedTime;
+    game.tick(dt);
     const move = input.move();
     player.update(move, follow.yaw, dt, t);
     follow.update(player, move, dt);
@@ -105,6 +130,9 @@ export function islandScreen(root, app) {
   return {
     unmount() {
       cancelAnimationFrame(raf);
+      game.state.player.x = player.pos.x;
+      game.state.player.z = player.pos.z;
+      game.save();
       input.dispose();
       minimap.dispose();
       player.dispose();
