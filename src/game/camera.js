@@ -25,6 +25,13 @@ export class FollowCamera {
     this.dist = THREE.MathUtils.clamp(this.dist * f, 3.5, 40);
   }
 
+  /** Jumps straight to the player (no glide), e.g. right after loading. */
+  snap(player) {
+    this.focus.copy(player.group.position);
+    this.focus.y += 1.4;
+    this.update(player, { x: 0, y: 0 }, 0);
+  }
+
   /** Follows player (a Player); when walking on (not back towards it) it swings slowly round behind it. */
   update(player, move, dt) {
     this.idle += dt;

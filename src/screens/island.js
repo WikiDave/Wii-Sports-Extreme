@@ -3,6 +3,7 @@
 
 import * as THREE from 'three';
 import { h, icon, toast } from '../ui/dom.js';
+import { createLoader, nextFrame } from '../ui/loading.js';
 import { buildIsland } from '../game/world/island.js';
 import { buildProps } from '../game/world/props.js';
 import { Sky } from '../game/world/sky.js';
@@ -71,6 +72,38 @@ function findSpawn(colliders) {
 }
 
 export function islandScreen(root, app) {
+  const loader = createLoader('Het eiland wordt klaargemaakt');
+  root.append(loader.el);
+  let cleanup = null;
+  let cancelled = false;
+  buildIsland3d(root, app, loader, () => cancelled).then(
+    (fn) => (cancelled ? fn() : (cleanup = fn)),
+    (err) => {
+      if (err !== CANCELLED) {
+        console.error(err);
+        loader.fail('Het eiland kon niet worden geladen. Probeer de pagina opnieuw te laden.');
+      }
+    },
+  );
+  return {
+    unmount() {
+      cancelled = true;
+      cleanup?.();
+      loader.remove();
+    },
+  };
+}
+
+const CANCELLED = Symbol('cancelled');
+
+/** Builds the whole island step by step (the loader shows progress); resolves with its cleanup. */
+async function buildIsland3d(root, app, loader, isCancelled) {
+  const step = async (p, text) => {
+    loader.set(p, text);
+    await nextFrame();
+    if (isCancelled()) throw CANCELLED;
+  };
+  await step(0.03, 'Spelstand laden');
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   const phone = matchMedia('(pointer: coarse)').matches;
   // Phones: a little lower resolution keeps shadows and the grading pass smooth.
@@ -80,11 +113,14 @@ export function islandScreen(root, app) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(50, 1, 0.2, 9000);
   const sky = new Sky(scene);
+  await step(0.08, 'Het eiland vormen');
   pipeline.setupSun(sky.sun);
   const island = buildIsland();
+  await step(0.35, 'De zee vullen');
   const water = buildWater(island.ground, sky);
   water.position.y = SEA_LEVEL;
   scene.add(water);
+  await step(0.45, 'Huizen en palmen neerzetten');
   const props = buildProps();
   scene.add(island.group, props.group);
   shadowsOn(props.group);
@@ -192,7 +228,9 @@ export function islandScreen(root, app) {
     props.colliders.push({ x: spot.x, z: spot.z, r: 2.6 });
     interactions.add({ x: spot.x, z: spot.z, r: 5.5, label, run });
   }
+  await step(0.55, 'Gras en bloemen laten groeien');
   const grass = grassReady();
+  await step(0.75, 'Bewoners en bewaking op hun plek');
   // Customers wait near the beach stand and the market.
   const standSpot = interactions.items.find((i) => i.label === 'Strandtent');
   const marketSpot = interactions.items.find((i) => i.label === 'Markt');
@@ -227,6 +265,7 @@ export function islandScreen(root, app) {
   };
   const saved = game.state.player;
   const spawn = saved.x != null && heightAt(saved.x, saved.z) > 0.3 ? { x: saved.x, z: saved.z } : findSpawn(props.colliders);
+  await step(0.85, 'Je Mii aankleden');
   const player = new Player(mii, { ...spawn, colliders: props.colliders });
   scene.add(player.group);
   shadowsOn(player.group, false);
@@ -276,34 +315,40 @@ export function islandScreen(root, app) {
     pipeline.follow(player.group.position, sky.dir);
     pipeline.render(scene, camera, sky.night);
   };
+  // Compile every shader and draw once behind the loader, so the first second does not stutter.
+  await step(0.92, 'Licht en schaduwen');
+  resize();
+  follow.snap(player);
+  renderer.compile(scene, camera);
+  pipeline.render(scene, camera, sky.night);
+  await step(0.98, 'Bijna klaar');
   frame();
+  loader.done();
 
-  return {
-    unmount() {
-      cancelAnimationFrame(raf);
-      game.state.player.x = player.pos.x;
-      game.state.player.z = player.pos.z;
-      game.save();
-      input.dispose();
-      minimap.dispose();
-      stopDaily();
-      weatherFx.dispose();
-      document.removeEventListener('click', onClick);
-      audio.dispose();
-      guards.dispose();
-      rival.dispose();
-      interactions.dispose();
-      customers.dispose();
-      player.dispose();
-      ro.disconnect();
-      scene.traverse((o) => {
-        o.geometry?.dispose();
-        o.material?.dispose();
-      });
-      grass.dispose();
-      pipeline.dispose();
-      renderer.dispose();
-      renderer.forceContextLoss();
-    },
+  return () => {
+    cancelAnimationFrame(raf);
+    game.state.player.x = player.pos.x;
+    game.state.player.z = player.pos.z;
+    game.save();
+    input.dispose();
+    minimap.dispose();
+    stopDaily();
+    weatherFx.dispose();
+    document.removeEventListener('click', onClick);
+    audio.dispose();
+    guards.dispose();
+    rival.dispose();
+    interactions.dispose();
+    customers.dispose();
+    player.dispose();
+    ro.disconnect();
+    scene.traverse((o) => {
+      o.geometry?.dispose();
+      o.material?.dispose();
+    });
+    grass.dispose();
+    pipeline.dispose();
+    renderer.dispose();
+    renderer.forceContextLoss();
   };
 }

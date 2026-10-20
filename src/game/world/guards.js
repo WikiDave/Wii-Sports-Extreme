@@ -23,7 +23,7 @@ function coneMesh() {
   const geo = new THREE.CircleGeometry(1, 20, -Math.PI / 2 - FOV / 2, FOV);
   // Lay it flat; the fan then points along +z, the way the guard faces.
   geo.rotateX(-Math.PI / 2);
-  const mat = new THREE.MeshBasicMaterial({ color: COLORS.patrol, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide });
+  const mat = new THREE.MeshBasicMaterial({ color: COLORS.patrol, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
   const m = new THREE.Mesh(geo, mat);
   m.renderOrder = 2;
   return m;
@@ -176,7 +176,7 @@ export class Guards {
     parts.armR.rotation.x = s * 0.5 * f;
     g.mii.group.position.y += Math.abs(Math.cos(g.phase)) * 0.05 * f;
     const range = viewRange(level, viewFactor(this.game.state.day)) * (this.chasing ? 1.5 : 1);
-    g.cone.position.set(g.x, y + 0.25, g.z);
+    g.cone.position.set(g.x, y + 0.06, g.z);
     g.cone.rotation.y = g.heading;
     g.cone.scale.setScalar(range);
     g.cone.material.color.set(this.chasing ? COLORS.chase : g.suspicion > 0.05 ? COLORS.alert : COLORS.patrol);
