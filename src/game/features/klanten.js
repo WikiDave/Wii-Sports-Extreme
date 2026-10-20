@@ -54,6 +54,7 @@ export default {
 
     const bubbles = new Bubbles(screen, camera, h);
     customers.bubbles = bubbles;
+    customers.isPaused = ctx.isPaused;
     const timers = [];
 
     // New contacts: a friend's trust, your rank or word getting around opens them up.

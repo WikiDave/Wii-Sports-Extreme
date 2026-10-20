@@ -41,6 +41,7 @@ export class CustomerView {
     this.interactions = interactions;
     this.onTalk = onTalk;
     this.bubbles = null; // set by the klanten feature (speech bubbles and name tags)
+    this.isPaused = () => !!document.querySelector('.modal-backdrop'); // the feature gives ctx.isPaused
     this.world = buildWorld({ spots });
     setLiveWorld(this.world);
     this.version = 0;
@@ -241,7 +242,7 @@ export class CustomerView {
     if (walking) animateWalk(mii, e, dt);
     else animateIdle(mii, e, t);
     // A wave and a word when you come close.
-    if (near && t - e.lastGreet > 40 && e.ok && !document.querySelector('.modal-backdrop')) {
+    if (near && t - e.lastGreet > 40 && e.ok && !this.isPaused()) {
       e.lastGreet = t;
       e.waveUntil = t + 2.4;
       this.greet(e);
