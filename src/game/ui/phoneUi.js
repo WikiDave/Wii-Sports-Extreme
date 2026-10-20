@@ -7,6 +7,7 @@ import { EFFECTS } from '../data/effects.js';
 import { RANKS } from '../state.js';
 import { isUnlocked, record } from '../customers.js';
 import { accept, decline, unread, deposit, withdraw } from '../phone.js';
+import { EXTRA_APPS } from '../phoneApps.js';
 
 const euro = (n) => `€${Math.round(n).toLocaleString('nl-NL')}`;
 const nameOf = (id) => CUSTOMERS.find((c) => c.id === id)?.name ?? id;
@@ -28,11 +29,11 @@ export function openPhone(game, { openMap } = {}) {
       h(
         'div',
         { class: 'phone-apps' },
-        ...APPS.map((a) =>
+        ...[...APPS, ...EXTRA_APPS].map((a) =>
           h(
             'button',
             { class: 'phone-app', type: 'button', onClick: () => open(a.id) },
-            h('span', { class: 'phone-ico', style: { background: a.color } }, a.icon, a.id === 'berichten' && n ? h('i', { class: 'phone-badge' }, String(n)) : null),
+            h('span', { class: 'phone-ico', style: { background: a.color } }, a.icon, (a.id === 'berichten' ? n : a.badge?.(game) ?? 0) ? h('i', { class: 'phone-badge' }, String(a.id === 'berichten' ? n : a.badge(game))) : null),
             h('span', {}, a.label),
           ),
         ),
@@ -51,7 +52,9 @@ export function openPhone(game, { openMap } = {}) {
       openMap?.();
       return;
     }
-    ({ berichten, contacten, bank })[id]();
+    const extra = EXTRA_APPS.find((a) => a.id === id);
+    if (extra) extra.render({ page, back: home, game, h, toast });
+    else ({ berichten, contacten, bank })[id]();
   };
 
   const berichten = () => {

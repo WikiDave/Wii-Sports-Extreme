@@ -80,5 +80,6 @@ export function deal(game, c, key, qty, offer, factor = 1, request = null) {
   rec.lastDay = state.day;
   rec.unlocked = true;
   game.emit('change');
+  game.emit('deal', { customer: c.id, key, sold: n, money, offer });
   return { ok: true, sold: n, money, message: `${c.name} koopt ${n}× voor €${money}.` };
 }

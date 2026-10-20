@@ -2,7 +2,7 @@
 // around, scroll or pinch to zoom); time runs by itself (1 s = 1 game minute), and the game state is saved.
 
 import * as THREE from 'three';
-import { h, icon, toast } from '../ui/dom.js';
+import { h, icon, toast, modal } from '../ui/dom.js';
 import { createLoader, nextFrame } from '../ui/loading.js';
 import { buildIsland } from '../game/world/island.js';
 import { buildProps } from '../game/world/props.js';
@@ -17,6 +17,9 @@ import { buildWater } from '../game/world/water.js';
 import { Grass } from '../game/world/grass.js';
 import { Life } from '../game/world/life.js';
 import { Effects } from '../game/world/effects.js';
+import { installFeatures } from '../game/features/index.js';
+import { registerApp } from '../game/phoneApps.js';
+import { zoneAt } from '../game/world/island.js';
 import { openPhone } from '../game/ui/phoneUi.js';
 import { dailyMessages, unread } from '../game/phone.js';
 import { bobBoats, windowGlass, lampLight } from '../game/world/buildings.js';
@@ -338,7 +341,25 @@ async function buildIsland3d(root, app, loader, isCancelled) {
   game.on('newday', () => dailyMessages(game));
   dailyMessages(game);
   showBadge();
-  window.__game = { player, follow, game, weatherFx, heightAt, props, life, grassCount: grass.count, hutPos, interactions, guards, teleport: (it) => { player.pos.set(it.x, 0, it.z + 4); player.group.position.copy(player.pos); } }; // for tests
+  // Features (see docs/FEATURES.md): self-contained add-ons that get this context.
+  const styles = [];
+  const ctx = {
+    THREE, scene, camera, renderer, game, player, follow, interactions, props, island, guards, customers, rival, life, grass, fx, weatherFx, sky, audio, minimap, hutPos, spots,
+    h, modal, toast, icon, hudBar: screen.querySelector('.island-bar'), screen,
+    heightAt, zoneAt, shadowsOn, registerApp, input,
+    isPaused: () => !!document.querySelector('.modal-backdrop, .minigame, .fullmap-wrap:not([hidden])'),
+    addStyle(css) {
+      const el = document.createElement('style');
+      el.textContent = css;
+      document.head.append(el);
+      styles.push(el);
+      return el;
+    },
+  };
+  const features = installFeatures(ctx);
+  window.__game = {
+    ctx,
+    features, player, follow, game, weatherFx, heightAt, props, life, grassCount: grass.count, hutPos, interactions, guards, teleport: (it) => { player.pos.set(it.x, 0, it.z + 4); player.group.position.copy(player.pos); } }; // for tests
 
   const resize = () => {
     const w = view.clientWidth || 1;
@@ -378,6 +399,7 @@ async function buildIsland3d(root, app, loader, isCancelled) {
     bobBoats(props.boats, t);
     props.swayPalms(t, camera.position);
     life.update(t, dt, camera);
+    features.update(t, dt, paused);
     fx.update(dt);
     water.userData.update(t, Math.min(1.1, 0.25 + sky.hemi.intensity * 0.7), 1 + weatherFx.level.rain * 0.8);
     audio.setAmbience({ nearSea: Math.max(0, 1 - heightAt(player.pos.x, player.pos.z) / 8), rain: weatherFx.level.rain });
@@ -418,6 +440,8 @@ async function buildIsland3d(root, app, loader, isCancelled) {
     });
     grass.dispose();
     life.dispose();
+    features.dispose();
+    styles.forEach((el) => el.remove());
     fx.dispose();
     pipeline.dispose();
     renderer.dispose();

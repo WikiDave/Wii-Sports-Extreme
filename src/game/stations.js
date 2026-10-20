@@ -53,6 +53,7 @@ export function collect(game) {
     n += j.yield;
   }
   s.jobs = s.jobs.filter((j) => !done.includes(j));
+  game.emit('collected', { items: n });
   game.emit('change');
   return n;
 }

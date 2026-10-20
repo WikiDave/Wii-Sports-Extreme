@@ -62,6 +62,7 @@ export function frisk(game) {
     }
   }
   addHeat(game, 0.4);
+  game.emit('frisked', { fine, taken });
   return `Gefouilleerd! Boete €${fine}${taken ? `, ${taken} stuks in beslag genomen` : ''}.`;
 }
 
@@ -73,6 +74,7 @@ export function caught(game) {
   for (const [k, n] of Object.entries(s.inventory)) if (parseItem(k)) game.addItem(k, -n);
   s.heat = 2;
   game.emit('heat', 2);
+  game.emit('caught', { lost });
   game.emit('change');
   return `Gepakt! Je bent al je waar en €${lost} kwijt.`;
 }

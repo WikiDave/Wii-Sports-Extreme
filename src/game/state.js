@@ -29,6 +29,7 @@ export function newGame(miiId = null) {
     properties: ['hut'],
     staff: [],
     customers: {}, // customer id -> { loyalty, unlocked }
+    ext: {}, // per-feature save data: state.ext[featureId] (see features/index.js)
     jobs: [], // batches busy in stations: see stations.js
     messages: [], // text messages from customers: see phone.js
     stand: null, // { day, n } units sold to the beach stand today
@@ -42,7 +43,7 @@ export function newGame(miiId = null) {
 export function migrate(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const base = newGame();
-  const s = { ...base, ...raw, player: { ...base.player, ...raw.player } };
+  const s = { ...base, ...raw, player: { ...base.player, ...raw.player }, ext: { ...(raw.ext ?? {}) } };
   s.version = VERSION;
   for (const k of ['cash', 'bank', 'xp', 'day', 'minutes', 'heat']) if (!Number.isFinite(s[k])) s[k] = base[k];
   return s;
