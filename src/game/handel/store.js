@@ -15,11 +15,15 @@ export const VERSION = 1;
 export const INBOX_MAX = 24;
 export const HISTORY_MAX = 10;
 
+const repaired = new WeakSet();
+
 /** The feature's save data, created or repaired on demand. Always call this again after a reset. */
 export function handelState(game) {
   const st = game.state;
   const e = (st.ext ??= {});
   const h = (e.handel ??= {});
+  if (repaired.has(h)) return h; // checked before; no work (this runs every frame)
+  repaired.add(h);
   h.v = VERSION;
   h.clock = Number.isFinite(h.clock) ? h.clock : now(st);
   h.lastDay = Number.isFinite(h.lastDay) ? h.lastDay : st.day;

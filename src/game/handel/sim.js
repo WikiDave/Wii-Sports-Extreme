@@ -22,6 +22,9 @@ import { DAY_LENGTH, clockAt, hourFactor, now, onShift } from './time.js';
 export const MAX_CATCHUP = 3 * DAY_LENGTH;
 /** Base chance per step to be caught (scaled by heat level, route, discretion and events). */
 export const CATCH_BASE = 0.0012;
+/** Minutes in one call that count as "skipped" time, and the heat that sinks per skipped minute. */
+const SKIP_AFTER = 30;
+const HEAT_DECAY = 0.003;
 /** Heat added by every customer a seller serves (scaled by route risk and discretion). */
 export const HEAT_PER_SALE = 0.08;
 
@@ -55,6 +58,9 @@ export function simulate(game, env = {}, upto = now(game.state)) {
   const out = [];
   let t = h.clock;
   if (upto - t > MAX_CATCHUP) t = upto - MAX_CATCHUP;
+  // Time that passed in one go (sleeping, an old save): the heat sinks as it does while you play
+  // (see police.tickHeat), so sleeping does not make the sellers' work pile up as heat.
+  if (upto - t > SKIP_AFTER) addHeat(game, -HEAT_DECAY * (upto - t - SKIP_AFTER), true);
   h.lastDay = Math.max(h.lastDay, clockAt(t).day - 3);
   while (t + STEP <= upto) {
     const clk = clockAt(t);

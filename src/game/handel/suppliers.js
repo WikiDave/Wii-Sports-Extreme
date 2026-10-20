@@ -100,7 +100,8 @@ export function arrivalTime(placed, sup, day, { top = false, rush = false } = {}
   const info = dayInfo(day);
   let mins = sup.base + WEATHER_DELAY[info.weather] + (EVENTS[info.event].heat ? INSPECTION_DELAY : 0) + (top ? TIERS.top.extra : 0);
   if (rush && !sup.flat) mins = Math.max(30, Math.round(mins * RUSH_TIME));
-  return sup.flat ? placed + mins : workTime(placed + mins);
+  const at = Math.ceil(placed + mins);
+  return sup.flat ? at : workTime(at);
 }
 
 // ------------------------------------------------------------------ quote and order
@@ -172,6 +173,13 @@ export function cancelOrder(game, id) {
   game.state.cash += o.refund;
   game.emit('change');
   return { ok: true, refund: o.refund };
+}
+
+/** Whether an order is due (a cheap check without allocations, for every frame). */
+export function hasDue(game) {
+  const t = now(game.state);
+  for (const o of handelState(game).orders) if (o.status === 'onderweg' && o.arriveAt <= t) return true;
+  return false;
 }
 
 /** Moves orders whose time has come into the crate at the hut. Returns the delivered orders. */

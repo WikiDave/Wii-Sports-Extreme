@@ -11,7 +11,7 @@ import { clockAt, now, workTime, whenText, DAY_LENGTH, hourFactor, onShift } fro
 import * as S from '../src/game/handel/sellers.js';
 import { simulate, catchChance, customersPerStep, MAX_CATCHUP } from '../src/game/handel/sim.js';
 import * as P from '../src/game/handel/suppliers.js';
-import { addFresh, consumeFresh, bumpKey, watchJobs, newMemo, clampFresh } from '../src/game/handel/freshness.js';
+import { addFresh, consumeFresh, bumpKey, trackFresh, clampFresh } from '../src/game/handel/freshness.js';
 
 const LIM = 'p:limonade:fris:100';
 const SAFE = { catch: false }; // the guards leave the sellers alone: for tests of the sales themselves
@@ -553,6 +553,16 @@ const dayWith = (pred, from = 2) => {
   g.state.minutes = DAY_START + 30; // the new day starts: yesterday is settled
   simulate(g);
   assert.equal(handelState(g).lastDay, 3);
+  // skipped time cools the heat down, a few minutes of play do not
+  const cool = mk({ xp: 300, day: 2 });
+  S.hireSeller(cool, 'keiko');
+  cool.state.heat = 3;
+  cool.state.minutes = DAY_START + 20;
+  simulate(cool);
+  assert.equal(cool.state.heat, 3);
+  cool.state.minutes = DAY_START + 20 + 330; // five and a half hours in one go
+  simulate(cool);
+  assert.ok(cool.state.heat < 2.2 && cool.state.heat > 2.0, `${cool.state.heat}`);
   // an old save does not replay more than three days
   const old = mk({ xp: 300, day: 1 });
   old.state.inventory[LIM] = 9999;
@@ -869,29 +879,30 @@ const dayWith = (pred, from = 2) => {
   P.collectCrate(g);
   assert.equal(g.state.inventory.citroen, 10);
   assert.deepEqual(handelState(g).fresh.citroen, { vers: 10, top: 0 });
-  const memo = newMemo(g);
+  const tr = trackFresh(g);
   const job = startJob(g, 'limonade', [], 1.0);
   assert.ok(job);
   assert.equal(job.key, 'p:limonade:fris:100');
-  const res = watchJobs(g, memo);
+  const res = tr.tick();
   assert.ok(res, 'bonus noticed');
   assert.equal(res.bonus, 0.04); // 2 fresh citroen
   assert.equal(job.key, 'p:limonade:fris:104');
   assert.equal(parseItem(job.key).quality, 1.04);
   assert.deepEqual(handelState(g).fresh.citroen, { vers: 8, top: 0 });
-  assert.equal(watchJobs(g, memo), null); // not counted twice
+  assert.equal(tr.tick(), null); // not counted twice
   // a batch made from plain stock gets nothing
   g.state.inventory = { citroen: 4 };
   delete handelState(g).fresh.citroen;
   g.state.jobs = [];
-  const memo2 = newMemo(g);
+  tr.dispose();
+  const tr2 = trackFresh(g);
   const job2 = startJob(g, 'limonade', [], 1.0);
-  assert.equal(watchJobs(g, memo2), null);
+  assert.equal(tr2.tick(), null);
   assert.equal(job2.key, 'p:limonade:fris:100');
   // selling or using plain stock elsewhere never leaves the pool larger than the stock
   addFresh(handelState(g), 'citroen', 'vers', 9);
   g.state.inventory.citroen = 1;
-  watchJobs(g, memo2);
+  tr2.tick();
   assert.deepEqual(handelState(g).fresh.citroen, { vers: 1, top: 0 });
 }
 

@@ -1,7 +1,10 @@
-// Feature "handel": not built yet. See docs/FEATURES.md for how a feature plugs in.
+// Feature "handel": street sellers (verkopers) and suppliers (leveranciers).
+// The logic and the world live in src/game/handel/; see runtime.js for what it adds.
+import { startHandel } from '../handel/runtime.js';
+
 export default {
   id: 'handel',
-  install() {
-    return {};
+  install(ctx) {
+    return startHandel(ctx);
   },
 };

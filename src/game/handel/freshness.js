@@ -70,25 +70,34 @@ export function snapshot(inventory) {
   return out;
 }
 
-/** What watchJobs remembers between two looks. */
+/** What the tracker remembers: the ingredient counts at the last change, what left the stock since, and the known jobs. */
 export function newMemo(game) {
-  return { inv: snapshot(game.state.inventory), jobs: new Set(game.state.jobs.map((j) => j.id)) };
+  return { inv: snapshot(game.state.inventory), used: {}, jobs: new Set(game.state.jobs.map((j) => j.id)) };
+}
+
+/** Call it on every 'change' of the game: ingredients that left the stock are added to memo.used. */
+export function noteChange(game, memo) {
+  const inv = game.state.inventory;
+  for (const [k, v] of Object.entries(memo.inv)) {
+    const left = inv[k] ?? 0;
+    if (left < v) memo.used[k] = (memo.used[k] ?? 0) + (v - left);
+  }
+  memo.inv = snapshot(inv);
 }
 
 /**
- * Call it every frame. When a station job has appeared since the last look, the ingredients that
- * left the stock are what it used: fresh ones raise its quality. Returns { job, bonus } or null.
+ * Call it now and then (every few frames). When a station job has appeared, what left the stock
+ * since the last look is what it used: fresh ingredients raise its quality. Starting a job is one
+ * synchronous action, so everything that left the stock by then belongs to it. Returns
+ * { job, bonus } or null.
  */
 export function watchJobs(game, memo) {
   const h = handelState(game);
   const st = game.state;
-  const now = snapshot(st.inventory);
   const fresh = st.jobs.filter((j) => !memo.jobs.has(j.id));
   let result = null;
   if (fresh.length) {
-    const used = {};
-    for (const [k, v] of Object.entries(memo.inv)) if ((now[k] ?? 0) < v) used[k] = v - (now[k] ?? 0);
-    const bonus = consumeFresh(h, used);
+    const bonus = consumeFresh(h, memo.used);
     if (bonus > 0) {
       const job = fresh[0];
       job.key = bumpKey(job.key, bonus);
@@ -97,8 +106,15 @@ export function watchJobs(game, memo) {
     }
     for (const j of fresh) memo.jobs.add(j.id);
   }
+  memo.used = {};
   clampFresh(h, st.inventory);
-  memo.inv = snapshot(st.inventory);
   for (const id of [...memo.jobs]) if (!st.jobs.some((j) => j.id === id)) memo.jobs.delete(id);
   return result;
+}
+
+/** Tracks the stock and the jobs of a game. Returns { tick(), dispose() }; tick() = watchJobs. */
+export function trackFresh(game) {
+  const memo = newMemo(game);
+  const off = game.on('change', () => noteChange(game, memo));
+  return { memo, tick: () => watchJobs(game, memo), dispose: off };
 }
