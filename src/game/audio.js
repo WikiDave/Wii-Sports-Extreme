@@ -86,6 +86,9 @@ export class Audio {
       alert: () => [660, 880].forEach((f, i) => this.tone(f, 0.15, { type: 'square', vol: 0.08, at: i * 0.1 })),
       rank: () => [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.3, { vol: 0.16, at: i * 0.12 })),
       newday: () => [392, 523, 659].forEach((f, i) => this.tone(f, 0.5, { type: 'sine', vol: 0.14, at: i * 0.18 })),
+      step: () => this.tone(110 + Math.random() * 40, 0.07, { type: 'triangle', vol: 0.05 }),
+      stepSand: () => this.tone(520 + Math.random() * 120, 0.05, { type: 'sine', vol: 0.025, glide: 0.5 }),
+      splash: () => this.tone(700 + Math.random() * 300, 0.12, { type: 'sine', vol: 0.05, glide: 0.4 }),
       pour: () => this.tone(300 + Math.random() * 60, 0.12, { type: 'sine', vol: 0.06, glide: 1.5 }),
       perfect: () => [784, 1047].forEach((f, i) => this.tone(f, 0.2, { vol: 0.14, at: i * 0.08 })),
     }[name];

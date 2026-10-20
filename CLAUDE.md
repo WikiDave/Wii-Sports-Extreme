@@ -28,6 +28,26 @@ boten, hotel (S/medium) - 5.5 leven: palmen wuiven, meeuwen, figuranten, boten (
 HUD-iconen, titelscherm, menu's (S/medium) - 5.7 gevoel: camera, springen, stof, voetstappen (S/laag)
 - 5.8 snelheid op telefoon (O/medium)
 
+## Fase 6: Schedule I x Wii Sports Resort (doorlopend, zonder eind tot het af is)
+Doel: evenwaardig aan Schedule I in spelmechanica en aan Wii Sports Resort in uiterlijk en gevoel
+(geen sporten, geen echte drugs). Werkwijze: elke stap bouwen, in de testbrowser spelen, screenshots
+bekijken, fouten fixen, committen, pushen, artifact publiceren, `Status` bijwerken. Doorgaan tot de
+gebruiker stopt zegt.
+6.1 (KLAAR: player.js zwemmen -1 m drijven/stopt op -9 m diepte, springen op spatie/Spring-knop, voetstappen+stof+spetters via world/effects.js) beweging: zwemmen, springen, voetstappen, stof, spetters, camera botst niet met bomen/huizen
+6.2 telefoon in beeld (berichten van klanten, kaart, contacten, bank, apps) zoals Schedule I
+6.3 productiestations: mengtafel, droogrek, pot/kweektent, pers, vulbank, met kwaliteit en tijd
+6.4 klanten: eigen dagritme door het eiland, afspraken via sms, aanbiedingen, verslaving-loos (voorkeur,
+vertrouwen, kopen thuis of op straat), meer dan 5 klanten (20+)
+6.5 dealers en leveranciers: dealers inhuren met route en voorraad, leverancier belt, bezorging
+6.6 geld witwassen: bedrijven kopen (ijskraam, surfschool, restaurant), bank/ATM, belastingdienst-grap
+6.7 politie op niveau: bewakers met zaklamp, agent-auto's, huiszoeking van panden, borg
+6.8 panden: inrichten, upgrades, camera's, sloten, opslagkasten, bed
+6.9 voertuigen: fiets, scooter, golfkar, boot; benzine/laden
+6.10 vaardigheden/rangen/missies (verhaalopdrachten), prestaties
+6.11 wereld: groter eiland, binnenruimtes, meer zones met eigen sfeer, dag/nacht-leven in de stad
+6.12 uiterlijk: eigen modellen voor bomen/props, betere animaties, UI in Wii-stijl, titelscherm
+6.13 prestaties op telefoon en opslaan/laden robuust
+
 ## Status
 - Mii-maker: klaar (hoofden, 72 kapsels, ogen/brauwen/monden, brillen, lichamen, 27 officiele
   Miis), en sinds 4.3 ook neus (lijn + 3D-neus, `nose.js`/`nose-data.js`), baarden (3D-meshes per

@@ -1604,3 +1604,23 @@ button {
     animation-duration: 6s;
   }
 }
+.jump-btn {
+  position: absolute;
+  right: max(118px, calc(env(safe-area-inset-right) + 118px));
+  bottom: max(70px, calc(env(safe-area-inset-bottom) + 60px));
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.55);
+  font: inherit;
+  font-weight: 800;
+  font-size: 0.9rem;
+  color: #2a6fb0;
+  display: none;
+}
+@media (pointer: coarse) {
+  .jump-btn {
+    display: block;
+  }
+}

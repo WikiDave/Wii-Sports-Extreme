@@ -9,10 +9,12 @@ export class Input {
     this.keys = new Set();
     this.stick = { x: 0, y: 0, id: null, cx: 0, cy: 0 };
     this.runHeld = false;
+    this.jumpQueued = false;
     this.onKey = (e) => {
       if (e.target.tagName === 'INPUT') return;
       const down = e.type === 'keydown';
       const k = e.key.toLowerCase();
+      if (down && k === ' ' && !e.repeat) this.jumpQueued = true;
       if (down) this.keys.add(k);
       else this.keys.delete(k);
       if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
@@ -26,7 +28,9 @@ export class Input {
     this.knob = h('span', { class: 'stick-knob' });
     this.stickEl = h('div', { class: 'stick', 'aria-hidden': 'true' }, this.knob);
     this.runEl = h('button', { class: 'run-btn', type: 'button', 'aria-label': 'Rennen' }, 'Ren');
-    container.append(this.stickEl, this.runEl);
+    this.jumpEl = h('button', { class: 'jump-btn', type: 'button', 'aria-label': 'Springen' }, 'Spring');
+    this.jumpEl.addEventListener('pointerdown', () => (this.jumpQueued = true));
+    container.append(this.stickEl, this.runEl, this.jumpEl);
     const R = 46;
     this.stickEl.addEventListener('pointerdown', (e) => {
       const b = this.stickEl.getBoundingClientRect();
@@ -99,7 +103,9 @@ export class Input {
     if (!d) [x, y] = [this.stick.x, this.stick.y];
     // A stick pushed far runs too.
     const run = k.has('shift') || this.runHeld || Math.hypot(this.stick.x, this.stick.y) > 0.98;
-    return { x, y, run };
+    const jump = this.jumpQueued;
+    this.jumpQueued = false;
+    return { x, y, run, jump };
   }
 
   dispose() {

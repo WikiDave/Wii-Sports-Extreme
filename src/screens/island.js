@@ -16,6 +16,7 @@ import { IslandRenderer, shadowsOn } from '../game/world/render.js';
 import { buildWater } from '../game/world/water.js';
 import { Grass } from '../game/world/grass.js';
 import { Life } from '../game/world/life.js';
+import { Effects } from '../game/world/effects.js';
 import { bobBoats, windowGlass, lampLight } from '../game/world/buildings.js';
 import { SEA_LEVEL } from '../game/world/zones.js';
 import { WeatherFx } from '../game/world/weatherFx.js';
@@ -273,6 +274,10 @@ async function buildIsland3d(root, app, loader, isCancelled) {
   await step(0.85, 'Je Mii aankleden');
   const player = new Player(mii, { ...spawn, colliders: props.colliders });
   scene.add(player.group);
+  const fx = new Effects(scene);
+  player.fx = fx;
+  player.onStep = (run, sand) => audio.play(sand ? 'stepSand' : 'step');
+  player.onSplash = () => audio.play('splash');
   shadowsOn(player.group, false);
   const follow = new FollowCamera(camera);
   follow.yaw = player.heading + Math.PI;
@@ -318,6 +323,7 @@ async function buildIsland3d(root, app, loader, isCancelled) {
     bobBoats(props.boats, t);
     props.swayPalms(t, camera.position);
     life.update(t, dt, camera);
+    fx.update(dt);
     water.userData.update(t, Math.min(1.1, 0.25 + sky.hemi.intensity * 0.7), 1 + weatherFx.level.rain * 0.8);
     audio.setAmbience({ nearSea: Math.max(0, 1 - heightAt(player.pos.x, player.pos.z) / 8), rain: weatherFx.level.rain });
     pipeline.follow(player.group.position, sky.dir);
@@ -356,6 +362,7 @@ async function buildIsland3d(root, app, loader, isCancelled) {
     });
     grass.dispose();
     life.dispose();
+    fx.dispose();
     pipeline.dispose();
     renderer.dispose();
     renderer.forceContextLoss();

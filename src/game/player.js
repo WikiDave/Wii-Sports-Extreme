@@ -10,8 +10,14 @@ import { heightAt } from './world/island.js';
 export const MII_SCALE = 0.7;
 const WALK = 4;
 const RUN = 8.5;
-const SHORE = 0.25; // lowest ground the Mii may stand on (just above the waterline)
+const SWIM = 2.8;
+const SWIM_FAST = 4.8;
+const GRAVITY = 24;
+const JUMP = 8.2;
 const RADIUS = 0.45;
+const DEEPEST = -9; // the open sea: swimming stops here
+const SWIM_IN = -1.0; // water this deep (ground below this) means swimming
+const SWIM_OUT = -0.7;
 
 export class Player {
   constructor(mii, { x, z, colliders }) {
@@ -19,18 +25,26 @@ export class Player {
     this.group = new THREE.Group();
     this.mii.group.scale.setScalar(MII_SCALE);
     this.group.add(this.mii.group);
-    this.pos = new THREE.Vector3(x, heightAt(x, z), z);
+    this.pos = new THREE.Vector3(x, Math.max(0, heightAt(x, z)), z);
     this.heading = Math.PI; // facing -z (north)
     this.speed = 0;
     this.phase = 0;
+    this.vy = 0;
+    this.grounded = true;
+    this.swimming = false;
+    this.swimBlend = 0; // 0 walking .. 1 swimming, for the pose
     this.colliders = colliders;
     this.blinkAt = 2;
+    this.fx = null; // Effects, set by the screen
+    this.onStep = null; // (running) => void, for footstep sounds
+    this.onSplash = null; // () => void
+    this.lastStepSign = 1;
     this.group.position.copy(this.pos);
   }
 
-  /** Free spot test: dry land and no obstacle. */
+  /** Free spot test: not out in the open sea, and no obstacle. */
   free(x, z) {
-    if (heightAt(x, z) < SHORE) return false;
+    if (heightAt(x, z) < DEEPEST) return false;
     for (const c of this.colliders) {
       const dx = x - c.x;
       const dz = z - c.z;
@@ -41,12 +55,23 @@ export class Player {
   }
 
   /**
-   * One frame: move = input.move(), camYaw = the camera's heading (radians), dt in seconds.
+   * One frame: move = input.move() ({ x, y, run, jump }), camYaw = the camera's heading
+   * (radians), dt in seconds.
    */
   update(move, camYaw, dt, t) {
+    const ground = heightAt(this.pos.x, this.pos.z);
+    if (!this.swimming && ground < SWIM_IN && this.grounded) {
+      this.swimming = true;
+      this.fx?.splash({ x: this.pos.x, y: 0.1, z: this.pos.z }, 18);
+      this.fx?.ripple(this.pos, 4);
+      this.onSplash?.();
+    } else if (this.swimming && ground > SWIM_OUT) {
+      this.swimming = false;
+    }
     const amount = Math.min(1, Math.hypot(move.x, move.y));
-    const target = amount > 0.05 ? (move.run ? RUN : WALK) * amount : 0;
-    this.speed += (target - this.speed) * Math.min(1, dt * 10);
+    const top = this.swimming ? (move.run ? SWIM_FAST : SWIM) : move.run ? RUN : WALK;
+    const target = amount > 0.05 ? top * amount : 0;
+    this.speed += (target - this.speed) * Math.min(1, dt * (this.grounded || this.swimming ? 10 : 2.5));
     if (amount > 0.05) {
       // Forward is away from the camera.
       const want = camYaw + Math.atan2(-move.x, move.y) + Math.PI;
@@ -60,37 +85,117 @@ export class Player {
       const dz = Math.cos(this.heading) * step;
       // Slide along obstacles: try the full step, then each axis.
       const { x, z } = this.pos;
-      if (this.free(x + dx, z + dz)) this.pos.set(x + dx, 0, z + dz);
-      else if (this.free(x + dx, z)) this.pos.set(x + dx, 0, z);
-      else if (this.free(x, z + dz)) this.pos.set(x, 0, z + dz);
+      if (this.free(x + dx, z + dz)) [this.pos.x, this.pos.z] = [x + dx, z + dz];
+      else if (this.free(x + dx, z)) this.pos.x = x + dx;
+      else if (this.free(x, z + dz)) this.pos.z = z + dz;
       else this.speed = 0;
     }
-    this.pos.y = heightAt(this.pos.x, this.pos.z);
-    this.group.position.lerp(this.pos, Math.min(1, dt * 20));
-    this.group.position.x = this.pos.x;
-    this.group.position.z = this.pos.z;
+    // Vertical: jump and fall on land, float in water.
+    const gy = heightAt(this.pos.x, this.pos.z);
+    if (this.swimming) {
+      const floatY = -0.95 + Math.sin(t * 2.2) * 0.04;
+      this.pos.y += (floatY - this.pos.y) * Math.min(1, dt * 9);
+      this.vy = 0;
+      this.grounded = true;
+      if (move.jump && !this.diveCool) {
+        this.fx?.splash({ x: this.pos.x, y: 0.1, z: this.pos.z }, 8);
+        this.diveCool = 0.5;
+      }
+    } else {
+      if (move.jump && this.grounded) {
+        this.vy = JUMP;
+        this.grounded = false;
+      }
+      const floorY = Math.max(0, gy);
+      if (!this.grounded) {
+        this.vy -= GRAVITY * dt;
+        this.pos.y += this.vy * dt;
+        if (this.pos.y <= floorY && this.vy < 0) {
+          this.pos.y = floorY;
+          this.vy = 0;
+          this.grounded = true;
+          this.fx?.dust(this.pos, true);
+        }
+      } else {
+        // Follow the ground, wading through the shallows.
+        const y = Math.max(gy, -0.7);
+        this.pos.y += (y - this.pos.y) * Math.min(1, dt * 22);
+        if (this.pos.y > floorY + 0.4 && gy < this.pos.y - 0.4) this.grounded = false; // walked off an edge
+      }
+    }
+    if (this.diveCool) this.diveCool = Math.max(0, this.diveCool - dt);
+    this.group.position.copy(this.pos);
     this.group.rotation.y = this.heading;
-    this.animate(dt, t);
+    this.animate(dt, t, gy);
   }
 
-  animate(dt, t) {
+  animate(dt, t, gy = 1) {
     const p = this.mii.parts;
     const f = Math.min(1, this.speed / WALK);
     const run = Math.max(0, (this.speed - WALK) / (RUN - WALK));
-    this.phase += dt * (6 + this.speed * 1.1);
+    const swimF = this.swimming ? Math.min(1, 0.45 + this.speed / SWIM_FAST) : 0;
+    this.swimBlend += (swimF - this.swimBlend) * Math.min(1, dt * 8);
+    const sw = this.swimBlend;
+    this.phase += dt * (this.swimming ? 4 + this.speed * 1.4 : 6 + this.speed * 1.1);
     const s = Math.sin(this.phase);
-    const legSwing = (0.5 + 0.25 * run) * f;
-    const armSwing = (0.45 + 0.4 * run) * f;
-    p.legL.rotation.x = s * legSwing;
-    p.legR.rotation.x = -s * legSwing;
-    p.armL.rotation.x = -s * armSwing;
-    p.armR.rotation.x = s * armSwing;
-    // Arms a little out to the sides, more when running.
-    p.armL.rotation.z = 0.08 + 0.15 * run;
-    p.armR.rotation.z = -0.08 - 0.15 * run;
-    this.mii.group.position.y = Math.abs(Math.cos(this.phase)) * 0.08 * f;
-    this.mii.group.rotation.x = 0.06 * f + 0.1 * run;
-    if (f < 0.05) this.mii.idle(t);
+    const air = this.grounded ? 0 : 1;
+    // Walking and running
+    let legL = s * (0.5 + 0.25 * run) * f;
+    let legR = -legL;
+    let armL = -s * (0.45 + 0.4 * run) * f;
+    let armR = -armL;
+    let armLz = 0.08 + 0.15 * run;
+    let armRz = -armLz;
+    if (air) {
+      // In the air: arms up, legs tucked
+      legL = 0.5;
+      legR = -0.35;
+      armL = armR = -2.6;
+      armLz = 0.35;
+      armRz = -0.35;
+    }
+    // Swimming: front crawl, arms circling overhead, legs fluttering
+    if (sw > 0.01) {
+      const c = this.phase * 0.9;
+      const swimArmL = -2.4 + Math.sin(c) * 1.1;
+      const swimArmR = -2.4 + Math.sin(c + Math.PI) * 1.1;
+      const flutter = Math.sin(this.phase * 3) * 0.35;
+      legL += (flutter - legL) * sw;
+      legR += (-flutter - legR) * sw;
+      armL += (swimArmL - armL) * sw;
+      armR += (swimArmR - armR) * sw;
+      armLz += (0.15 - armLz) * sw;
+      armRz += (-0.15 - armRz) * sw;
+    }
+    p.legL.rotation.x = legL;
+    p.legR.rotation.x = legR;
+    p.armL.rotation.x = armL;
+    p.armR.rotation.x = armR;
+    p.armL.rotation.z = armLz;
+    p.armR.rotation.z = armRz;
+    // Body: bounce while walking, lean while running, lie flat in the water
+    const bounce = this.swimming || air ? 0 : Math.abs(Math.cos(this.phase)) * 0.08 * f;
+    this.mii.group.position.y = bounce + sw * 0.15;
+    this.mii.group.rotation.x = (0.06 * f + 0.1 * run) * (1 - sw) + sw * 1.2 + air * -0.1;
+    this.mii.headPivot.rotation.x = -sw * 0.95; // keep looking ahead
+    if (f < 0.05 && !this.swimming && !air) this.mii.idle(t);
+    // Footsteps, dust and splashes
+    const sign = Math.sign(s) || 1;
+    if (sign !== this.lastStepSign) {
+      this.lastStepSign = sign;
+      if (!this.swimming && this.grounded && this.speed > 1.5) {
+        if (gy > -0.1) {
+          this.fx?.dust(this.pos, this.speed > WALK + 0.5);
+          this.onStep?.(this.speed > WALK + 0.5, gy < 2.6);
+        } else {
+          this.fx?.splash({ x: this.pos.x, y: Math.max(gy, -0.5) + 0.1, z: this.pos.z }, 3);
+          this.onSplash?.();
+        }
+      } else if (this.swimming && this.speed > 0.8) {
+        this.fx?.ripple(this.pos, 2.4);
+        this.fx?.splash({ x: this.pos.x, y: 0.05, z: this.pos.z }, 2);
+      }
+    }
     // Blink now and then.
     if (t > this.blinkAt) {
       this.mii.setBlink(true);
