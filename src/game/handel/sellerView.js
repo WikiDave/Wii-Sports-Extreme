@@ -254,7 +254,7 @@ export class SellerView {
     const e = this.entries.get(id);
     if (!e?.shown) return;
     const jitter = (this.popupN = (this.popupN ?? 0) + 1) % 5;
-    this.popups.show(e.x + (jitter - 2) * 0.22, this.ctx.heightAt(e.x, e.z) + 3.1 + jitter * 0.25, e.z, text, color);
+    this.popups.show(e.x + (jitter - 2) * 0.22, this.ctx.heightAt(e.x, e.z) + 3.1 + jitter * 0.55, e.z, text, color);
   }
 
   isShown(id) {

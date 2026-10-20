@@ -99,7 +99,7 @@ export function startHandel(ctx) {
   /** Turns what happened into toasts, phone messages and pictures. */
   function handle(events) {
     const lines = [];
-    const few = events.length <= 12;
+    const few = events.length <= 4; // after a long sleep dozens of sales arrive at once: no popups then
     for (const e of events) {
       const c = candidateById(e.seller);
       const p = pronouns(c.gender);
