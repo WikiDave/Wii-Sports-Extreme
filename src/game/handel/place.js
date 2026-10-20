@@ -4,7 +4,9 @@
 export function isFree(ctx, x, z, { gap = 1.2, minH = 0.6, maxH = 60 } = {}) {
   const y = ctx.heightAt(x, z);
   if (y < minH || y > maxH) return false;
-  return ctx.props.colliders.every((c) => (x - c.x) ** 2 + (z - c.z) ** 2 > (c.r + gap) ** 2);
+  // (a plain loop: this runs every frame for every walking seller)
+  for (const c of ctx.props.colliders) if ((x - c.x) ** 2 + (z - c.z) ** 2 <= (c.r + gap) ** 2) return false;
+  return true;
 }
 
 /**

@@ -1,7 +1,7 @@
 // Tests of feature "handel": street sellers, suppliers, delivery crate and fresh ingredients.
 import assert from 'node:assert/strict';
 import { Game, DAY_START } from '../src/game/state.js';
-import { buy, parseItem } from '../src/game/economy.js';
+import { parseItem } from '../src/game/economy.js';
 import { startJob } from '../src/game/stations.js';
 import { dayInfo } from '../src/game/weather.js';
 import { stockFree } from '../src/game/empire.js';
@@ -726,7 +726,6 @@ const dayWith = (pred, from = 2) => {
   assert.equal(P.pendingUnits(handelState(g)), 0);
   assert.deepEqual(P.deliverDue(g), []); // only once
   assert.ok(handelState(g).rel.pim >= 1); // a relationship starts
-  const pts = handelState(g).rel.pim;
   // stock limit: collect only what fits
   g.state.properties = ['hut'];
   g.state.inventory.suiker = 40 - 6;

@@ -92,9 +92,9 @@ export function sellersUi({ page, game, toast, onChange = () => {} }) {
         summary,
         ...inbox,
         ...(rows.length ? rows : [h('p', { class: 'phone-empty' }, game.rank < 1 ? 'Verkopers werken voor je vanaf rang Kraamhouder.' : 'Je hebt nog geen verkopers. Huur er hieronder een in.')]),
-        h('h3', {}, 'Op zoek naar werk'),
-        ...(hire.length ? hire : [h('p', { class: 'hd-sub' }, game.rank < 1 ? '' : 'Vandaag is er niemand beschikbaar.')]),
-        locked ? h('p', { class: 'hd-sub' }, `Nog ${locked} verkoper${locked === 1 ? '' : 's'} komen er bij hogere rangen.`) : null,
+        game.rank < 1 ? null : h('h3', {}, 'Op zoek naar werk'),
+        ...(hire.length ? hire : game.rank < 1 ? [] : [h('p', { class: 'hd-sub' }, 'Vandaag is er niemand beschikbaar.')]),
+        locked && game.rank >= 1 ? h('p', { class: 'hd-sub' }, `Nog ${locked} verkoper${locked === 1 ? '' : 's'} komen er bij hogere rangen.`) : null,
       ),
     );
   };

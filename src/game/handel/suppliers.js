@@ -91,8 +91,16 @@ export function orderRoom(game) {
   const h = handelState(game);
   return Math.max(0, stockFree(game.state) - pendingUnits(h) - crateUnits(h));
 }
-export const pendingUnits = (h) => h.orders.filter((o) => o.status === 'onderweg').reduce((n, o) => n + o.units, 0);
-export const crateUnits = (h) => h.crate.reduce((n, e) => n + e.n, 0);
+export function pendingUnits(h) {
+  let n = 0;
+  for (const o of h.orders) if (o.status === 'onderweg') n += o.units;
+  return n;
+}
+export function crateUnits(h) {
+  let n = 0;
+  for (const e of h.crate) n += e.n;
+  return n;
+}
 
 // ------------------------------------------------------------------ delivery time
 /** Absolute time at which an order placed at `placed` arrives. */
@@ -113,7 +121,6 @@ export function arrivalTime(placed, sup, day, { top = false, rush = false } = {}
 export function quote(game, supplierId, basket, rush = false) {
   const sup = SUPPLIERS[supplierId];
   const st = game.state;
-  const h = handelState(game);
   const level = relLevel(game, supplierId);
   const errors = [];
   const lines = [];

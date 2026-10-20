@@ -7,7 +7,7 @@ import { buildCrate, buildMailbox } from './props3d.js';
 import { findFree } from './place.js';
 import { handelState } from './store.js';
 import * as P from './suppliers.js';
-import { now, whenText } from './time.js';
+import { whenText } from './time.js';
 import { btn, chip, euro } from './ui.js';
 
 const FLAG_UP = 0;

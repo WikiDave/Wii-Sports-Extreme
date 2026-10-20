@@ -34,7 +34,8 @@ export class Board {
     }
     this.group.traverse((o) => {
       o.geometry?.dispose();
-      if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => (m.map?.dispose(), m.dispose()));
+      o.material?.map?.dispose();
+      o.material?.dispose();
     });
   }
 }

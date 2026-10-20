@@ -95,10 +95,13 @@ export function buildBoard() {
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 4;
+  // One material per mesh (the island's cleanup disposes `mesh.material` directly): a wooden
+  // backing board and, in front of it, a plane with the painted sign.
   const front = new THREE.MeshLambertMaterial({ map: tex });
-  const board = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.7, 0.18), [wood, wood, wood, wood, front, wood]);
-  board.position.set(0, 2.45, 0);
-  g.add(board);
+  g.add(box(3.4, 1.7, 0.18, wood, 0, 2.45, 0));
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 1.7), front);
+  face.position.set(0, 2.45, 0.095);
+  g.add(face);
   const crates = buildCrate();
   crates.position.set(2.6, 0, 0.6);
   crates.scale.setScalar(0.9);

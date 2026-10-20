@@ -18,6 +18,9 @@ import { onShift } from './time.js';
 const NEAR = 150;
 const WALK = 1.3;
 const SLOTS = [[0, 0], [8, 2], [-8, 3], [3, -9]];
+// Constant option objects, so walking does not allocate every frame.
+const STEP_OPTS = { gap: 0.4, minH: 0.4, maxH: 70 };
+const PICK_OPTS = { gap: 0.5, minH: 0.4, maxH: 70 };
 
 export class SellerView {
   constructor(ctx) {
@@ -196,7 +199,7 @@ export class SellerView {
       const r = 1.8 + Math.random() * 2;
       const x = e.hx + Math.cos(a) * r;
       const z = e.hz + Math.sin(a) * r;
-      if (isFree(this.ctx, x, z, { gap: 0.5, minH: 0.4, maxH: 70 })) return { x, z };
+      if (isFree(this.ctx, x, z, PICK_OPTS)) return { x, z };
     }
     return { x: e.hx + 1.8, z: e.hz + 1.2 };
   }
@@ -220,7 +223,7 @@ export class SellerView {
     e.speed += (WALK - e.speed) * Math.min(1, dt * 6);
     const nx = e.x + Math.sin(e.heading) * e.speed * dt;
     const nz = e.z + Math.cos(e.heading) * e.speed * dt;
-    if (isFree(this.ctx, nx, nz, { gap: 0.4, minH: 0.4, maxH: 70 })) [e.x, e.z] = [nx, nz];
+    if (isFree(this.ctx, nx, nz, STEP_OPTS)) [e.x, e.z] = [nx, nz];
     else e.target = this.pick(e);
   }
 
