@@ -16,6 +16,7 @@ import { pickVisible } from '../klanten/visible.js';
 import { lineFor } from '../klanten/lines.js';
 import { miiFor } from '../klanten/looks.js';
 import { setLiveWorld } from '../klanten/live.js';
+import { animateBlink, animateIdle, animateWalk, animateWave } from '../klanten/animate.js';
 import { tierOf } from '../klanten/tiers.js';
 import { heightAt } from './island.js';
 
@@ -53,6 +54,7 @@ export class CustomerView {
     this.entries = CUSTOMERS.map((c, i) => {
       const e = {
         c,
+        id: i,
         loc: {},
         x: 0, z: 0, y: 0, px: 0, pz: 0,
         known: false, indoors: true, ok: false, shown: false, knockable: false,
@@ -236,41 +238,16 @@ export class CustomerView {
     if (!walking && near) want = Math.atan2(player.x - e.x, player.z - e.z);
     e.rot += wrap(want - e.rot) * Math.min(1, dt * (walking ? 10 : 5));
     mii.group.rotation.y = e.rot;
-    const p = mii.parts;
-    if (walking) {
-      e.phase += dt * (5 + e.speedNow * 1.7);
-      const f = Math.min(1, e.speedNow / 2);
-      const sw = Math.sin(e.phase) * (0.42 + 0.12 * Math.min(1, e.speedNow / 3)) * f;
-      p.legL.rotation.x = sw;
-      p.legR.rotation.x = -sw;
-      p.armL.rotation.x = -sw * 0.9;
-      p.armR.rotation.x = sw * 0.9;
-      p.armL.rotation.z = 0.08;
-      p.armR.rotation.z = -0.08;
-      mii.group.position.y += Math.abs(Math.cos(e.phase)) * 0.05 * f;
-      mii.group.rotation.x = 0.05 * f;
-    } else {
-      p.legL.rotation.x = p.legR.rotation.x = 0;
-      mii.group.rotation.x = 0;
-      mii.idle(t + e.phase);
-    }
-    // A wave when you come close.
+    if (walking) animateWalk(mii, e, dt);
+    else animateIdle(mii, e, t);
+    // A wave and a word when you come close.
     if (near && t - e.lastGreet > 40 && e.ok && !document.querySelector('.modal-backdrop')) {
       e.lastGreet = t;
       e.waveUntil = t + 2.4;
       this.greet(e);
     }
-    if (t < e.waveUntil) {
-      p.armR.rotation.x = -2.4 + Math.sin(t * 11) * 0.28;
-      p.armR.rotation.z = -0.5;
-    }
-    if (t > e.blinkAt) {
-      mii.setBlink(true);
-      if (t > e.blinkAt + 0.12) {
-        mii.setBlink(false);
-        e.blinkAt = t + 2 + ((e.phase * 7) % 3);
-      }
-    }
+    if (t < e.waveUntil) animateWave(mii, t);
+    animateBlink(mii, e, t);
   }
 
   /** What they call out when you come near. */
