@@ -8,6 +8,7 @@ import { ZONES, SEA_LEVEL } from './zones.js';
 export const ISLAND_SIZE = 1500;
 const SEGMENTS = 300;
 const SEA_FLOOR = -24;
+export const SEA_FLOOR_DEPTH = -SEA_FLOOR;
 
 const smooth = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 
@@ -57,8 +58,8 @@ export function zoneAt(x, z) {
 const C = (hex) => new THREE.Color(hex);
 const COLORS = {
   deep: C('#1d6fa5'),
-  shallow: C('#e9d9a4'),
-  sand: C('#f3e2a8'),
+  shallow: C('#cdbf98'),
+  sand: C('#ddcb9f'),
   grass: C('#83c94d'),
   grassHigh: C('#5ea93e'),
   rock: C('#a6957f'),
@@ -92,32 +93,18 @@ function terrain() {
   return mesh;
 }
 
-function sea() {
-  // Clear turquoise water: the sand below shows through near the shore.
-  const mat = new THREE.MeshPhongMaterial({
-    color: '#38c6dc',
-    specular: '#ffffff',
-    shininess: 90,
-    transparent: true,
-    opacity: 0.62,
-    depthWrite: false,
-  });
-  const water = new THREE.Mesh(new THREE.CircleGeometry(7000, 64), mat);
-  water.rotation.x = -Math.PI / 2;
-  water.position.y = SEA_LEVEL;
-  water.renderOrder = 1;
+function seaFloor() {
   // Deep sea floor under and beyond the terrain, lit the same, so the terrain edge never shows.
   const floor = new THREE.Mesh(new THREE.CircleGeometry(7000, 64), new THREE.MeshLambertMaterial({ color: COLORS.deep }));
   floor.rotation.x = -Math.PI / 2;
   floor.position.y = SEA_FLOOR - 0.3;
-  return { water, floor };
+  return floor;
 }
 
-/** The island scene graph: terrain and sea. */
+/** The island scene graph: terrain and sea floor (the water itself is water.js). */
 export function buildIsland() {
   const group = new THREE.Group();
   const ground = terrain();
-  const { water, floor } = sea();
-  group.add(ground, floor, water);
-  return { group, ground, water };
+  group.add(ground, seaFloor());
+  return { group, ground };
 }

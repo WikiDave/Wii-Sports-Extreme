@@ -12,6 +12,8 @@ import { CustomerView } from '../game/world/customerView.js';
 import { openDealMenu } from '../game/ui/dealMenu.js';
 import { Audio } from '../game/audio.js';
 import { IslandRenderer, shadowsOn } from '../game/world/render.js';
+import { buildWater } from '../game/world/water.js';
+import { SEA_LEVEL } from '../game/world/zones.js';
 import { WeatherFx } from '../game/world/weatherFx.js';
 import { dayInfo, WEATHER, EVENTS, priceFactor } from '../game/weather.js';
 import { Guards } from '../game/world/guards.js';
@@ -79,6 +81,9 @@ export function islandScreen(root, app) {
   const sky = new Sky(scene);
   pipeline.setupSun(sky.sun);
   const island = buildIsland();
+  const water = buildWater(island.ground, sky);
+  water.position.y = SEA_LEVEL;
+  scene.add(water);
   const props = buildProps();
   scene.add(island.group, props.group);
   shadowsOn(props.group);
@@ -225,7 +230,7 @@ export function islandScreen(root, app) {
   follow.yaw = player.heading + Math.PI;
   const input = new Input(screen, renderer.domElement, { onLook: (dx, dy) => follow.look(dx, dy), onZoom: (f) => follow.zoom(f) });
   const minimap = new Minimap(screen);
-  window.__game = { player, follow, game, weatherFx, hutPos, interactions, guards, teleport: (it) => { player.pos.set(it.x, 0, it.z + 4); player.group.position.copy(player.pos); } }; // for tests
+  window.__game = { player, follow, game, weatherFx, heightAt, hutPos, interactions, guards, teleport: (it) => { player.pos.set(it.x, 0, it.z + 4); player.group.position.copy(player.pos); } }; // for tests
 
   const resize = () => {
     const w = view.clientWidth || 1;
@@ -261,6 +266,7 @@ export function islandScreen(root, app) {
     minimap.draw(player);
     sky.follow(camera);
     weatherFx.update(dt, camera, t);
+    water.userData.update(t, Math.min(1.1, 0.25 + sky.hemi.intensity * 0.7), 1 + weatherFx.level.rain * 0.8);
     audio.setAmbience({ nearSea: Math.max(0, 1 - heightAt(player.pos.x, player.pos.z) / 8), rain: weatherFx.level.rain });
     pipeline.follow(player.group.position, sky.dir);
     pipeline.render(scene, camera, sky.night);
