@@ -15,6 +15,7 @@ import { Audio } from '../game/audio.js';
 import { IslandRenderer, shadowsOn } from '../game/world/render.js';
 import { buildWater } from '../game/world/water.js';
 import { Grass } from '../game/world/grass.js';
+import { bobBoats, windowGlass, lampLight } from '../game/world/buildings.js';
 import { SEA_LEVEL } from '../game/world/zones.js';
 import { WeatherFx } from '../game/world/weatherFx.js';
 import { dayInfo, WEATHER, EVENTS, priceFactor } from '../game/weather.js';
@@ -172,6 +173,8 @@ async function buildIsland3d(root, app, loader, isCancelled) {
     weatherFx.setWeather(dayInfo(game.state.day).weather);
     sky.setTime(game.hour);
     props.lamp.emissiveIntensity = game.isNight ? 1.6 : 0;
+    windowGlass.emissiveIntensity = game.isNight ? 0.9 : 0;
+    lampLight.emissiveIntensity = game.isNight ? 1.8 : 0;
   };
   game.on('time', () => {
     refreshHud();
@@ -273,7 +276,7 @@ async function buildIsland3d(root, app, loader, isCancelled) {
   follow.yaw = player.heading + Math.PI;
   const input = new Input(screen, renderer.domElement, { onLook: (dx, dy) => follow.look(dx, dy), onZoom: (f) => follow.zoom(f) });
   const minimap = new Minimap(screen);
-  window.__game = { player, follow, game, weatherFx, heightAt, grassCount: grass.count, hutPos, interactions, guards, teleport: (it) => { player.pos.set(it.x, 0, it.z + 4); player.group.position.copy(player.pos); } }; // for tests
+  window.__game = { player, follow, game, weatherFx, heightAt, props, grassCount: grass.count, hutPos, interactions, guards, teleport: (it) => { player.pos.set(it.x, 0, it.z + 4); player.group.position.copy(player.pos); } }; // for tests
 
   const resize = () => {
     const w = view.clientWidth || 1;
@@ -310,6 +313,7 @@ async function buildIsland3d(root, app, loader, isCancelled) {
     sky.follow(camera);
     weatherFx.update(dt, camera, t);
     grass.update(t, camera);
+    bobBoats(props.boats, t);
     water.userData.update(t, Math.min(1.1, 0.25 + sky.hemi.intensity * 0.7), 1 + weatherFx.level.rain * 0.8);
     audio.setAmbience({ nearSea: Math.max(0, 1 - heightAt(player.pos.x, player.pos.z) / 8), rain: weatherFx.level.rain });
     pipeline.follow(player.group.position, sky.dir);

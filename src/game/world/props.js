@@ -3,6 +3,8 @@
 
 import * as THREE from 'three';
 import { heightAt, zoneAt } from './island.js';
+import { house as newHouse, hotel, pier, streetLamp } from './buildings.js';
+import { PATH_SEGMENTS, pathDistance } from './zones.js';
 
 function rng(seed) {
   let s = seed >>> 0;
@@ -134,9 +136,12 @@ export function buildProps() {
       if (y === null || zoneAt(x, z) !== v.zone) continue;
       // Keep houses apart.
       if (group.children.some((c) => c.userData.house && Math.hypot(c.position.x - x, c.position.z - z) < 14)) continue;
-      const obj = house(rand() < 0.5 ? M.wall : M.wallB, rand() < 0.5 ? M.roof : M.roofB);
+      if (pathDistance(x, z) < 6) continue; // keep the paths free
+      const obj = newHouse(rand, v.zone === 'haven' ? 1.4 : 1);
       obj.userData.house = true;
-      place(obj, x, z, y - 0.3, Math.round(rand() * 4) * (Math.PI / 2), 1, 4.4);
+      // On a slope the lowest corner sets the height; the plinth hides the gap.
+      const low = Math.min(y, heightAt(x + 4, z + 4), heightAt(x - 4, z + 4), heightAt(x + 4, z - 4), heightAt(x - 4, z - 4));
+      place(obj, x, z, low - 0.15, Math.round(rand() * 4) * (Math.PI / 2), 1, obj.userData.radius);
       placed++;
     }
   }
@@ -158,5 +163,54 @@ export function buildProps() {
     place(obj, x, z, y, undefined, 0.7 + rand() * 2.2, 1.1);
   }
 
-  return { group, lamp, colliders };
+  // The hotel in the hills, on the first flat enough spot near the middle.
+  for (let i = 0, found = false; i < 400 && !found; i++) {
+    const a = i * 2.4;
+    const x = -30 + Math.cos(a) * i * 0.7;
+    const z = 120 + Math.sin(a) * i * 0.7;
+    const ys = [heightAt(x, z), heightAt(x + 14, z), heightAt(x - 14, z), heightAt(x, z + 8), heightAt(x, z - 8)];
+    if (Math.min(...ys) > 3 && Math.max(...ys) - Math.min(...ys) < 2.2 && pathDistance(x, z) > 16 && zoneAt(x, z) === 'heuvels') {
+      const obj = hotel();
+      obj.userData.house = true;
+      place(obj, x, z, Math.min(...ys) - 0.3, 0, 1, 16);
+      colliders.at(-1).hotel = { x, z };
+      found = true;
+    }
+  }
+
+  // The harbour pier, on the shore east of Havenstad, and the boats along it.
+  const boats = [];
+  for (const ang of [0, -0.5, 0.5, -1, 1, 1.5, -1.5]) {
+    const d = { x: Math.cos(ang), z: Math.sin(ang) };
+    let r = 40;
+    while (r < 220 && heightAt(250 + d.x * r, 70 + d.z * r) > 0.3) r += 1;
+    if (r < 220) {
+      const sx = 250 + d.x * (r - 3);
+      const sz = 70 + d.z * (r - 3);
+      const p = pier(sx, sz, d, 38, 0.2);
+      group.add(p.group);
+      boats.push(...p.boats);
+      break;
+    }
+  }
+
+  // Street lamps along the paths near the towns.
+  const lamps = [];
+  for (const [ax, az, bx, bz] of PATH_SEGMENTS) {
+    const len = Math.hypot(bx - ax, bz - az);
+    for (let s = 0; s < len; s += 22) {
+      const t = s / len;
+      const x = ax + (bx - ax) * t + ((bz - az) / len) * 3.3;
+      const z = az + (bz - az) * t - ((bx - ax) / len) * 3.3;
+      const y = heightAt(x, z);
+      const near = [[250, 70], [20, 230]].some(([cx, cz]) => Math.hypot(x - cx, z - cz) < 130);
+      if (!near || y < 2.5) continue;
+      const lamp = streetLamp();
+      lamp.position.set(x, y - 0.05, z);
+      lamp.rotation.y = Math.atan2(bz - az, bx - ax) > 0 ? Math.PI : 0;
+      group.add(lamp);
+    }
+  }
+
+  return { group, lamp, colliders, boats };
 }
