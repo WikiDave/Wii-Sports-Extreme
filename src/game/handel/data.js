@@ -63,6 +63,9 @@ export const CANDIDATES = [
 
 export const candidateById = (id) => CANDIDATES.find((c) => c.id === id) ?? null;
 
+/** Dutch pronouns for texts about a seller: p.hij, p.Hij, p.hem, p.zijn (his / her). */
+export const pronouns = (gender) => (gender === 'f' ? { hij: 'zij', Hij: 'Zij', hem: 'haar', zijn: 'haar' } : { hij: 'hij', Hij: 'Hij', hem: 'hem', zijn: 'zijn' });
+
 /** Price of hiring someone: better and more loyal people cost more. */
 export const hireFee = (c) => Math.round((50 + 26 * (c.prijs + c.disc + c.tempo) + 2 * c.loyalty) / 10) * 10;
 

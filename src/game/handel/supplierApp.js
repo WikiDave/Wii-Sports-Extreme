@@ -14,7 +14,7 @@ import { now, whenText } from './time.js';
 import { btn, bar, chip, euro, euro1, note, toTop } from './ui.js';
 
 /** Inbox kinds that belong to the suppliers. */
-export const SUPPLIER_KINDS = ['levering', 'uitverkocht'];
+export const SUPPLIER_KINDS = ['levering', 'koopje'];
 
 /** Number on the app icon: a delivery waiting plus unread messages. */
 export const suppliersBadge = (game) => (P.crateUnits(handelState(game)) > 0 ? 1 : 0) + unreadCount(game, SUPPLIER_KINDS);

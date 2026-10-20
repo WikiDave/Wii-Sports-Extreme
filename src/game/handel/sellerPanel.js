@@ -5,7 +5,7 @@
 import { h } from '../../ui/dom.js';
 import { itemName, parseItem } from '../economy.js';
 import { RANKS } from '../state.js';
-import { BANK_FEE, ROUTES, ROUTE_IDS, STOCK_MAX, candidateById, pouchCap } from './data.js';
+import { BANK_FEE, ROUTES, ROUTE_IDS, STOCK_MAX, candidateById, pouchCap, pronouns } from './data.js';
 import { avatar } from './looks.js';
 import * as S from './sellers.js';
 import { catchChanceToday } from './sim.js';
@@ -33,6 +33,7 @@ export function sellerPanel(game, id, { inPerson = false, toast = () => {}, onGo
       return;
     }
     const c = candidateById(id);
+    const p = pronouns(c.gender);
     const cap = pouchCap(game.rank);
     const carry = S.stockCount(s);
     const mine = Object.entries(game.state.inventory).filter(([k]) => parseItem(k));
@@ -54,7 +55,7 @@ export function sellerPanel(game, id, { inPerson = false, toast = () => {}, onGo
       h('div', { class: 'hd-skill' }, h('span', {}, 'Tempo'), stars(c.tempo)),
       h('div', { class: 'hd-skill' }, h('span', {}, 'Houdt zelf'), h('span', {}, `${c.cut}% van elke verkoop`)),
       h('div', { class: 'hd-skill' }, h('span', {}, 'Trouw'), bar(s.loyalty / 100)),
-      s.loyalty < 55 ? h('div', { class: 'hd-sub' }, 'Let op: hij houdt soms een deel van de kas achter. Een fooi of een praatje helpt.') : null,
+      s.loyalty < 55 ? h('div', { class: 'hd-sub' }, `Let op: ${p.hij} houdt soms een deel van de kas achter. Een fooi of een praatje helpt.`) : null,
     );
 
     const route = s.zone ? ROUTES[s.zone] : null;
@@ -78,9 +79,9 @@ export function sellerPanel(game, id, { inPerson = false, toast = () => {}, onGo
             { class: 'hd-sub' },
             route.text,
             h('div', { class: 'hd-row hd-wrap' }, h('span', {}, 'Drukte ', stars(route.stars.drukte)), h('span', {}, 'Prijs ', stars(route.stars.prijs)), h('span', {}, 'Risico ', stars(route.stars.risico))),
-            h('div', {}, `Kans dat een bewaker hem vandaag pakt: ongeveer ${Math.max(1, Math.round(risk * 100))}%.`),
+            h('div', {}, `Kans dat een bewaker ${p.hem} vandaag pakt: ongeveer ${Math.max(1, Math.round(risk * 100))}%.`),
           )
-        : h('div', { class: 'hd-sub' }, 'Zonder route verkoopt hij niets. Kies hierboven een plek.'),
+        : h('div', { class: 'hd-sub' }, `Zonder route verkoopt ${p.hij} niets. Kies hierboven een plek.`),
     );
 
     const stockRows = Object.entries(s.stock).map(([key, n]) =>
@@ -110,7 +111,7 @@ export function sellerPanel(game, id, { inPerson = false, toast = () => {}, onGo
       { class: 'hd-card' },
       h('div', { class: 'hd-row hd-between' }, h('strong', {}, 'Zijn voorraad'), chip(`${carry}/${STOCK_MAX}`, carry === 0 && s.zone ? 'warn' : '')),
       bar(carry / STOCK_MAX),
-      ...(stockRows.length ? stockRows : [h('div', { class: 'hd-sub' }, s.zone ? 'Hij heeft niets meer te verkopen. Geef hem iets mee.' : 'Hij heeft niets bij zich.')]),
+      ...(stockRows.length ? stockRows : [h('div', { class: 'hd-sub' }, s.zone ? `${p.Hij} heeft niets meer te verkopen. Geef ${p.hem} iets mee.` : `${p.Hij} heeft niets bij zich.`)]),
       h('strong', {}, 'Meegeven'),
       ...(giveRows.length ? giveRows : [h('div', { class: 'hd-sub' }, 'Je hebt geen producten in je voorraad. Maak er een in de stations bij je hut.')]),
     );
@@ -121,7 +122,7 @@ export function sellerPanel(game, id, { inPerson = false, toast = () => {}, onGo
       { class: `hd-card ${needs.includes('vol') ? 'is-warn' : ''}` },
       h('div', { class: 'hd-row hd-between' }, h('strong', {}, 'Kas van jouw deel'), h('span', { class: 'hd-big hd-money' }, euro(s.pouch))),
       bar(s.pouch / cap, s.pouch / cap > 0.7 ? 'is-risk' : ''),
-      h('div', { class: 'hd-sub' }, `Hij stopt met verkopen bij ${euro(cap)}. Bewaar niet te veel bij hem: pakt een bewaker hem, dan is het geld weg.`),
+      h('div', { class: 'hd-sub' }, `${p.Hij} stopt met verkopen bij ${euro(cap)}. Bewaar niet te veel bij ${p.hem}: pakt een bewaker ${p.hem}, dan is het geld weg.`),
       h(
         'div',
         { class: 'hd-btns' },
@@ -134,9 +135,9 @@ export function sellerPanel(game, id, { inPerson = false, toast = () => {}, onGo
     const history = h(
       'div',
       { class: 'hd-card' },
-      h('strong', {}, 'Sinds hij voor je werkt'),
+      h('strong', {}, `Sinds ${p.hij} voor je werkt`),
       h('div', { class: 'hd-sub' }, `${s.sold} stuks verkocht, ${euro(s.earned)} voor jou. Vandaag: ${s.today.day === game.state.day ? s.today.sold : 0} stuks.`),
-      s.skimmed > 0 ? note(`Kassaverschil: hij hield ${euro(s.skimmed)} voor zichzelf achter.`, 'is-bad') : null,
+      s.skimmed > 0 ? note(`Kassaverschil: ${p.hij} hield ${euro(s.skimmed)} voor zichzelf achter.`, 'is-bad') : null,
     );
 
     const actions = h(
@@ -155,7 +156,7 @@ export function sellerPanel(game, id, { inPerson = false, toast = () => {}, onGo
             return;
           }
           const r = S.fireSeller(game, id);
-          toast(`${c.name} is ontslagen.${r.back ? ` ${r.back} stuks terug in je voorraad.` : ''}${r.left ? ` ${r.left} stuks nam hij mee.` : ''}${r.pouch ? ` Je kreeg ${euro(r.pouch)}.` : ''}`);
+          toast(`${c.name} is ontslagen.${r.back ? ` ${r.back} stuks terug in je voorraad.` : ''}${r.left ? ` ${r.left} stuks nam ${p.hij} mee.` : ''}${r.pouch ? ` Je kreeg ${euro(r.pouch)}.` : ''}`);
           onChange();
           onGone();
         }, { kind: 'is-danger' }),

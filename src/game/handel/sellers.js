@@ -89,7 +89,7 @@ export function giveStock(game, id, key, n = 1) {
   if (!parseItem(key)) return fail('Dat is geen product.');
   const room = STOCK_MAX - stockCount(s);
   const k = Math.min(Math.floor(n), game.state.inventory[key] ?? 0, room);
-  if (k <= 0) return fail(room <= 0 ? 'Hij kan niet meer dragen.' : 'Je hebt dit niet meer.');
+  if (k <= 0) return fail(room <= 0 ? 'Er kan niet meer in de tas.' : 'Je hebt dit niet meer.');
   game.addItem(key, -k);
   s.stock[key] = (s.stock[key] ?? 0) + k;
   s.flags.empty = false;
@@ -103,7 +103,7 @@ export function takeStock(game, id, key, n = 1) {
   if (!s) return fail('Onbekende handelaar.');
   const have = s.stock[key] ?? 0;
   const k = Math.min(Math.floor(n), have, Math.max(0, stockFree(game.state)));
-  if (k <= 0) return fail(have ? 'Je voorraad is vol.' : 'Dat heeft hij niet.');
+  if (k <= 0) return fail(have ? 'Je voorraad is vol.' : 'Dat zit niet in de tas.');
   s.stock[key] = have - k;
   if (!s.stock[key]) delete s.stock[key];
   game.addItem(key, k);

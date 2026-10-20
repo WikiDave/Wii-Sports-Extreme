@@ -689,6 +689,20 @@ const dayWith = (pred, from = 2) => {
   let outDays = 0;
   for (let d = 1; d <= 100; d++) if (!P.availability(d, 'suus', 'suiker').ok) outDays++;
   assert.ok(outDays > 5 && outDays < 50, `sold out on ${outDays} days`);
+  // the daily bargain: deterministic, at least 12% off, only from suppliers who know you
+  let deals = 0;
+  for (let d = 1; d <= 60; d++) {
+    const g = mk({ xp: 9000, day: d });
+    const deal = P.dailyDeal(g);
+    assert.deepEqual(deal, P.dailyDeal(g));
+    if (!deal) continue;
+    deals++;
+    assert.ok(deal.pct >= 12 && deal.pct <= 40, `${deal.pct}%`);
+    assert.ok(P.availability(d, deal.supplier, deal.good).ok);
+    assert.ok(P.swing(d, deal.supplier, deal.good) * P.mood(deal.good, d) <= 0.88 + 1e-9);
+  }
+  assert.ok(deals > 5 && deals < 60, `${deals} days with a bargain`);
+  assert.equal(P.dailyDeal(mk({ xp: 0, day: 7 }))?.supplier === 'ivo', false); // Ivo does not know a beginner
   // price tags
   const moods = new Set();
   for (let d = 1; d <= 40; d++) moods.add(P.priceMood(d, 'pim', 'citroen'));

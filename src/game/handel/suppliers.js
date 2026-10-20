@@ -62,7 +62,7 @@ export function mood(good, day) {
 /** Whether a supplier delivers a good on a day, and why not. */
 export function availability(day, supplierId, good) {
   const sup = SUPPLIERS[supplierId];
-  if (!sup?.goods[good]) return { ok: false, reason: 'Verkoopt hij niet.' };
+  if (!sup?.goods[good]) return { ok: false, reason: 'Niet in het assortiment.' };
   const w = dayInfo(day).weather;
   if (sup.blocked.includes(w)) return { ok: false, reason: w === 'storm' ? 'Door de storm komt er niemand.' : 'Bij regen blijft de boot in de haven.' };
   if (hash01(day, strNum(supplierId + good), 5) < sup.out) return { ok: false, reason: 'Vandaag uitverkocht.' };
@@ -134,7 +134,7 @@ export function quote(game, supplierId, basket, rush = false) {
     const tier = item.tier ?? 'standaard';
     const av = availability(st.day, supplierId, item.good);
     if (!av.ok) errors.push(`${goodName(item.good)}: ${av.reason}`);
-    else if (!tiers.includes(tier)) errors.push(`${goodName(item.good)}: ${TIERS[tier].name} kan hij nog niet leveren.`);
+    else if (!tiers.includes(tier)) errors.push(`${goodName(item.good)}: ${TIERS[tier].name} is hier nog niet te krijgen.`);
     else lines.push({ good: item.good, tier, n, exact: unitPriceOn(st.day, supplierId, item.good, tier, level) });
     units += n;
   }
@@ -246,6 +246,23 @@ export function bestOffer(game, good) {
     if (!best || unit < best.unit) best = { supplier: id, unit, tier };
   }
   return best;
+}
+
+/**
+ * The best bargain of today among the suppliers that know you: a good at least 12% under that
+ * supplier's normal price. Returns { supplier, good, pct } (pct = discount as a whole number) or null.
+ */
+export function dailyDeal(game) {
+  const day = game.state.day;
+  let best = null;
+  for (const id of knownSuppliers(game)) {
+    for (const good of Object.keys(SUPPLIERS[id].goods)) {
+      if (!availability(day, id, good).ok) continue;
+      const f = swing(day, id, good) * mood(good, day);
+      if (f <= 0.88 && (!best || f < best.f)) best = { supplier: id, good, f };
+    }
+  }
+  return best && { supplier: best.supplier, good: best.good, pct: Math.round((1 - best.f) * 100) };
 }
 
 /** Tomorrow's price (a perk of relationship level 3): null before that. */

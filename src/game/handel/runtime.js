@@ -11,7 +11,7 @@
 // Save data: game.state.ext.handel (see store.js).
 
 import { unregisterApp } from '../phoneApps.js';
-import { candidateById, STEP, SUPPLIERS } from './data.js';
+import { candidateById, pronouns, STEP, SUPPLIERS } from './data.js';
 import { Board } from './board.js';
 import { trackFresh } from './freshness.js';
 import { Mailbox } from './mailbox.js';
@@ -85,6 +85,15 @@ export function startHandel(ctx) {
   const env = { guardNear: (zone) => view.guardsNear(zone) };
   const fresh = trackFresh(game);
   let acc = 0;
+  // Each morning the suppliers' best bargain of the day lands in the phone.
+  const off = [
+    game.on('newday', () => {
+      const deal = P.dailyDeal(game);
+      if (!deal) return;
+      notify(game, { kind: 'koopje', who: deal.supplier, text: `🏷️ Koopje bij ${SUPPLIERS[deal.supplier].name}: ${P.goodName(deal.good).toLowerCase()} is vandaag ${deal.pct}% goedkoper.` });
+      chipT = 0;
+    }),
+  ];
   let reportDay = handelState(game).lastDay;
 
   /** Turns what happened into toasts, phone messages and pictures. */
@@ -93,6 +102,7 @@ export function startHandel(ctx) {
     const few = events.length <= 12;
     for (const e of events) {
       const c = candidateById(e.seller);
+      const p = pronouns(c.gender);
       if (e.type === 'sale') {
         if (few && view.isShown(e.seller)) {
           view.popup(e.seller, `+${euro(e.money)}`);
@@ -109,14 +119,14 @@ export function startHandel(ctx) {
         lines.push(text);
         game.emit('handel:vol', { seller: e.seller });
       } else if (e.type === 'caught') {
-        const text = `${c.name} is gepakt door de bewaking! ${e.lost} stuks en ${euro(e.pouch)} zijn weg. Hij duikt een paar dagen onder.`;
+        const text = `${c.name} is gepakt door de bewaking! ${e.lost} stuks en ${euro(e.pouch)} zijn weg. ${p.Hij} duikt een paar dagen onder.`;
         notify(game, { kind: 'gepakt', who: e.seller, text });
         lines.push(text);
         view.vanish(e.seller);
         audio.play('bad');
         game.emit('handel:gepakt', { seller: e.seller, lost: e.lost, pouch: e.pouch, zone: e.zone });
       } else if (e.type === 'quit') {
-        const text = `${c.name} heeft ontslag genomen en nam ${euro(e.took)} uit de kas mee. Hij was je niet meer trouw.`;
+        const text = `${c.name} heeft ontslag genomen en nam ${euro(e.took)} uit de kas mee. ${p.Hij} was je niet meer trouw.`;
         notify(game, { kind: 'weg', who: e.seller, text });
         lines.push(text);
         view.remove(e.seller);
@@ -190,6 +200,7 @@ export function startHandel(ctx) {
       }
     },
     dispose() {
+      off.forEach((f) => f());
       fresh.dispose();
       clearTimeout(pulseTimer);
       unregisterApp('handelaren');
