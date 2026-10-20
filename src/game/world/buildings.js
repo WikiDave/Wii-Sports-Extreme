@@ -148,7 +148,7 @@ const lampGlass = new THREE.MeshLambertMaterial({ color: '#fff3c0', emissive: '#
 export const lampLight = lampGlass;
 
 /** A little sailing boat; bob() animates it. */
-function boat(color) {
+export function boat(color) {
   const g = new THREE.Group();
   const hull = new THREE.Group();
   hull.add(part(GEO.box, color, 0, 0.35, 0, 1.7, 0.7, 4.2));

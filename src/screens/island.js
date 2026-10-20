@@ -15,6 +15,7 @@ import { Audio } from '../game/audio.js';
 import { IslandRenderer, shadowsOn } from '../game/world/render.js';
 import { buildWater } from '../game/world/water.js';
 import { Grass } from '../game/world/grass.js';
+import { Life } from '../game/world/life.js';
 import { bobBoats, windowGlass, lampLight } from '../game/world/buildings.js';
 import { SEA_LEVEL } from '../game/world/zones.js';
 import { WeatherFx } from '../game/world/weatherFx.js';
@@ -233,6 +234,7 @@ async function buildIsland3d(root, app, loader, isCancelled) {
   }
   await step(0.55, 'Gras en bloemen laten groeien');
   const grass = grassReady();
+  const life = new Life(scene, { phone });
   await step(0.75, 'Bewoners en bewaking op hun plek');
   // Customers wait near the beach stand and the market.
   const standSpot = interactions.items.find((i) => i.label === 'Strandtent');
@@ -276,7 +278,7 @@ async function buildIsland3d(root, app, loader, isCancelled) {
   follow.yaw = player.heading + Math.PI;
   const input = new Input(screen, renderer.domElement, { onLook: (dx, dy) => follow.look(dx, dy), onZoom: (f) => follow.zoom(f) });
   const minimap = new Minimap(screen);
-  window.__game = { player, follow, game, weatherFx, heightAt, props, grassCount: grass.count, hutPos, interactions, guards, teleport: (it) => { player.pos.set(it.x, 0, it.z + 4); player.group.position.copy(player.pos); } }; // for tests
+  window.__game = { player, follow, game, weatherFx, heightAt, props, life, grassCount: grass.count, hutPos, interactions, guards, teleport: (it) => { player.pos.set(it.x, 0, it.z + 4); player.group.position.copy(player.pos); } }; // for tests
 
   const resize = () => {
     const w = view.clientWidth || 1;
@@ -314,6 +316,8 @@ async function buildIsland3d(root, app, loader, isCancelled) {
     weatherFx.update(dt, camera, t);
     grass.update(t, camera);
     bobBoats(props.boats, t);
+    props.swayPalms(t, camera.position);
+    life.update(t, dt, camera);
     water.userData.update(t, Math.min(1.1, 0.25 + sky.hemi.intensity * 0.7), 1 + weatherFx.level.rain * 0.8);
     audio.setAmbience({ nearSea: Math.max(0, 1 - heightAt(player.pos.x, player.pos.z) / 8), rain: weatherFx.level.rain });
     pipeline.follow(player.group.position, sky.dir);
@@ -351,6 +355,7 @@ async function buildIsland3d(root, app, loader, isCancelled) {
       o.material?.dispose();
     });
     grass.dispose();
+    life.dispose();
     pipeline.dispose();
     renderer.dispose();
     renderer.forceContextLoss();

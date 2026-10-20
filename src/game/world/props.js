@@ -96,6 +96,7 @@ export function buildProps() {
 
   // Round obstacles for the player: { x, z, r }.
   const colliders = [];
+  const palms = [];
   const place = (obj, x, z, y, rot = rand() * Math.PI * 2, s = 1, r = 0) => {
     if (r) colliders.push({ x, z, r: r * s });
     obj.position.set(x, y, z);
@@ -115,6 +116,9 @@ export function buildProps() {
     const obj = palm();
     place(obj, x, z, y - 0.2, undefined, 0.8 + rand() * 0.6, 0.5);
     obj.rotation.z = (rand() - 0.5) * 0.12;
+    obj.userData.tilt = obj.rotation.z;
+    obj.userData.phase = rand() * 6.28;
+    palms.push(obj);
   }
 
   // Houses: villages in the harbour town, a few at the beach and on the hills.
@@ -212,5 +216,17 @@ export function buildProps() {
     }
   }
 
-  return { group, lamp, colliders, boats };
+  /** Palms near the camera sway in the wind. */
+  const swayPalms = (t, cam) => {
+    for (const p of palms) {
+      const dx = p.position.x - cam.x;
+      const dz = p.position.z - cam.z;
+      if (dx * dx + dz * dz > 160 * 160) continue;
+      const w = Math.sin(t * 1.4 + p.userData.phase) + 0.4 * Math.sin(t * 2.9 + p.userData.phase * 2);
+      p.rotation.z = p.userData.tilt + w * 0.025;
+      p.rotation.x = Math.cos(t * 1.1 + p.userData.phase) * 0.018;
+    }
+  };
+
+  return { group, lamp, colliders, boats, swayPalms };
 }
