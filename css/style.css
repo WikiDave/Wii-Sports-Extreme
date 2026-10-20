@@ -1779,3 +1779,19 @@ button {
   flex-wrap: wrap;
   gap: 6px;
 }
+.station {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  border-radius: 12px;
+  background: #f0f6fb;
+}
+.station.is-free {
+  opacity: 0.6;
+}
+.station.is-ready {
+  background: #e3f8e8;
+  box-shadow: inset 0 0 0 2px #35e06a;
+}

@@ -35,7 +35,7 @@ bekijken, fouten fixen, committen, pushen, artifact publiceren, `Status` bijwerk
 gebruiker stopt zegt.
 6.1 (KLAAR: player.js zwemmen -1 m drijven/stopt op -9 m diepte, springen op spatie/Spring-knop, voetstappen+stof+spetters via world/effects.js) beweging: zwemmen, springen, voetstappen, stof, spetters, camera botst niet met bomen/huizen
 6.2 (KLAAR: `phone.js` berichten dailyMessages/accept/decline/activeRequest/completeRequest + bank deposit/withdraw (bank veilig bij gepakt worden), `ui/phoneUi.js` apps Berichten/Contacten/Bank/Kaart, Tab of knop in HUD met badge; dealMenu geeft +30% bij een geaccepteerde afspraak; test `node tests/phone.test.mjs`) telefoon in beeld (berichten van klanten, kaart, contacten, bank, apps) zoals Schedule I
-6.3 productiestations: mengtafel, droogrek, pot/kweektent, pers, vulbank, met kwaliteit en tijd
+6.3 (KLAAR: `stations.js` startJob/collect/ready/progress/stationLimit, `state.jobs`, PRODUCTS.time (25/45/70 min), PROPERTIES.stations (1/2/3/4), `ui/stationMenu.js`, machines naast de hut met rood/groen lampje, mix-menu start nu een job; kok-personeel maakt nog direct; test `node tests/stations.test.mjs`. Nog open: kweektent/droogrek/pers als aparte stations, kwaliteit door apparatuur) productiestations: mengtafel, droogrek, pot/kweektent, pers, vulbank, met kwaliteit en tijd
 6.4 klanten: eigen dagritme door het eiland, afspraken via sms, aanbiedingen, verslaving-loos (voorkeur,
 vertrouwen, kopen thuis of op straat), meer dan 5 klanten (20+)
 6.5 dealers en leveranciers: dealers inhuren met route en voorraad, leverancier belt, bezorging

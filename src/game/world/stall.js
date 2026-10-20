@@ -23,3 +23,27 @@ export function buildStall(awning = '#e2513f') {
   }
   return g;
 }
+
+/** A production machine: a steel tank with a pipe and a status lamp (red busy, green ready). */
+export function buildMachine() {
+  const g = new THREE.Group();
+  const steel = mat('#cfd8e0');
+  const dark = mat('#4a5866');
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 1.7, 14), steel);
+  body.position.y = 1.15;
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.9, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), steel);
+  cap.position.y = 2.0;
+  const base = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.3, 2.0), dark);
+  base.position.y = 0.15;
+  const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 1.2, 8), dark);
+  pipe.position.set(0.5, 2.7, 0);
+  const lampMat = new THREE.MeshLambertMaterial({ color: '#888888', emissive: '#000000' });
+  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), lampMat);
+  lamp.position.set(0, 1.5, 0.92);
+  const dial = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.06, 12), mat('#ffffff'));
+  dial.rotation.x = Math.PI / 2;
+  dial.position.set(0.0, 1.0, 0.9);
+  g.add(base, body, cap, pipe, lamp, dial);
+  g.userData.lamp = lampMat;
+  return g;
+}

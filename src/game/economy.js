@@ -60,6 +60,10 @@ export function canMake(inventory, productId, ingredients) {
 }
 
 /** Takes one batch's goods out of a Game and adds the bottles. Returns the item key or null. */
+export function limitFree(game) {
+  return limit(game);
+}
+
 export function makeBatch(game, productId, ingredients, quality) {
   if (!canMake(game.state.inventory, productId, ingredients)) return null;
   const p = PRODUCTS[productId];

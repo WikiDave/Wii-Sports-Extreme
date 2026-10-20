@@ -5,7 +5,8 @@ import { h, modal, toast } from '../../ui/dom.js';
 import { EFFECTS } from '../data/effects.js';
 import { INGREDIENTS } from '../data/ingredients.js';
 import { PRODUCTS, GOODS } from '../data/products.js';
-import { recipeEffects, unitPrice, canMake, makeBatch, buy, sell, itemName, parseItem } from '../economy.js';
+import { recipeEffects, unitPrice, canMake, buy, sell, itemName, parseItem } from '../economy.js';
+import { startJob, stationLimit } from '../stations.js';
 import { playPour } from '../minigames/pour.js';
 
 const MAX_MIX = 3;
@@ -61,10 +62,14 @@ export function openMixMenu(game, productId = 'limonade') {
         kind: 'primary',
         onClick: () => {
           if (!canMake(game.state.inventory, productId, chosen)) return false;
+          if (game.state.jobs.length >= stationLimit(game.state)) {
+            toast('Alle stations zijn bezig.');
+            return false;
+          }
           const mixIn = [...chosen];
           playPour(document.body, { color: EFFECTS[recipeEffects(productId, mixIn).at(-1)].color }).then((quality) => {
-            const key = makeBatch(game, productId, mixIn, quality);
-            toast(key ? `${p.yield}× ${itemName(key)}` : 'Geen ruimte in je voorraad. Koop een groter pand in het Kantoor.');
+            const job = startJob(game, productId, mixIn, quality);
+            toast(job ? `In het station gezet: klaar over ${p.time} minuten.` : 'Geen vrij station of geen ruimte in je voorraad.');
           });
         },
       },

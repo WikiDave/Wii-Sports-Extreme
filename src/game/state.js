@@ -29,6 +29,7 @@ export function newGame(miiId = null) {
     properties: ['hut'],
     staff: [],
     customers: {}, // customer id -> { loyalty, unlocked }
+    jobs: [], // batches busy in stations: see stations.js
     messages: [], // text messages from customers: see phone.js
     stand: null, // { day, n } units sold to the beach stand today
     heat: 0, // Reglement-meter 0..5 (level = floor, see police.js)

@@ -4,9 +4,8 @@
 import { h, modal, toast } from '../../ui/dom.js';
 import { formatClock, RANKS, RANK_XP } from '../state.js';
 import { itemName } from '../economy.js';
-import { openMixMenu } from './tradeMenus.js';
+import { openStations } from './stationMenu.js';
 import { disguise } from '../police.js';
-import { PRODUCTS } from '../data/products.js';
 
 /** Opens the hut menu for a Game. */
 export function openHutMenu(game) {
@@ -22,13 +21,12 @@ export function openHutMenu(game) {
       ? h('ul', { class: 'hut-stock' }, stock.map(([id, n]) => h('li', {}, `${itemName(id)}: ${n}`)))
       : h('p', { class: 'hut-empty' }, 'Nog niets op voorraad.'),
   );
-  const makeable = Object.entries(PRODUCTS).filter(([, p]) => p.rank <= game.rank);
   modal({
     title: 'Strandhut',
     body,
     actions: [
       { label: 'Sluiten' },
-      ...makeable.map(([id, p]) => ({ label: `${p.name} maken`, onClick: () => openMixMenu(game, id) })),
+      { label: 'Stations', onClick: () => setTimeout(() => openStations(game), 0) },
       {
         label: 'Opslaan',
         onClick: () => {

@@ -36,7 +36,9 @@ import { openHutMenu } from '../game/ui/hutMenu.js';
 import { openMarket, openStand } from '../game/ui/tradeMenus.js';
 import { openOffice } from '../game/ui/officeMenu.js';
 import { attachDaily } from '../game/empire.js';
-import { buildStall } from '../game/world/stall.js';
+import { buildStall, buildMachine } from '../game/world/stall.js';
+import { stationLimit, ready } from '../game/stations.js';
+import { openStations } from '../game/ui/stationMenu.js';
 import { Minimap } from '../game/ui/minimap.js';
 import { Input } from '../game/input.js';
 import { miiStore } from '../mii/storage.js';
@@ -220,6 +222,35 @@ async function buildIsland3d(root, app, loader, isCancelled) {
   shadowsOn(hut);
   props.colliders.push({ x: hutPos.x, z: hutPos.z, r: 4.8 });
   const interactions = new Interactions(screen);
+  // Production machines beside the hut: one per station, the lamp shows busy (red) or ready (green).
+  const machines = [];
+  for (let i = 0; i < 6; i++) {
+    const mx = hutPos.x + 8 + (i % 3) * 3.2;
+    const mz = hutPos.z - 3 + Math.floor(i / 3) * 3.4;
+    const machine = buildMachine();
+    machine.position.set(mx, Math.max(heightAt(mx, mz), 0.3) - 0.1, mz);
+    machine.rotation.y = -0.5;
+    shadowsOn(machine);
+    scene.add(machine);
+    props.colliders.push({ x: mx, z: mz, r: 1.1 });
+    machines.push(machine);
+  }
+  interactions.add({ x: hutPos.x + 11, z: hutPos.z - 1, r: 9, label: 'Stations', run: () => openStations(game) });
+  const showMachines = () => {
+    const n = stationLimit(game.state);
+    const doneIds = new Set(ready(game.state).map((j) => j.id));
+    machines.forEach((m, i) => {
+      m.visible = i < n;
+      const lamp = m.userData.lamp;
+      const job = game.state.jobs[i];
+      const c = !job ? '#555555' : doneIds.has(job.id) ? '#35e06a' : '#ff5a3a';
+      lamp.color.set(c);
+      lamp.emissive.set(job ? c : '#000000');
+    });
+  };
+  game.on('change', showMachines);
+  game.on('time', showMachines);
+  showMachines();
   // Grass after all buildings are placed, so it keeps clear of them.
   const grassReady = () => new Grass(scene, island.ground, props.colliders, phone ? 0.45 : 1);
   interactions.add({ x: hutPos.x, z: hutPos.z, r: 9, label: 'Strandhut', run: () => openHutMenu(game) });
