@@ -3,7 +3,7 @@
 
 import { h } from '../../ui/dom.js';
 import { heightAt } from '../world/island.js';
-import { ZONES } from '../world/zones.js';
+import { ZONES, PATHS } from '../world/zones.js';
 
 const EXTENT = 700; // metres from the centre shown on the full map
 const CENTER = { x: 90, z: -20 };
@@ -32,6 +32,17 @@ function paintTerrain() {
     }
   }
   g.putImageData(img, 0, 0);
+  // Paths
+  g.strokeStyle = '#c9a874';
+  g.lineWidth = 1.6;
+  g.lineJoin = g.lineCap = 'round';
+  const px = (x) => ((x - CENTER.x) / (EXTENT * 2) + 0.5) * RES;
+  const pz = (z) => ((z - CENTER.z) / (EXTENT * 2) + 0.5) * RES;
+  for (const line of PATHS) {
+    g.beginPath();
+    line.forEach(([x, z], i) => (i ? g.lineTo(px(x), pz(z)) : g.moveTo(px(x), pz(z))));
+    g.stroke();
+  }
   return c;
 }
 

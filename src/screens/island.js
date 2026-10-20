@@ -13,6 +13,7 @@ import { openDealMenu } from '../game/ui/dealMenu.js';
 import { Audio } from '../game/audio.js';
 import { IslandRenderer, shadowsOn } from '../game/world/render.js';
 import { buildWater } from '../game/world/water.js';
+import { Grass } from '../game/world/grass.js';
 import { SEA_LEVEL } from '../game/world/zones.js';
 import { WeatherFx } from '../game/world/weatherFx.js';
 import { dayInfo, WEATHER, EVENTS, priceFactor } from '../game/weather.js';
@@ -174,6 +175,8 @@ export function islandScreen(root, app) {
   shadowsOn(hut);
   props.colliders.push({ x: hutPos.x, z: hutPos.z, r: 4.8 });
   const interactions = new Interactions(screen);
+  // Grass after all buildings are placed, so it keeps clear of them.
+  const grassReady = () => new Grass(scene, island.ground, props.colliders, phone ? 0.45 : 1);
   interactions.add({ x: hutPos.x, z: hutPos.z, r: 9, label: 'Strandhut', run: () => openHutMenu(game) });
   // The market in Havenstad and the beach stand that buys your products.
   for (const [where, label, color, run] of [
@@ -189,6 +192,7 @@ export function islandScreen(root, app) {
     props.colliders.push({ x: spot.x, z: spot.z, r: 2.6 });
     interactions.add({ x: spot.x, z: spot.z, r: 5.5, label, run });
   }
+  const grass = grassReady();
   // Customers wait near the beach stand and the market.
   const standSpot = interactions.items.find((i) => i.label === 'Strandtent');
   const marketSpot = interactions.items.find((i) => i.label === 'Markt');
@@ -230,7 +234,7 @@ export function islandScreen(root, app) {
   follow.yaw = player.heading + Math.PI;
   const input = new Input(screen, renderer.domElement, { onLook: (dx, dy) => follow.look(dx, dy), onZoom: (f) => follow.zoom(f) });
   const minimap = new Minimap(screen);
-  window.__game = { player, follow, game, weatherFx, heightAt, hutPos, interactions, guards, teleport: (it) => { player.pos.set(it.x, 0, it.z + 4); player.group.position.copy(player.pos); } }; // for tests
+  window.__game = { player, follow, game, weatherFx, heightAt, grassCount: grass.count, hutPos, interactions, guards, teleport: (it) => { player.pos.set(it.x, 0, it.z + 4); player.group.position.copy(player.pos); } }; // for tests
 
   const resize = () => {
     const w = view.clientWidth || 1;
@@ -266,6 +270,7 @@ export function islandScreen(root, app) {
     minimap.draw(player);
     sky.follow(camera);
     weatherFx.update(dt, camera, t);
+    grass.update(t, camera);
     water.userData.update(t, Math.min(1.1, 0.25 + sky.hemi.intensity * 0.7), 1 + weatherFx.level.rain * 0.8);
     audio.setAmbience({ nearSea: Math.max(0, 1 - heightAt(player.pos.x, player.pos.z) / 8), rain: weatherFx.level.rain });
     pipeline.follow(player.group.position, sky.dir);
@@ -295,6 +300,7 @@ export function islandScreen(root, app) {
         o.geometry?.dispose();
         o.material?.dispose();
       });
+      grass.dispose();
       pipeline.dispose();
       renderer.dispose();
       renderer.forceContextLoss();

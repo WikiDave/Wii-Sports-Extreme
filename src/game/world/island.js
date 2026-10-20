@@ -4,9 +4,10 @@
 import * as THREE from 'three';
 import { fbm } from './noise.js';
 import { ZONES, SEA_LEVEL } from './zones.js';
+import { terrainMaterial } from './terrainMaterial.js';
 
 export const ISLAND_SIZE = 1500;
-const SEGMENTS = 300;
+export const SEGMENTS = 300;
 const SEA_FLOOR = -24;
 export const SEA_FLOOR_DEPTH = -SEA_FLOOR;
 
@@ -15,6 +16,7 @@ const smooth = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 /** Height of one zone at distance fraction t (0 at its centre, 1 at its edge). */
 function profile(zone, t) {
   if (zone.profile === 'plateau') return zone.h * smooth((1 - t) / 0.45);
+  if (zone.profile === 'cliff') return zone.h * smooth((1 - t) / 0.1);
   if (zone.profile === 'cone') {
     const cone = Math.max(0, 1 - t) ** 1.6;
     const crater = smooth((0.12 - t) / 0.08) * 0.22;
@@ -88,7 +90,7 @@ function terrain() {
     groundColor(pos.getY(i), 1 - nrm.getY(i), c).toArray(colors, i * 3);
   }
   g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  const mesh = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true }));
+  const mesh = new THREE.Mesh(g, terrainMaterial());
   mesh.receiveShadow = true;
   return mesh;
 }
