@@ -11,6 +11,7 @@ import { buildHut } from '../game/world/hut.js';
 import { CustomerView } from '../game/world/customerView.js';
 import { openDealMenu } from '../game/ui/dealMenu.js';
 import { Audio } from '../game/audio.js';
+import { IslandRenderer, shadowsOn } from '../game/world/render.js';
 import { WeatherFx } from '../game/world/weatherFx.js';
 import { dayInfo, WEATHER, EVENTS, priceFactor } from '../game/weather.js';
 import { Guards } from '../game/world/guards.js';
@@ -68,14 +69,19 @@ function findSpawn(colliders) {
 
 export function islandScreen(root, app) {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  const phone = matchMedia('(pointer: coarse)').matches;
+  // Phones: a little lower resolution keeps shadows and the grading pass smooth.
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, phone ? 1.5 : 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
+  const pipeline = new IslandRenderer(renderer, { quality: phone ? 'low' : 'high' });
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(50, 1, 0.2, 9000);
   const sky = new Sky(scene);
+  pipeline.setupSun(sky.sun);
   const island = buildIsland();
   const props = buildProps();
   scene.add(island.group, props.group);
+  shadowsOn(props.group);
 
   const game = new Game(safeStorage());
   const clock = h('span', { class: 'hud-clock' });
@@ -160,6 +166,7 @@ export function islandScreen(root, app) {
   const hut = buildHut();
   hut.position.set(hutPos.x, hutPos.y - 0.2, hutPos.z);
   scene.add(hut);
+  shadowsOn(hut);
   props.colliders.push({ x: hutPos.x, z: hutPos.z, r: 4.8 });
   const interactions = new Interactions(screen);
   interactions.add({ x: hutPos.x, z: hutPos.z, r: 9, label: 'Strandhut', run: () => openHutMenu(game) });
@@ -173,6 +180,7 @@ export function islandScreen(root, app) {
     const stall = buildStall(color);
     stall.position.set(spot.x, spot.y - 0.1, spot.z);
     scene.add(stall);
+    shadowsOn(stall);
     props.colliders.push({ x: spot.x, z: spot.z, r: 2.6 });
     interactions.add({ x: spot.x, z: spot.z, r: 5.5, label, run });
   }
@@ -212,6 +220,7 @@ export function islandScreen(root, app) {
   const spawn = saved.x != null && heightAt(saved.x, saved.z) > 0.3 ? { x: saved.x, z: saved.z } : findSpawn(props.colliders);
   const player = new Player(mii, { ...spawn, colliders: props.colliders });
   scene.add(player.group);
+  shadowsOn(player.group, false);
   const follow = new FollowCamera(camera);
   follow.yaw = player.heading + Math.PI;
   const input = new Input(screen, renderer.domElement, { onLook: (dx, dy) => follow.look(dx, dy), onZoom: (f) => follow.zoom(f) });
@@ -222,6 +231,7 @@ export function islandScreen(root, app) {
     const w = view.clientWidth || 1;
     const hgt = view.clientHeight || 1;
     renderer.setSize(w, hgt, false);
+    pipeline.setSize(w, hgt);
     camera.aspect = w / hgt;
     camera.updateProjectionMatrix();
   };
@@ -252,7 +262,8 @@ export function islandScreen(root, app) {
     sky.follow(camera);
     weatherFx.update(dt, camera, t);
     audio.setAmbience({ nearSea: Math.max(0, 1 - heightAt(player.pos.x, player.pos.z) / 8), rain: weatherFx.level.rain });
-    renderer.render(scene, camera);
+    pipeline.follow(player.group.position, sky.dir);
+    pipeline.render(scene, camera, sky.night);
   };
   frame();
 
@@ -278,6 +289,7 @@ export function islandScreen(root, app) {
         o.geometry?.dispose();
         o.material?.dispose();
       });
+      pipeline.dispose();
       renderer.dispose();
       renderer.forceContextLoss();
     },

@@ -1,6 +1,7 @@
 // Customers standing in the world: a Mii at their spot while they are present and unserved.
 
 import * as THREE from 'three';
+import { shadowsOn } from './render.js';
 import { MiiModel } from '../../mii/model.js';
 import { OFFICIAL_MIIS } from '../../mii/official.js';
 import { MII_SCALE } from '../player.js';
@@ -37,6 +38,7 @@ export class CustomerView {
         mii.group.scale.setScalar(MII_SCALE);
         mii.group.position.set(c.pos.x, heightAt(c.pos.x, c.pos.z), c.pos.z);
         mii.group.rotation.y = Math.PI * (0.8 + 0.4 * Math.random());
+        shadowsOn(mii.group, false);
         this.scene.add(mii.group);
         this.minis.set(c.id, mii);
       } else if (!here.has(c.id) && shown) {

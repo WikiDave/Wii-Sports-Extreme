@@ -4,6 +4,7 @@
 // sight to escape.
 
 import * as THREE from 'three';
+import { shadowsOn } from './render.js';
 import { MiiModel } from '../../mii/model.js';
 import { OFFICIAL_MIIS } from '../../mii/official.js';
 import { MII_SCALE } from '../player.js';
@@ -67,6 +68,7 @@ export class Guards {
       mii.group.scale.setScalar(MII_SCALE);
       const start = this.waypoint();
       const cone = coneMesh();
+      shadowsOn(mii.group, false);
       this.scene.add(mii.group, cone);
       this.list.push({ mii, cone, x: start.x, z: start.z, heading: 0, target: this.waypoint(), suspicion: 0, cooldown: 0, phase: Math.random() * 6, speed: 0 });
     }

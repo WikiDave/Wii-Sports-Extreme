@@ -63,6 +63,9 @@ const fragmentShader = /* glsl */ `
   vec3 toSRGB(vec3 c) {
     return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), c));
   }
+  vec3 toLinear(vec3 c) {
+    return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c));
+  }
 
   void main() {
     vec3 n = normalize(vNormal);
@@ -79,7 +82,10 @@ const fragmentShader = /* glsl */ `
     vec3 c = albedo * (uAmbient + uDiffuse * ndl) + uRim * pow(clamp(1.0 - n.z, 0.0, 1.0), uRimPower) + uAdd;
     // Inside surfaces (seen through the open parts of captured hair) get no rim glow.
     if (!gl_FrontFacing) c = albedo * (uAmbient + uDiffuse * ndl) + uAdd;
-    gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+    // The shading is done in sRGB values; hand three a linear colour so it encodes it for any
+    // target (the canvas, or the island's sRGB render target) the same way as its own materials.
+    gl_FragColor = vec4(toLinear(clamp(c, 0.0, 1.0)), 1.0);
+    #include <colorspace_fragment>
   }
 `;
 

@@ -1,5 +1,6 @@
 // Today's rival standing at their spot, and the talk with them.
 
+import { shadowsOn } from './render.js';
 import { MiiModel } from '../../mii/model.js';
 import { OFFICIAL_MIIS } from '../../mii/official.js';
 import { h, modal, toast } from '../../ui/dom.js';
@@ -38,6 +39,7 @@ export class RivalView {
     this.mii = new MiiModel(structuredClone(OFFICIAL_MIIS.find((m) => m.name === rival.mii)));
     this.mii.group.scale.setScalar(MII_SCALE);
     this.mii.group.position.set(x, heightAt(x, z), z);
+    shadowsOn(this.mii.group, false);
     this.scene.add(this.mii.group);
     Object.assign(this.item, { x, z, label: `Praat met ${rival.name}` });
   }
