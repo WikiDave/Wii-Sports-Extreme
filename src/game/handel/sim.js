@@ -83,6 +83,7 @@ function stepSeller(game, h, s, t, clk, crowd, env, out) {
   if (!s.zone) return;
   const c = candidateById(s.id);
   const route = ROUTES[s.zone];
+  if (!route) return; // a route that no longer exists (an old save)
   const k = Math.floor(t / STEP);
   const r = (n) => hash01(k, c.num * 101 + n, 7);
 

@@ -94,7 +94,10 @@ export function startHandel(ctx) {
     for (const e of events) {
       const c = candidateById(e.seller);
       if (e.type === 'sale') {
-        if (few) view.popup(e.seller, `+${euro(e.money)}`);
+        if (few && view.isShown(e.seller)) {
+          view.popup(e.seller, `+${euro(e.money)}`);
+          audio.tone(1175, 0.1, { type: 'sine', vol: 0.05 });
+        }
       } else if (e.type === 'empty') {
         const text = `${c.name}: “Mijn voorraad is op! Kom je bijvullen?”`;
         notify(game, { kind: 'leeg', who: e.seller, text });
@@ -143,7 +146,7 @@ export function startHandel(ctx) {
       }
     }
     if (!units) return;
-    const text = `Dagrapport dag ${day}: je verkopers verkochten ${units} stuks. Jouw deel: ${euro(money)}.`;
+    const text = `Dagrapport dag ${day}: je handelaren verkochten ${units} stuks. Jouw deel: ${euro(money)}.`;
     notify(game, { kind: 'rapport', who: '', text });
     toast(`📈 ${text}`);
   }

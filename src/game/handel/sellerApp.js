@@ -30,7 +30,7 @@ export function sellersUi({ page, game, toast, onChange = () => {} }) {
       'div',
       { class: 'hd-card' },
       h('div', { class: 'hd-row hd-between' }, h('strong', {}, `Handelaren ${hs.sellers.length}/${limit}`), chip(game.rank < 1 ? `vanaf rang ${RANKS[1]}` : `${limit - hs.sellers.length} plek${limit - hs.sellers.length === 1 ? '' : 'ken'} vrij`, game.rank < 1 ? 'dim' : '')),
-      h('div', { class: 'hd-row hd-between' }, h('span', { class: 'hd-sub' }, 'In de zakken van je verkopers'), h('span', { class: 'hd-big hd-money' }, euro(total))),
+      h('div', { class: 'hd-row hd-between' }, h('span', { class: 'hd-sub' }, 'In de zakken van je handelaren'), h('span', { class: 'hd-big hd-money' }, euro(total))),
       btn('Alles laten overmaken (−5%)', () => {
         const r = S.collectAll(game, 'bank');
         toast(r.amount ? `${euro(r.net)} naar de bank (kosten ${euro(r.fee)}).` : 'Er zit niets in de zakken.');
@@ -91,10 +91,10 @@ export function sellersUi({ page, game, toast, onChange = () => {} }) {
         { class: 'hd' },
         summary,
         ...inbox,
-        ...(rows.length ? rows : [h('p', { class: 'phone-empty' }, game.rank < 1 ? 'Verkopers werken voor je vanaf rang Kraamhouder.' : 'Je hebt nog geen verkopers. Huur er hieronder een in.')]),
+        ...(rows.length ? rows : [h('p', { class: 'phone-empty' }, game.rank < 1 ? 'Handelaren werken voor je vanaf rang Kraamhouder.' : 'Je hebt nog geen handelaren. Huur er hieronder een in.')]),
         game.rank < 1 ? null : h('h3', {}, 'Op zoek naar werk'),
         ...(hire.length ? hire : game.rank < 1 ? [] : [h('p', { class: 'hd-sub' }, 'Vandaag is er niemand beschikbaar.')]),
-        locked && game.rank >= 1 ? h('p', { class: 'hd-sub' }, `Nog ${locked} verkoper${locked === 1 ? '' : 's'} komen er bij hogere rangen.`) : null,
+        locked && game.rank >= 1 ? h('p', { class: 'hd-sub' }, `Nog ${locked} handelaar${locked === 1 ? '' : 'en'} komen er bij hogere rangen.`) : null,
       ),
     );
   };

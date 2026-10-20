@@ -284,6 +284,34 @@ const dayWith = (pred, from = 2) => {
   assert.ok(unitMoney('heuvels') > unitMoney('strand') * 1.2);
 }
 
+// ------------------------------------------------------------------ balance: what a seller earns
+{
+  const days = [];
+  for (let d = 2; days.length < 12 && d < 400; d++) days.push(d);
+  const perDay = (id, route, key, xp) => {
+    let money = 0;
+    let units = 0;
+    for (const day of days) {
+      const g = mk({ xp, day, props: ['hut', 'loods', 'villa'], cash: 99999 });
+      g.state.inventory[key] = 9999;
+      S.hireSeller(g, id);
+      S.setZone(g, id, route);
+      S.sellerById(g, id).loyalty = 100;
+      S.giveStock(g, id, key, STOCK_MAX);
+      handelState(g).clock = now(g.state);
+      for (const e of playDay(g, SAFE)) if (e.type === 'sale') (money += e.money), (units += e.units);
+    }
+    return { money: money / days.length, units: units / days.length };
+  };
+  // An early seller on the beach with lemonade earns about what a good day of your own deals gives.
+  const early = perDay('keiko', 'strand', LIM, 60);
+  assert.ok(early.money > 80 && early.money < 260, `early: €${early.money} a day`);
+  assert.ok(early.units > 6 && early.units < 26, `early: ${early.units} units a day`);
+  // A top seller in the hills with ice cream earns a lot, but not without limit.
+  const late = perDay('yoko', 'heuvels', 'p:ijs:ijzig+zonnig:110', 3000);
+  assert.ok(late.money > early.money * 4 && late.money < 3500, `late: €${late.money} a day`);
+}
+
 // ------------------------------------------------------------------ price sense, cut
 {
   const zon = dayWith((i) => i.weather === 'zon' && i.event === 'rustig');
@@ -576,6 +604,18 @@ const dayWith = (pred, from = 2) => {
   assert.ok(MAX_CATCHUP === 3 * DAY_LENGTH);
 }
 
+// ------------------------------------------------------------------ an old save with a route that is gone
+{
+  const g = mk({ xp: 300 });
+  g.state.inventory[LIM] = 50;
+  S.hireSeller(g, 'keiko');
+  S.giveStock(g, 'keiko', LIM, 10);
+  S.sellerById(g, 'keiko').zone = 'vulkaan-top';
+  g.state.minutes = 14 * 60;
+  assert.doesNotThrow(() => simulate(g));
+  assert.equal(S.stockCount(S.sellerById(g, 'keiko')), 10);
+}
+
 // ------------------------------------------------------------------ firing
 {
   const g = mk({ xp: 300, props: ['hut', 'loods'] });
@@ -716,15 +756,18 @@ const dayWith = (pred, from = 2) => {
   assert.equal(P.pendingUnits(handelState(g)), 20);
   // nothing arrives early
   g.state.minutes = 9 * 60 + 29;
+  assert.equal(P.hasDue(g), false);
   assert.deepEqual(P.deliverDue(g), []);
   assert.equal(handelState(g).crate.length, 0);
   g.state.minutes = 9 * 60 + 30;
+  assert.equal(P.hasDue(g), true);
   const done = P.deliverDue(g);
   assert.equal(done.length, 1);
   assert.equal(order.status, 'bezorgd');
   assert.equal(P.crateUnits(handelState(g)), 20);
   assert.equal(P.pendingUnits(handelState(g)), 0);
   assert.deepEqual(P.deliverDue(g), []); // only once
+  assert.equal(P.hasDue(g), false);
   assert.ok(handelState(g).rel.pim >= 1); // a relationship starts
   // stock limit: collect only what fits
   g.state.properties = ['hut'];

@@ -51,7 +51,7 @@ export function hireBlocker(game, id) {
   if (game.rank < c.rank) return `Komt pas bij rang ${RANKS[c.rank]}.`;
   if (h.sellers.some((s) => s.id === id)) return 'Werkt al voor je.';
   if ((h.blocked[id] ?? 0) > game.state.day) return 'Is even ondergedoken.';
-  if (h.sellers.length >= sellerLimit(game)) return game.rank < 1 ? `Vanaf rang ${RANKS[1]}.` : 'Je hebt geen plek meer voor een verkoper. Een hoger rang of een extra pand geeft plek.';
+  if (h.sellers.length >= sellerLimit(game)) return game.rank < 1 ? `Vanaf rang ${RANKS[1]}.` : 'Je hebt geen plek meer voor een handelaar. Een hogere rang of een extra pand geeft plek.';
   if (game.state.cash < hireFee(c)) return `Je hebt €${hireFee(c)} nodig.`;
   return null;
 }
@@ -73,7 +73,7 @@ export function hireSeller(game, id) {
 
 export function setZone(game, id, zone) {
   const s = sellerById(game, id);
-  if (!s) return fail('Onbekende verkoper.');
+  if (!s) return fail('Onbekende handelaar.');
   if (zone !== null && !ROUTES[zone]) return fail('Onbekende route.');
   if (!routeOpen(game, zone)) return fail(`Die route is open vanaf rang ${RANKS[ROUTES[zone].rank]}.`);
   s.zone = zone;
@@ -85,7 +85,7 @@ export function setZone(game, id, zone) {
 /** Gives a seller n units of a product from your stock (up to what he can carry). */
 export function giveStock(game, id, key, n = 1) {
   const s = sellerById(game, id);
-  if (!s) return fail('Onbekende verkoper.');
+  if (!s) return fail('Onbekende handelaar.');
   if (!parseItem(key)) return fail('Dat is geen product.');
   const room = STOCK_MAX - stockCount(s);
   const k = Math.min(Math.floor(n), game.state.inventory[key] ?? 0, room);
@@ -100,7 +100,7 @@ export function giveStock(game, id, key, n = 1) {
 /** Takes units back into your stock (as far as it has room). */
 export function takeStock(game, id, key, n = 1) {
   const s = sellerById(game, id);
-  if (!s) return fail('Onbekende verkoper.');
+  if (!s) return fail('Onbekende handelaar.');
   const have = s.stock[key] ?? 0;
   const k = Math.min(Math.floor(n), have, Math.max(0, stockFree(game.state)));
   if (k <= 0) return fail(have ? 'Je voorraad is vol.' : 'Dat heeft hij niet.');
@@ -124,7 +124,7 @@ export function takeAll(game, id) {
  */
 export function collect(game, id, mode = 'hand') {
   const s = sellerById(game, id);
-  if (!s) return fail('Onbekende verkoper.');
+  if (!s) return fail('Onbekende handelaar.');
   if (s.pouch <= 0) return fail('De zak is leeg.');
   const amount = s.pouch;
   const fee = mode === 'bank' ? Math.round(amount * BANK_FEE) : 0;
@@ -154,7 +154,7 @@ export function collectAll(game, mode = 'bank') {
 /** A tip makes a seller more loyal (a little less when he already is). */
 export function tip(game, id, amount) {
   const s = sellerById(game, id);
-  if (!s) return fail('Onbekende verkoper.');
+  if (!s) return fail('Onbekende handelaar.');
   if (!game.addCash(-amount)) return fail('Niet genoeg geld.');
   s.loyalty = Math.min(100, s.loyalty + (amount / 4) * (s.loyalty > 80 ? 0.5 : 1));
   game.emit('change');
@@ -174,7 +174,7 @@ export function meet(game, id) {
 export function fireSeller(game, id) {
   const h = handelState(game);
   const s = sellerById(game, id);
-  if (!s) return fail('Onbekende verkoper.');
+  if (!s) return fail('Onbekende handelaar.');
   const back = takeAll(game, id);
   const left = stockCount(s);
   const pouch = s.pouch;
