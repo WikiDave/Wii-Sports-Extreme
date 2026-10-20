@@ -1,66 +1,289 @@
-// Customers standing in the world: a Mii at their spot while they are present and unserved.
+// Customers in the world. Each one follows a day of their own (klanten/timeline.js: position is
+// a function of the game clock, so nothing is simulated), and walks between places along the
+// footpaths. Only the nearest few get a 3D Mii (a small pool, models are kept for a while so a
+// customer who comes back does not need to be built again). Talk to one: "Praat met <name>";
+// knock on the door of one who is at home: "Klop aan bij <name>".
 
-import * as THREE from 'three';
 import { shadowsOn } from './render.js';
 import { MiiModel } from '../../mii/model.js';
-import { OFFICIAL_MIIS } from '../../mii/official.js';
 import { MII_SCALE } from '../player.js';
 import { CUSTOMERS } from '../data/customers.js';
-import { available } from '../customers.js';
+import { isUnlocked, record, boycotted, wantsToday } from '../customers.js';
+import { activeRequest } from '../phone.js';
+import { staysHome } from '../weather.js';
+import { buildGraph, buildWorld } from '../klanten/places.js';
+import { dayTimeline, locate, slotIn } from '../klanten/timeline.js';
+import { pickVisible } from '../klanten/visible.js';
+import { lineFor } from '../klanten/lines.js';
+import { miiFor } from '../klanten/looks.js';
+import { setLiveWorld } from '../klanten/live.js';
+import { tierOf } from '../klanten/tiers.js';
 import { heightAt } from './island.js';
 
+const MAX_SHOWN = 8; // Miis on screen at the same time
+const MAX_SHOWN_PHONE = 6;
+const RADIUS = 110; // metres
+const GREET = 7.5; // they notice you from here
+const CACHE = 12; // models kept (shown and hidden)
+const TAG_RANGE = 14;
+const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+
 export class CustomerView {
-  /** spots: { strand: {x,z}, haven: {x,z} }, each a free place with room for a few customers. */
-  constructor(scene, spots, interactions, game, onTalk) {
+  /**
+   * spots: { strand, haven } free places next to the beach stand and the market (customers gather
+   * there). onTalk(customer) opens the deal; the customer it gets has `spot` (where they stand now,
+   * for the rival's prices) and `visit` ('straat' or 'deur').
+   */
+  constructor(scene, spots, interactions, game, onTalk, { phone = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches } = {}) {
     this.scene = scene;
     this.game = game;
-    this.minis = new Map();
-    this.slots = {};
     this.spots = spots;
     this.interactions = interactions;
-    for (const c of CUSTOMERS) {
-      const n = (this.slots[c.spot] = (this.slots[c.spot] ?? 0) + 1) - 1;
-      const base = spots[c.spot];
-      c.pos = { x: base.x + (n % 3) * 2.2 - 2.2, z: base.z + Math.floor(n / 3) * 2.2 };
-      interactions.add({ x: c.pos.x, z: c.pos.z, r: 3, label: `Praat met ${c.name}`, enabled: () => this.minis.has(c.id), run: () => onTalk(c) });
-    }
+    this.onTalk = onTalk;
+    this.bubbles = null; // set by the klanten feature (speech bubbles and name tags)
+    this.world = buildWorld({ spots });
+    setLiveWorld(this.world);
+    this.version = 0;
+    this.maxShown = phone ? MAX_SHOWN_PHONE : MAX_SHOWN;
+    this.models = new Map(); // id -> { mii, top, used }
+    this.lastT = 0;
+    this.frame = 0;
+    this.picked = [];
+    this.dist = new Float64Array(MAX_SHOWN);
+    this.tagList = [];
+    this.entries = CUSTOMERS.map((c, i) => {
+      const e = {
+        c,
+        loc: {},
+        x: 0, z: 0, y: 0, px: 0, pz: 0,
+        known: false, indoors: true, ok: false, shown: false, knockable: false,
+        tl: null, tlDay: -1, tlVer: -1, stamp: -1,
+        rot: 0, phase: i * 1.7, blinkAt: 1 + i * 0.37, lastGreet: -999, waveUntil: 0, speedNow: 0,
+        model: null, tag: c.name, flag: '',
+      };
+      e.talk = interactions.add({ x: 0, z: 0, r: 3.4, label: `Praat met ${c.name}`, enabled: () => e.shown && !e.indoors, run: () => this.talkTo(e, false) });
+      e.knock = interactions.add({ x: 0, z: 0, r: 3.6, label: `Klop aan bij ${c.name}`, enabled: () => e.knockable, run: () => this.talkTo(e, true) });
+      return e;
+    });
+    this.placeDoors();
     this.refresh();
-    this.off = [game.on('time', () => this.refresh()), game.on('change', () => this.refresh())];
+    this.off = [game.on('change', () => this.refresh()), game.on('newday', () => this.refresh())];
   }
 
+  /** Front doors and extra places of the real island (houses, hotel); customers re-plan their routes. */
+  configure({ homes = this.world.homes, places = {}, colliders = null, isLand = null } = {}) {
+    this.world = buildWorld({ spots: this.spots, homes, places, colliders, graph: buildGraph(undefined, { isLand }) });
+    setLiveWorld(this.world);
+    this.version++;
+    this.placeDoors();
+  }
+
+  placeDoors() {
+    for (const e of this.entries) {
+      const door = slotIn(this.world, e.c, 'thuis');
+      e.knock.x = door.x;
+      e.knock.z = door.z;
+    }
+  }
+
+  /** Who is known, who waits for their order: recomputed when the game state changes. */
   refresh() {
-    const here = new Set(available(this.game.state, this.game.rank, this.game.hour).map((c) => c.id));
-    for (const c of CUSTOMERS) {
-      const shown = this.minis.has(c.id);
-      if (here.has(c.id) && !shown) {
-        const data = OFFICIAL_MIIS.find((m) => m.name === c.mii);
-        const mii = new MiiModel(structuredClone(data));
-        mii.group.scale.setScalar(MII_SCALE);
-        mii.group.position.set(c.pos.x, heightAt(c.pos.x, c.pos.z), c.pos.z);
-        mii.group.rotation.y = Math.PI * (0.8 + 0.4 * Math.random());
-        shadowsOn(mii.group, false);
-        this.scene.add(mii.group);
-        this.minis.set(c.id, mii);
-      } else if (!here.has(c.id) && shown) {
-        const mii = this.minis.get(c.id);
-        this.scene.remove(mii.group);
-        mii.dispose();
-        this.minis.delete(c.id);
+    const s = this.game.state;
+    const rank = this.game.rank;
+    for (const e of this.entries) {
+      e.known = isUnlocked(s, e.c, rank);
+      if (!e.known) continue;
+      const rec = record(s, e.c.id);
+      e.tag = `${tierOf(rec.loyalty).icon} ${e.c.name}`;
+      e.flag = activeRequest(s, e.c.id) ? '📦' : '';
+      e.served = !wantsToday(s, e.c) && !boycotted(s, e.c);
+      e.angry = boycotted(s, e.c);
+      e.trust = rec.loyalty;
+    }
+  }
+
+  talkTo(e, door) {
+    const near = (spot) => spot && Math.hypot(e.x - spot.x, e.z - spot.z) < 32;
+    const spot = door ? null : near(this.spots.strand) ? 'strand' : near(this.spots.haven) ? 'haven' : null;
+    this.onTalk(Object.create(e.c, { spot: { value: spot }, visit: { value: door ? 'deur' : 'straat' } }));
+  }
+
+  model(e) {
+    let m = this.models.get(e.c.id);
+    if (m) return m;
+    if (this.madeThisFrame) return null; // one new Mii per frame at most
+    this.madeThisFrame = true;
+    const mii = new MiiModel(structuredClone(miiFor(e.c)));
+    mii.group.scale.setScalar(MII_SCALE);
+    mii.group.visible = false;
+    shadowsOn(mii.group, false);
+    this.scene.add(mii.group);
+    m = { mii, top: (mii.headY + 1.15) * MII_SCALE, used: 0 };
+    this.models.set(e.c.id, m);
+    if (this.models.size > CACHE) {
+      let oldest = null;
+      for (const [id, x] of this.models) if (!this.entries.find((q) => q.c.id === id).shown && (!oldest || x.used < oldest[1].used)) oldest = [id, x];
+      if (oldest) {
+        this.scene.remove(oldest[1].mii.group);
+        oldest[1].mii.dispose();
+        this.models.delete(oldest[0]);
+      }
+    }
+    return m;
+  }
+
+  /** Per frame: where everybody is, who is shown, how they stand and walk. */
+  update(t, playerPos) {
+    const dt = Math.min(0.1, Math.max(0.001, t - this.lastT));
+    this.lastT = t;
+    this.frame++;
+    this.madeThisFrame = false;
+    const s = this.game.state;
+    const hour = s.minutes / 60;
+    const awake = hour >= 7 && hour < 23;
+    for (const e of this.entries) {
+      if (!e.known) {
+        e.ok = false;
+        e.knockable = false;
+        continue;
+      }
+      if (e.tlDay !== s.day || e.tlVer !== this.version) {
+        e.tl = dayTimeline(this.world, e.c, s.day);
+        e.tlDay = s.day;
+        e.tlVer = this.version;
+      }
+      const loc = locate(this.world, e.c, e.tl, s.minutes, e.loc);
+      e.x = loc.x;
+      e.z = loc.z;
+      e.indoors = loc.indoors;
+      e.ok = !loc.indoors;
+      e.knockable = loc.indoors && awake && (staysHome(s.day, e.c.id) || (e.trust ?? 0) >= 10);
+    }
+    pickVisible(this.entries, playerPos.x, playerPos.z, this.maxShown, RADIUS, this.picked, this.dist);
+    for (const i of this.picked) this.entries[i].stamp = this.frame;
+    for (const e of this.entries) if (e.shown && e.stamp !== this.frame) this.hide(e);
+    this.tagList.length = 0;
+    for (const i of this.picked) {
+      const e = this.entries[i];
+      if (!e.shown && !this.show(e)) continue;
+      this.pose(e, t, dt, playerPos);
+      e.talk.x = e.x;
+      e.talk.z = e.z;
+      if (Math.hypot(e.x - playerPos.x, e.z - playerPos.z) < TAG_RANGE) this.tagList.push(e);
+    }
+    this.bubbles?.setTags(this.tagList);
+  }
+
+  show(e) {
+    const m = this.model(e);
+    if (!m) return false;
+    e.model = m;
+    m.used = this.frame;
+    m.mii.group.visible = true;
+    e.shown = true;
+    e.px = e.x;
+    e.pz = e.z;
+    e.speedNow = 0;
+    e.rot = Math.atan2(e.loc.hx, e.loc.hz);
+    return true;
+  }
+
+  hide(e) {
+    e.shown = false;
+    if (e.model) e.model.mii.group.visible = false;
+    e.model = null;
+  }
+
+  pose(e, t, dt, player) {
+    const { mii } = e.model;
+    e.model.used = this.frame;
+    e.y = Math.max(heightAt(e.x, e.z), 0);
+    mii.group.position.set(e.x, e.y, e.z);
+    // How fast they really move now (a paused game freezes the clock: they stand still then).
+    const v = Math.hypot(e.x - e.px, e.z - e.pz) / dt;
+    e.px = e.x;
+    e.pz = e.z;
+    e.speedNow += (Math.min(v, 6) - e.speedNow) * Math.min(1, dt * 8);
+    const walking = e.speedNow > 0.25;
+    const dp = Math.hypot(player.x - e.x, player.z - e.z);
+    const near = dp < GREET;
+    // Facing: their walking direction; standing, towards you when you are near.
+    let want = Math.atan2(e.loc.hx, e.loc.hz);
+    if (!walking && near) want = Math.atan2(player.x - e.x, player.z - e.z);
+    e.rot += wrap(want - e.rot) * Math.min(1, dt * (walking ? 10 : 5));
+    mii.group.rotation.y = e.rot;
+    const p = mii.parts;
+    if (walking) {
+      e.phase += dt * (5 + e.speedNow * 1.7);
+      const f = Math.min(1, e.speedNow / 2);
+      const sw = Math.sin(e.phase) * (0.42 + 0.12 * Math.min(1, e.speedNow / 3)) * f;
+      p.legL.rotation.x = sw;
+      p.legR.rotation.x = -sw;
+      p.armL.rotation.x = -sw * 0.9;
+      p.armR.rotation.x = sw * 0.9;
+      p.armL.rotation.z = 0.08;
+      p.armR.rotation.z = -0.08;
+      mii.group.position.y += Math.abs(Math.cos(e.phase)) * 0.05 * f;
+      mii.group.rotation.x = 0.05 * f;
+    } else {
+      p.legL.rotation.x = p.legR.rotation.x = 0;
+      mii.group.rotation.x = 0;
+      mii.idle(t + e.phase);
+    }
+    // A wave when you come close.
+    if (near && t - e.lastGreet > 40 && e.ok && !document.querySelector('.modal-backdrop')) {
+      e.lastGreet = t;
+      e.waveUntil = t + 2.4;
+      this.greet(e);
+    }
+    if (t < e.waveUntil) {
+      p.armR.rotation.x = -2.4 + Math.sin(t * 11) * 0.28;
+      p.armR.rotation.z = -0.5;
+    }
+    if (t > e.blinkAt) {
+      mii.setBlink(true);
+      if (t > e.blinkAt + 0.12) {
+        mii.setBlink(false);
+        e.blinkAt = t + 2 + ((e.phase * 7) % 3);
       }
     }
   }
 
-  /** Idle motion and turning towards the player. */
-  update(t, playerPos) {
-    for (const [id, mii] of this.minis) {
-      mii.idle(t + id.length);
-      const c = CUSTOMERS.find((x) => x.id === id);
-      if (Math.hypot(c.pos.x - playerPos.x, c.pos.z - playerPos.z) < 8) mii.group.rotation.y = Math.atan2(playerPos.x - c.pos.x, playerPos.z - c.pos.z);
-    }
+  /** What they call out when you come near. */
+  greet(e) {
+    if (!this.bubbles) return;
+    const event = e.angry ? 'boycott' : e.flag ? 'request' : e.served ? 'again' : 'greet';
+    this.bubbles.say(e.c.id, e.c.name, lineFor(e.c.voice, event));
+  }
+
+  /** Where a speech bubble goes: above the head of a shown customer. Fills out and returns whether they are shown. */
+  anchor(id, out) {
+    const e = this.entries.find((x) => x.c.id === id);
+    if (!e?.shown || !e.model) return false;
+    out.x = e.x;
+    out.y = e.y + e.model.top;
+    out.z = e.z;
+    return true;
+  }
+
+  /** For tests and tools: where everybody is. */
+  debug() {
+    return this.entries.map((e) => ({ id: e.c.id, known: e.known, x: e.x, z: e.z, y: e.y, place: e.loc.place, moving: !!e.loc.moving, indoors: e.indoors, shown: e.shown }));
   }
 
   dispose() {
+    setLiveWorld(null);
     this.off.forEach((f) => f());
-    for (const mii of this.minis.values()) mii.dispose();
+    for (const e of this.entries) {
+      for (const item of [e.talk, e.knock]) {
+        const i = this.interactions.items.indexOf(item);
+        if (i >= 0) this.interactions.items.splice(i, 1);
+      }
+    }
+    for (const m of this.models.values()) {
+      this.scene.remove(m.mii.group);
+      m.mii.dispose();
+    }
+    this.models.clear();
   }
 }

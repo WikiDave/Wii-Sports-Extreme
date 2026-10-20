@@ -171,7 +171,7 @@ for (const c of CUSTOMERS) {
     const s = stopsOf(world, lotte, d);
     picks.add(s[3].place); times.add(s[2].min);
   }
-  assert.ok(picks.has('weide') && picks.has('surf')); assert.ok(times.size > 5);
+  assert.ok(picks.has('weide') && picks.has('strand')); assert.ok(times.size > 5);
 }
 
 // ---------------------------------------------------------------- texts for the phone

@@ -226,6 +226,18 @@ assert.equal(toNextTier(0).points, 15); assert.equal(toNextTier(100), null);
   assert.ok(x.state.heat < 2 && heatLevel(x.state) >= 1);
 }
 
+// ---------------------------------------------------------------- the rich stock up every other day
+{
+  const baron = customerById('baron'); assert.equal(baron.every, 2);
+  const x = new Game(null); x.state.xp = 99999; x.state.day = 5; x.state.cash = 1;
+  assert.equal(wantsToday(x.state, baron), true, 'a new customer always wants');
+  x.addItem('p:ijs:giechel+zonnig:110', 6);
+  assert.equal(deal(x, baron, 'p:ijs:giechel+zonnig:110', 3, 'eerlijk', 1, null, () => 0.99).ok, true);
+  x.state.day = 6; assert.equal(wantsToday(x.state, baron), false);
+  x.state.day = 7; assert.equal(wantsToday(x.state, baron), true);
+  assert.equal(customerById('saburo').every, 1);
+}
+
 // ---------------------------------------------------------------- forgetting, favourite products, requests with a product
 {
   const x = new Game(null);

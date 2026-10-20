@@ -4,10 +4,9 @@
 import { h, modal, toast } from '../../ui/dom.js';
 import { CUSTOMERS } from '../data/customers.js';
 import { EFFECTS } from '../data/effects.js';
-import { RANKS } from '../state.js';
-import { isUnlocked, record } from '../customers.js';
 import { accept, decline, unread, deposit, withdraw } from '../phone.js';
 import { EXTRA_APPS } from '../phoneApps.js';
+import { renderContacts } from '../klanten/contactsPage.js';
 
 const euro = (n) => `€${Math.round(n).toLocaleString('nl-NL')}`;
 const nameOf = (id) => CUSTOMERS.find((c) => c.id === id)?.name ?? id;
@@ -78,23 +77,7 @@ export function openPhone(game, { openMap } = {}) {
     );
   };
 
-  const contacten = () =>
-    page(
-      'Contacten',
-      ...CUSTOMERS.map((c) => {
-        const known = isUnlocked(game.state, c, game.rank);
-        const rec = record(game.state, c.id);
-        return h(
-          'div',
-          { class: `contact ${known ? '' : 'is-locked'}` },
-          h('strong', {}, known ? c.name : '???'),
-          known
-            ? h('div', { class: 'contact-bar', title: `Vertrouwen ${rec.loyalty}/100` }, h('span', { style: { width: `${rec.loyalty}%` } }))
-            : h('small', {}, c.unlock?.rank != null ? `Komt bij rang ${RANKS[c.unlock.rank]}` : 'Wordt aan je voorgesteld door een vriend'),
-          known ? h('small', {}, `Houdt van ${c.likes.map((e) => EFFECTS[e].name.toLowerCase()).join(', ')} · ${rec.deals} deals`) : null,
-        );
-      }),
-    );
+  const contacten = () => renderContacts({ page, game });
 
   const bank = () => {
     const s = game.state;

@@ -31,12 +31,15 @@ export function unlockMet(state, unlock, rank) {
 
 const nameOf = (id) => CUSTOMERS.find((c) => c.id === id)?.name ?? id;
 
-/** The friend that introduces this customer (first loyalty condition), or null. */
-export function introducerOf(c) {
+/** The friend that introduces this customer and the trust they need: { by, need }, or null. */
+export function introduction(c) {
   const conds = c.unlock?.any ?? (c.unlock ? [c.unlock] : []);
   const withFriend = conds.find((x) => x.loyalty);
-  return withFriend ? withFriend.loyalty[0] : null;
+  return withFriend ? { by: withFriend.loyalty[0], need: withFriend.loyalty[1] } : null;
 }
+
+/** Id of the friend that introduces this customer, or null. */
+export const introducerOf = (c) => introduction(c)?.by ?? null;
 
 /** Dutch lines about what is still missing; [] when nothing is. */
 export function missing(state, unlock, rank) {

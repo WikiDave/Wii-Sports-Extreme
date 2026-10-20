@@ -47,9 +47,10 @@ export function isPresent(c, hour) {
 /** Whether the customer refuses to see the player (three refusals in a row). */
 export const boycotted = (state, c) => (state.customers[c.id]?.boycott ?? 0) >= state.day;
 
-/** Whether the customer can buy today: not served within `every` days, no boycott. */
+/** Whether the customer can buy today: not served within `every` days (a new customer always can), no boycott. */
 export function wantsToday(state, c) {
-  return state.day - (state.customers[c.id]?.lastDay ?? 0) >= c.every && !boycotted(state, c);
+  const last = state.customers[c.id]?.lastDay ?? 0;
+  return (last === 0 || state.day - last >= c.every) && !boycotted(state, c);
 }
 
 /** Customers you can trade with right now (unlocked, out, not staying home, not served today). */
@@ -140,7 +141,7 @@ export function deal(game, c, key, qty, offer, factor = 1, request = null, rand 
   const n = Math.min(qty, have, maxQtyOf(c, rec.loyalty), Math.floor(budgetOf(c, rec.loyalty) / Math.max(1, price)));
   const limit = maxPrice(c, key, rec.loyalty) * factor;
   if (price > limit) return refuse(game, c, rec, price / limit - 1, sayAs, rand);
-  if (n < 1) return { ok: false, sold: 0, money: 0, message: `${c.name} kan of wil dit niet kopen.`, line: sayAs('plain'), reaction: 'plain' };
+  if (n < 1) return { ok: false, sold: 0, money: 0, message: `${c.name} kan of wil dit niet kopen.`, line: sayAs('refuse'), reaction: 'refuse' };
   game.addItem(key, -n);
   const money = price * n;
   game.addCash(money);

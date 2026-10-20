@@ -8,6 +8,7 @@
 import { DAY_START, MINUTES_PER_SECOND } from '../state.js';
 import { dayInfo, hash01, staysHome } from '../weather.js';
 import { PLACES, nearestNode, shortestPath } from './places.js';
+import { avoidObstacles, nudgeOut } from './clearance.js';
 
 const idHash = (s) => [...s].reduce((a, ch) => (Math.imul(a, 31) + ch.charCodeAt(0)) | 0, 7);
 
@@ -27,13 +28,13 @@ export function slotIn(world, c, placeId) {
     if (home) return home;
     const [x, z] = FALLBACK_HOME[c.home] ?? FALLBACK_HOME.strand;
     const a = hash01(idHash(c.id), 3) * Math.PI * 2;
-    return { x: x + Math.cos(a) * 5, z: z + Math.sin(a) * 5 };
+    return nudgeOut(world.colliders, { x: x + Math.cos(a) * 5, z: z + Math.sin(a) * 5 });
   }
   const p = world.places[placeId];
   const h = idHash(c.id) ^ idHash(placeId);
   const a = hash01(h, 1) * Math.PI * 2;
   const r = p.spread * (0.3 + 0.7 * Math.sqrt(hash01(h, 2)));
-  return { x: p.x + Math.cos(a) * r, z: p.z + Math.sin(a) * r };
+  return nudgeOut(world.colliders, { x: p.x + Math.cos(a) * r, z: p.z + Math.sin(a) * r });
 }
 
 /** The walking route between two places for this customer: points, cumulative lengths, total. */
@@ -47,7 +48,7 @@ export function routeOf(world, c, from, to) {
   const na = nearestNode(g, a.x, a.z);
   const nb = nearestNode(g, b.x, b.z);
   const nodes = shortestPath(g, na, nb) ?? [na, nb];
-  const pts = [[a.x, a.z], ...nodes.map((i) => [g.nodes[i].x, g.nodes[i].z]), [b.x, b.z]];
+  const pts = avoidObstacles([[a.x, a.z], ...nodes.map((i) => [g.nodes[i].x, g.nodes[i].z]), [b.x, b.z]], world.colliders);
   const cum = [0];
   for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
   route = { pts, cum, len: cum[cum.length - 1] };
@@ -81,6 +82,13 @@ export function stopsOf(world, c, day) {
   return out;
 }
 
+/** A stay at a place: the customer's spot there and the way they face is worked out once. */
+function stay(world, c, place, t0, t1) {
+  const p = slotIn(world, c, place);
+  const a = hash01(idHash(c.id), idHash(place), 9) * Math.PI * 2;
+  return { kind: 'stay', place, t0, t1, x: p.x, z: p.z, hx: Math.sin(a), hz: Math.cos(a) };
+}
+
 /** Where to find a customer today: the place they stay longest outside, { place, min (arrival), len }, or null at home. */
 export function meetingSpot(world, c, day) {
   if (staysHome(day, c.id)) return null;
@@ -103,7 +111,7 @@ export function dayTimeline(world, c, day) {
   if (world.timelines.size > 300) world.timelines.clear();
   const segs = [];
   if (staysHome(day, c.id)) {
-    segs.push({ kind: 'stay', place: 'thuis', t0: DAY_START, t1: Infinity });
+    segs.push(stay(world, c, 'thuis', DAY_START, Infinity));
   } else {
     const stops = stopsOf(world, c, day);
     const mpm = c.speed / MINUTES_PER_SECOND; // metres per game minute
@@ -115,12 +123,12 @@ export function dayTimeline(world, c, day) {
       const route = routeOf(world, c, cur, place);
       const dur = route.len / mpm;
       const depart = Math.max(stayFrom, min - dur);
-      segs.push({ kind: 'stay', place: cur, t0: stayFrom, t1: depart });
+      segs.push(stay(world, c, cur, stayFrom, depart));
       segs.push({ kind: 'walk', from: cur, to: place, route, t0: depart, t1: depart + dur, mpm });
       stayFrom = depart + dur;
       cur = place;
     }
-    segs.push({ kind: 'stay', place: cur, t0: stayFrom, t1: Infinity });
+    segs.push(stay(world, c, cur, stayFrom, Infinity));
   }
   const tl = { segs, id: c.id };
   world.timelines.set(key, tl);
@@ -141,12 +149,10 @@ export function locate(world, c, tl, minutes, out = {}) {
   }
   out.seg = seg;
   if (seg.kind === 'stay') {
-    const p = slotIn(world, c, seg.place);
-    out.x = p.x;
-    out.z = p.z;
-    const a = hash01(idHash(c.id), idHash(seg.place), 9) * Math.PI * 2;
-    out.hx = Math.sin(a);
-    out.hz = Math.cos(a);
+    out.x = seg.x;
+    out.z = seg.z;
+    out.hx = seg.hx;
+    out.hz = seg.hz;
     out.moving = false;
     out.indoors = seg.place === 'thuis';
     out.place = seg.place;
