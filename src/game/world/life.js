@@ -141,7 +141,6 @@ export class Life {
       parts.armR.rotation.x = s * 0.9;
       parts.armL.rotation.z = 0.08;
       parts.armR.rotation.z = -0.08;
-      w.mii.group.children[0].position.y = 0;
     }
   }
 
