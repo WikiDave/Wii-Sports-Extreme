@@ -1,61 +1,101 @@
 // The phone: text messages from customers (requests with a bonus), and the bank. Pure logic.
 //
-// Each morning, every customer you know (and who does not stay home) may text a request: a few
-// units with an effect they like. Accept it on the phone and hand over the goods in person for
-// a bonus on the price. The bank keeps money safe from guards and from being caught.
+// Each morning, customers you know may text a request: a few units with an effect they like,
+// sometimes of their favourite product, and where to find them that day. Customers who stay home
+// because of the weather say so (knock on their door). Accept the request on the phone and hand
+// over the goods in person for a bonus on the price. The bank keeps money safe from guards and
+// from being caught.
 
 import { CUSTOMERS } from './data/customers.js';
+import { PRODUCTS } from './data/products.js';
 import { EFFECTS } from './data/effects.js';
-import { isUnlocked, record } from './customers.js';
+import { isUnlocked, record, wantsToday } from './customers.js';
 import { parseItem } from './economy.js';
 import { staysHome, hash01 } from './weather.js';
+import { lineFor } from './klanten/lines.js';
+import { ASKS, OPENERS, SOMETHING, STAY_HOME, UNITS, clockText, meetAt } from './klanten/texts.js';
+import { buildWorld } from './klanten/places.js';
+import { meetingSpot } from './klanten/timeline.js';
+import { introducerOf } from './klanten/unlock.js';
 
 export const REQUEST_BONUS = 1.3;
 export const MAX_MESSAGES = 30;
+/** Most new messages in a morning (the most trusting customers write first). */
+export const MAX_PER_DAY = 6;
 
-const GREETINGS = ['Hoi!', 'Hey, ben jij dat?', 'Psst,', 'Goedemorgen!', 'Yo,', 'Hallo daar,'];
-const ASKS = [
-  (q, fx) => `heb je ${q} flesjes met iets ${fx}s voor me?`,
-  (q, fx) => `ik wil graag ${q} stuks, maar wel ${fx}!`,
-  (q, fx) => `kom je langs met ${q}× iets ${fx}s? Ik betaal extra.`,
-  (q, fx) => `mijn feestje is vanavond: ${q} ${fx}e dingen graag.`,
-];
-const adjective = (id) => EFFECTS[id].name.toLowerCase();
+const idHash = (s) => [...s].reduce((a, ch) => (Math.imul(a, 31) + ch.charCodeAt(0)) | 0, 7);
+let defaultWorld = null;
 
-/** One message from customer c for `day`, deterministic. */
-export function makeMessage(c, day) {
-  const likes = c.likes;
-  const effect = likes[Math.floor(hash01(day, c.id.length * 7) * likes.length)];
-  const qty = 1 + Math.floor(hash01(day, c.id.length * 13) * 3);
-  const greet = GREETINGS[Math.floor(hash01(day, 3) * GREETINGS.length)];
-  const ask = ASKS[Math.floor(hash01(day, c.id.length) * ASKS.length)];
-  return {
+/**
+ * One message from customer c for `day`, deterministic. opts: rank (a favourite product you cannot
+ * make yet is not asked for), friend (name: they were just introduced by this friend), stayHome
+ * (the weather keeps them in), world (places).
+ */
+export function makeMessage(c, day, { rank = 99, friend = null, stayHome = false, world = (defaultWorld ??= buildWorld()) } = {}) {
+  const k = idHash(c.id);
+  const effect = c.likes[Math.floor(hash01(day, k, 7) * c.likes.length)];
+  const qty = 1 + Math.floor(hash01(day, k, 13) * Math.min(3, c.maxQty));
+  const wantsFavourite = hash01(day, k, 5) < 0.55 && rank >= PRODUCTS[c.prefers].rank;
+  const product = wantsFavourite ? c.prefers : null;
+  const [one, many] = UNITS[product ?? 'limonade'];
+  const opener = friend ? lineFor(c.voice, 'intro', { friend }, () => hash01(day, k, 3)) : (OPENERS[c.voice] ?? OPENERS.joviaal)[Math.floor(hash01(day, k, 3) * 3)];
+  const ask = ASKS[Math.floor(hash01(day, k, 1) * ASKS.length)];
+  const what = product ? `${qty} ${qty === 1 ? one : many} ${PRODUCTS[product].name.toLowerCase()}` : `${qty} ${qty === 1 ? 'drankje' : 'drankjes'}`;
+  const asked = ask({ what, fx: SOMETHING[effect] });
+  let text = `${opener} ${/[.!?:]$/.test(opener) ? asked[0].toUpperCase() + asked.slice(1) : asked}`;
+  if (stayHome) text += ` ${STAY_HOME[Math.floor(hash01(day, k, 17) * STAY_HOME.length)]}`;
+  else {
+    const spot = meetingSpot(world, c, day);
+    if (spot) text += ` ${meetAt(world.places[spot.place].at, clockText(spot.min))}`;
+  }
+  const m = {
     id: `${c.id}-${day}`,
     customer: c.id,
     day,
-    text: `${greet} ${ask(qty, adjective(effect))}`,
+    text,
     effect,
     qty,
     status: 'new', // new | accepted | done | expired
   };
+  if (product) m.product = product;
+  return m;
 }
 
 /** Texts of a new day (once per day). Returns the new messages. */
 export function dailyMessages(game) {
   const s = game.state;
-  const fresh = [];
-  for (const m of s.messages) if (m.status !== 'done' && m.day < s.day) m.status = m.status === 'accepted' ? 'expired' : 'expired';
+  const world = (defaultWorld ??= buildWorld());
+  for (const m of s.messages) if (m.status !== 'done' && m.day < s.day) m.status = 'expired';
+  const picks = [];
   for (const c of CUSTOMERS) {
-    if (!isUnlocked(s, c, game.rank) || staysHome(s.day, c.id)) continue;
+    if (!isUnlocked(s, c, game.rank) || !wantsToday(s, c)) continue;
     if (s.messages.some((m) => m.id === `${c.id}-${s.day}`)) continue;
-    // Not every customer writes every day.
-    if (hash01(s.day, c.id.charCodeAt(0)) > 0.75) continue;
-    fresh.push(makeMessage(c, s.day));
+    const stayHome = staysHome(s.day, c.id);
+    const rec = record(s, c.id);
+    // Not every customer writes every day: the more they trust you (and the chattier they are), the more often.
+    const chance = stayHome ? 0.85 : Math.min(0.95, c.texting + 0.4 * (rec.loyalty / 100));
+    if (hash01(s.day, idHash(c.id), 21) > chance) continue;
+    picks.push({ c, stayHome, trust: rec.loyalty });
   }
+  picks.sort((a, b) => b.trust - a.trust || (a.c.id < b.c.id ? -1 : 1));
+  const fresh = picks.slice(0, MAX_PER_DAY).map(({ c, stayHome }) => makeMessage(c, s.day, { rank: game.rank, stayHome, world }));
   s.messages = [...fresh, ...s.messages].slice(0, MAX_MESSAGES);
   if (fresh.length) game.emit('messages', fresh);
   game.emit('change');
   return fresh;
+}
+
+/** A message from a customer who was just introduced by a friend (now, not tomorrow). Returns it, or null. */
+export function introMessage(game, customerId) {
+  const s = game.state;
+  const c = CUSTOMERS.find((x) => x.id === customerId);
+  if (!c || s.messages.some((m) => m.id === `${c.id}-${s.day}`)) return null;
+  const by = CUSTOMERS.find((x) => x.id === introducerOf(c));
+  const m = makeMessage(c, s.day, { rank: game.rank, friend: by?.name ?? null, world: (defaultWorld ??= buildWorld()) });
+  s.messages = [m, ...s.messages].slice(0, MAX_MESSAGES);
+  game.emit('messages', [m]);
+  game.emit('change');
+  return m;
 }
 
 export const unread = (state) => state.messages.filter((m) => m.status === 'new').length;
