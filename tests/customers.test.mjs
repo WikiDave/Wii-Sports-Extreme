@@ -149,7 +149,7 @@ assert.equal(toNextTier(0).points, 15); assert.equal(toNextTier(100), null);
   const andy = customerById('andy');
   assert.equal(budgetOf(andy, 0), 200); assert.equal(budgetOf(andy, 90), 264);
   assert.equal(maxQtyOf(andy, 0), 3); assert.equal(maxQtyOf(andy, 40), 4); assert.equal(maxQtyOf(andy, 90), 5);
-  assert.equal(maxQtyOf(customerById('hiroshi'), 0), 6);
+  assert.equal(maxQtyOf(customerById('hiroshi'), 0), 4); assert.equal(maxQtyOf(customerById('kai'), 0), 2);
   const k = 'p:limonade:fris:100';
   assert.equal(maxPrice(andy, k, 100) > maxPrice(andy, k, 0), true);
   assert.equal(priceOf(andy, k, 'laag'), Math.round(valueFor(andy, k) * 0.8));

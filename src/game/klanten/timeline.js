@@ -62,7 +62,9 @@ const PARTY = new Set(['strandganger', 'surfer', 'nachtbraker', 'student', 'toer
 /** Stops of the day after weather, party and small daily changes: [{ min, place }]. */
 export function stopsOf(world, c, day) {
   const info = dayInfo(day);
-  const rainy = info.weather === 'regen' || info.weather === 'storm';
+  const storm = info.weather === 'storm';
+  const rainy = storm || info.weather === 'regen';
+  const wet = rainy && (storm || !c.rainproof); // who avoids the open air today
   const h = idHash(c.id);
   const out = [];
   let last = DAY_START;
@@ -70,8 +72,8 @@ export function stopsOf(world, c, day) {
     let p = place;
     if (alt && hash01(day, h, i, 11) < 0.3) p = alt;
     if (i > 0 && p !== 'thuis') {
-      if (rainy && world.places[p]?.exposed) p = world.places[p].shelter ?? p;
-      if (info.event === 'feest' && PARTY.has(c.type) && hour >= 17 && hour < 24) p = 'strand';
+      if (wet && world.places[p]?.exposed) p = world.places[p].shelter ?? p;
+      else if (!rainy && info.event === 'feest' && PARTY.has(c.type) && hour >= 17 && hour < 24) p = 'strand';
     }
     let min = hour * 60;
     if (i > 0) min = Math.max(last + 5, min + Math.round((hash01(day, h, i) - 0.5) * 30));
@@ -89,15 +91,23 @@ function stay(world, c, place, t0, t1) {
   return { kind: 'stay', place, t0, t1, x: p.x, z: p.z, hx: Math.sin(a), hz: Math.cos(a) };
 }
 
-/** Where to find a customer today: the place they stay longest outside, { place, min (arrival), len }, or null at home. */
-export function meetingSpot(world, c, day) {
-  if (staysHome(day, c.id)) return null;
+/** Whether the customer does not go out at all today (the weather, or only open-air stops in the rain). */
+export const staysIn = (world, c, day) => dayTimeline(world, c, day).homeAll;
+
+/**
+ * Where to find a customer today: the place they stay longest outside, { place, min (when to be
+ * there), len }, or null at home. `after` (minute of the day): only stops that are still to come.
+ */
+export function meetingSpot(world, c, day, after = 0) {
+  if (staysIn(world, c, day)) return null;
   const stops = stopsOf(world, c, day);
   let best = null;
   stops.forEach((s, i) => {
     if (s.place === 'thuis') return;
-    const len = (stops[i + 1]?.min ?? 28 * 60) - s.min;
-    if (!best || len > best.len) best = { place: s.place, min: s.min, len };
+    const end = stops[i + 1]?.min ?? 28 * 60;
+    if (end <= after + 20) return;
+    const len = end - Math.max(s.min, after);
+    if (!best || len > best.len) best = { place: s.place, min: Math.max(s.min, after + 15), len };
   });
   return best;
 }
@@ -130,7 +140,7 @@ export function dayTimeline(world, c, day) {
     }
     segs.push(stay(world, c, cur, stayFrom, Infinity));
   }
-  const tl = { segs, id: c.id };
+  const tl = { segs, id: c.id, homeAll: segs.every((x) => x.kind === 'stay' && x.place === 'thuis') };
   world.timelines.set(key, tl);
   return tl;
 }

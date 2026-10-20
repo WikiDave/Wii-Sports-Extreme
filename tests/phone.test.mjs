@@ -3,10 +3,12 @@ import { Game } from '../src/game/state.js';
 import { dailyMessages, accept, decline, activeRequest, fitsRequest, completeRequest, deposit, withdraw, unread, makeMessage, introMessage, MAX_PER_DAY, MAX_MESSAGES } from '../src/game/phone.js';
 import { CUSTOMERS } from '../src/game/data/customers.js';
 import { customerById, record, fitsWish } from '../src/game/customers.js';
-import { staysHome } from '../src/game/weather.js';
+import { staysIn } from '../src/game/klanten/timeline.js';
+import { buildWorld } from '../src/game/klanten/places.js';
 import { PRODUCTS } from '../src/game/data/products.js';
 import { caught } from '../src/game/police.js';
 
+const world = buildWorld();
 const g = new Game(null);
 g.state.xp = 300; g.state.day = 3; // rank 2
 const fresh = dailyMessages(g);
@@ -14,7 +16,7 @@ assert.ok(fresh.length >= 1 && fresh.length <= MAX_PER_DAY, String(fresh.length)
 assert.equal(dailyMessages(g).length, 0); // once per day
 assert.equal(unread(g.state), fresh.length);
 const m = fresh[0]; assert.equal(m.status, 'new'); assert.ok(m.qty >= 1 && m.qty <= 3); assert.ok(m.text.length > 10);
-assert.deepEqual(makeMessage(customerById(m.customer), 3, { rank: 2, stayHome: staysHome(3, m.customer) }), { ...m }); // deterministic
+assert.deepEqual(makeMessage(customerById(m.customer), 3, { rank: 2, stayHome: staysIn(world, customerById(m.customer), 3) }), { ...m }); // deterministic
 assert.equal(accept(g, m.id), true); assert.equal(accept(g, m.id), false);
 assert.equal(activeRequest(g.state, m.customer).id, m.id);
 assert.equal(fitsRequest(m, `p:limonade:${m.effect}:100`), true); assert.equal(fitsRequest(m, 'citroen'), false);
@@ -41,7 +43,7 @@ assert.ok(g.state.messages.filter((x) => x.day === 3).every((x) => x.status === 
       assert.ok(!msg.text.includes('undefined') && !msg.text.includes('{') && !msg.text.includes('  '), msg.text);
       if (msg.product) { withProduct++; assert.equal(msg.product, c.prefers); assert.ok(PRODUCTS[msg.product].rank <= x.rank); assert.ok(msg.text.toLowerCase().includes(PRODUCTS[msg.product].name.toLowerCase())); }
       if (/Je vindt me .+ rond \d\d:\d\d\./.test(msg.text)) found++;
-      if (staysHome(day, c.id)) { home++; assert.match(msg.text, /thuis|binnen/); }
+      if (staysIn(world, c, day)) { home++; assert.match(msg.text, /thuis|binnen/); }
     }
   }
   assert.ok(withProduct > 10 && found > 50 && home > 0, `${withProduct} ${found} ${home}`);
@@ -61,6 +63,12 @@ assert.ok(fitsWish({ product: 'ijs' }, 'p:ijs:fris:100') && !fitsWish({ product:
   const intro = introMessage(x, 'daisuke');
   assert.equal(intro.customer, 'daisuke'); assert.match(intro.text, /Saburo/); assert.equal(seen.length, 1);
   assert.equal(introMessage(x, 'daisuke'), null); // one a day
+  // sent in the afternoon it names a time still to come; late at night they are home already
+  const later = new Game(null); record(later.state, 'saburo').loyalty = 25; later.state.minutes = 14 * 60;
+  const t = introMessage(later, 'daisuke').text; const clock = /rond (\d\d):(\d\d)/.exec(t);
+  assert.ok(clock && Number(clock[1]) * 60 + Number(clock[2]) >= 14 * 60 + 15, t);
+  const night = new Game(null); record(night.state, 'saburo').loyalty = 25; night.state.minutes = 26 * 60;
+  assert.match(introMessage(night, 'daisuke').text, /morgen weer/);
   assert.equal(x.state.messages.length, 1);
   assert.equal(introMessage(x, 'nobody'), null);
 }
@@ -68,10 +76,12 @@ assert.ok(fitsWish({ product: 'ijs' }, 'p:ijs:fris:100') && !fitsWish({ product:
 // the weather keeps some at home: they say so
 {
   let day = 2;
-  while (!CUSTOMERS.some((c) => !c.unlock && staysHome(day, c.id))) day++;
+  while (!CUSTOMERS.some((c) => !c.unlock && staysIn(world, c, day))) day++;
   const x = new Game(null); x.state.day = day;
   const list = dailyMessages(x);
-  for (const msg of list) if (staysHome(day, msg.customer)) assert.match(msg.text, /thuis|binnen/);
+  assert.ok(list.some((msg) => staysIn(world, customerById(msg.customer), day)), 'someone writes that they stay in');
+  for (const msg of list) if (staysIn(world, customerById(msg.customer), day)) assert.match(msg.text, /thuis|binnen/);
+  for (const msg of list) if (!staysIn(world, customerById(msg.customer), day)) assert.match(msg.text, /Je vindt me/);
 }
 // the inbox is capped
 {

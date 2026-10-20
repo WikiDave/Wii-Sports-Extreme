@@ -10,7 +10,6 @@ import { MII_SCALE } from '../player.js';
 import { CUSTOMERS } from '../data/customers.js';
 import { isUnlocked, record, boycotted, wantsToday } from '../customers.js';
 import { activeRequest } from '../phone.js';
-import { staysHome } from '../weather.js';
 import { buildGraph, buildWorld } from '../klanten/places.js';
 import { dayTimeline, locate, slotIn } from '../klanten/timeline.js';
 import { pickVisible } from '../klanten/visible.js';
@@ -59,7 +58,8 @@ export class CustomerView {
         known: false, indoors: true, ok: false, shown: false, knockable: false,
         tl: null, tlDay: -1, tlVer: -1, stamp: -1,
         rot: 0, phase: i * 1.7, blinkAt: 1 + i * 0.37, lastGreet: -999, waveUntil: 0, speedNow: 0,
-        model: null, tag: c.name, flag: '',
+        model: null, tag: c.name, flag: '', doorY: 0,
+        doorTag: { c: { id: `door:${c.id}` }, tag: `🏠 ${c.name}`, flag: '' },
       };
       e.talk = interactions.add({ x: 0, z: 0, r: 3.4, label: `Praat met ${c.name}`, enabled: () => e.shown && !e.indoors, run: () => this.talkTo(e, false) });
       e.knock = interactions.add({ x: 0, z: 0, r: 3.6, label: `Klop aan bij ${c.name}`, enabled: () => e.knockable, run: () => this.talkTo(e, true) });
@@ -83,6 +83,7 @@ export class CustomerView {
       const door = slotIn(this.world, e.c, 'thuis');
       e.knock.x = door.x;
       e.knock.z = door.z;
+      e.doorY = Math.max(heightAt(door.x, door.z), 0);
     }
   }
 
@@ -157,7 +158,7 @@ export class CustomerView {
       e.z = loc.z;
       e.indoors = loc.indoors;
       e.ok = !loc.indoors;
-      e.knockable = loc.indoors && awake && (staysHome(s.day, e.c.id) || (e.trust ?? 0) >= 10);
+      e.knockable = loc.indoors && awake && (e.tl.homeAll || (e.trust ?? 0) >= 10);
     }
     pickVisible(this.entries, playerPos.x, playerPos.z, this.maxShown, RADIUS, this.picked, this.dist);
     for (const i of this.picked) this.entries[i].stamp = this.frame;
@@ -170,6 +171,11 @@ export class CustomerView {
       e.talk.x = e.x;
       e.talk.z = e.z;
       if (Math.hypot(e.x - playerPos.x, e.z - playerPos.z) < TAG_RANGE) this.tagList.push(e);
+    }
+    // Somebody at home: a tag over their front door when you walk by.
+    for (const e of this.entries) {
+      if (this.tagList.length >= 3) break;
+      if (e.knockable && Math.hypot(e.knock.x - playerPos.x, e.knock.z - playerPos.z) < TAG_RANGE) this.tagList.push(e.doorTag);
     }
     this.bubbles?.setTags(this.tagList);
   }
@@ -258,6 +264,14 @@ export class CustomerView {
 
   /** Where a speech bubble goes: above the head of a shown customer. Fills out and returns whether they are shown. */
   anchor(id, out) {
+    if (id.startsWith('door:')) {
+      const d = this.entries.find((x) => x.c.id === id.slice(5));
+      if (!d?.knockable) return false;
+      out.x = d.knock.x;
+      out.y = d.doorY + 2.4;
+      out.z = d.knock.z;
+      return true;
+    }
     const e = this.entries.find((x) => x.c.id === id);
     if (!e?.shown || !e.model) return false;
     out.x = e.x;

@@ -4,12 +4,13 @@
 
 import { CUSTOMERS } from './data/customers.js';
 import { addHeat } from './police.js';
-import { staysHome } from './weather.js';
 import { PRODUCTS } from './data/products.js';
 import { appraise, valueOf, satisfaction, reactionOf, fxOf } from './klanten/appraise.js';
 import { lineFor } from './klanten/lines.js';
 import { tierIndex, tierOf, budgetFactor, extraQty, tipChance } from './klanten/tiers.js';
 import { unlockMet, introducerOf, missing } from './klanten/unlock.js';
+import { staysIn } from './klanten/timeline.js';
+import { getLiveWorld } from './klanten/live.js';
 
 export const MAX_LOYALTY = 100;
 /** Price offers: multiplier of the fair value. */
@@ -55,7 +56,7 @@ export function wantsToday(state, c) {
 
 /** Customers you can trade with right now (unlocked, out, not staying home, not served today). */
 export function available(state, rank, hour) {
-  return CUSTOMERS.filter((c) => isUnlocked(state, c, rank) && isPresent(c, hour) && !staysHome(state.day, c.id) && wantsToday(state, c));
+  return CUSTOMERS.filter((c) => isUnlocked(state, c, rank) && isPresent(c, hour) && !staysIn(getLiveWorld(), c, state.day) && wantsToday(state, c));
 }
 
 /** What one unit of an item is worth to this customer: fair value, liked/disliked effects, favourite product, quality. */

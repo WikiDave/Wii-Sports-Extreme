@@ -11,11 +11,11 @@ import { PRODUCTS } from './data/products.js';
 import { EFFECTS } from './data/effects.js';
 import { isUnlocked, record, wantsToday } from './customers.js';
 import { parseItem } from './economy.js';
-import { staysHome, hash01 } from './weather.js';
+import { hash01 } from './weather.js';
 import { lineFor } from './klanten/lines.js';
-import { ASKS, OPENERS, SOMETHING, STAY_HOME, UNITS, clockText, meetAt } from './klanten/texts.js';
+import { ASKS, LATER, OPENERS, SOMETHING, STAY_HOME, UNITS, clockText, meetAt } from './klanten/texts.js';
 import { buildWorld } from './klanten/places.js';
-import { meetingSpot } from './klanten/timeline.js';
+import { meetingSpot, staysIn } from './klanten/timeline.js';
 import { introducerOf } from './klanten/unlock.js';
 
 export const REQUEST_BONUS = 1.3;
@@ -29,9 +29,10 @@ let defaultWorld = null;
 /**
  * One message from customer c for `day`, deterministic. opts: rank (a favourite product you cannot
  * make yet is not asked for), friend (name: they were just introduced by this friend), stayHome
- * (the weather keeps them in), world (places).
+ * (the weather keeps them in), after (minute of the day: a message sent later in the day names a place
+ * and time still to come), world (places).
  */
-export function makeMessage(c, day, { rank = 99, friend = null, stayHome = false, world = (defaultWorld ??= buildWorld()) } = {}) {
+export function makeMessage(c, day, { rank = 99, friend = null, stayHome = false, after = 0, world = (defaultWorld ??= buildWorld()) } = {}) {
   const k = idHash(c.id);
   const effect = c.likes[Math.floor(hash01(day, k, 7) * c.likes.length)];
   const qty = 1 + Math.floor(hash01(day, k, 13) * Math.min(3, c.maxQty));
@@ -43,11 +44,10 @@ export function makeMessage(c, day, { rank = 99, friend = null, stayHome = false
   const what = product ? `${qty} ${qty === 1 ? one : many} ${PRODUCTS[product].name.toLowerCase()}` : `${qty} ${qty === 1 ? 'drankje' : 'drankjes'}`;
   const asked = ask({ what, fx: SOMETHING[effect] });
   let text = `${opener} ${/[.!?:]$/.test(opener) ? asked[0].toUpperCase() + asked.slice(1) : asked}`;
-  if (stayHome) text += ` ${STAY_HOME[Math.floor(hash01(day, k, 17) * STAY_HOME.length)]}`;
-  else {
-    const spot = meetingSpot(world, c, day);
-    if (spot) text += ` ${meetAt(world.places[spot.place].at, clockText(spot.min))}`;
-  }
+  const spot = stayHome ? null : meetingSpot(world, c, day, after);
+  if (spot) text += ` ${meetAt(world.places[spot.place].at, clockText(spot.min))}`;
+  else if (stayHome) text += ` ${STAY_HOME[Math.floor(hash01(day, k, 17) * STAY_HOME.length)]}`;
+  else text += ` ${LATER}`;
   const m = {
     id: `${c.id}-${day}`,
     customer: c.id,
@@ -70,7 +70,7 @@ export function dailyMessages(game) {
   for (const c of CUSTOMERS) {
     if (!isUnlocked(s, c, game.rank) || !wantsToday(s, c)) continue;
     if (s.messages.some((m) => m.id === `${c.id}-${s.day}`)) continue;
-    const stayHome = staysHome(s.day, c.id);
+    const stayHome = staysIn(world, c, s.day);
     const rec = record(s, c.id);
     // Not every customer writes every day: the more they trust you (and the chattier they are), the more often.
     const chance = stayHome ? 0.85 : Math.min(0.95, c.texting + 0.4 * (rec.loyalty / 100));
@@ -91,7 +91,7 @@ export function introMessage(game, customerId) {
   const c = CUSTOMERS.find((x) => x.id === customerId);
   if (!c || s.messages.some((m) => m.id === `${c.id}-${s.day}`)) return null;
   const by = CUSTOMERS.find((x) => x.id === introducerOf(c));
-  const m = makeMessage(c, s.day, { rank: game.rank, friend: by?.name ?? null, world: (defaultWorld ??= buildWorld()) });
+  const m = makeMessage(c, s.day, { rank: game.rank, friend: by?.name ?? null, after: s.minutes, world: (defaultWorld ??= buildWorld()) });
   s.messages = [m, ...s.messages].slice(0, MAX_MESSAGES);
   game.emit('messages', [m]);
   game.emit('change');

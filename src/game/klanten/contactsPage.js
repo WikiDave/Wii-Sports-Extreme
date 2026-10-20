@@ -7,6 +7,7 @@ import { CUSTOMERS } from '../data/customers.js';
 import { EFFECTS } from '../data/effects.js';
 import { PRODUCTS } from '../data/products.js';
 import { RANKS } from '../state.js';
+import { ZONES } from '../world/zones.js';
 import { isUnlocked, record, unlockHint, wishProduct } from '../customers.js';
 import { TYPES } from './types.js';
 import { tierOf } from './tiers.js';
@@ -92,6 +93,7 @@ export function renderContacts({ page, game }) {
       h('div', {}, c.bio),
       h('div', { class: 'kl-chips' }, h('span', {}, 'Houdt van'), ...c.likes.map((e) => h('span', { class: 'kl-chip', style: { '--fx': EFFECTS[e].color } }, EFFECTS[e].name)), ...c.dislikes.map((e) => h('span', { class: 'kl-chip is-no' }, `✗ ${EFFECTS[e].name}`))),
       h('div', { class: 'kl-small' }, `${TYPES[c.type].icon} ${TYPES[c.type].name} · budget €${c.budget} · ${rec.deals} deals · €${rec.spent} besteed`),
+      h('div', { class: 'kl-small' }, `Woont ${c.home === 'hotel' ? 'in het resorthotel' : `in ${ZONES.find((z) => z.id === c.home)?.name ?? 'het dorp'}`}. Klop aan als ze thuis zijn.`),
       c.every > 1 ? h('div', { class: 'kl-small' }, `Koopt om de ${c.every} dagen een grote partij.`) : '',
       h('div', { class: 'kl-small' }, `Favoriet: ${PRODUCTS[c.prefers].name.toLowerCase()}${wish ? ` (je kunt dat nog niet maken: rang ${RANKS[PRODUCTS[c.prefers].rank]})` : ''}`),
       rec.boycott >= s.day ? h('div', { class: 'kl-note is-warn' }, `Boos: wil je tot dag ${rec.boycott + 1} niet zien.`) : '',

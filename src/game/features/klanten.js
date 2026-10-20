@@ -22,7 +22,8 @@ import { resolveLayout } from '../klanten/layout.js';
 import { CUSTOMERS } from '../data/customers.js';
 import { introduce, dailyUpdate, customerById } from '../customers.js';
 import { introMessage } from '../phone.js';
-import { staysHome, dayInfo, WEATHER } from '../weather.js';
+import { dayInfo, WEATHER } from '../weather.js';
+import { staysIn } from '../klanten/timeline.js';
 
 /** Houses of the island: { x, z, r, zone } (the hotel is not one of them), and the hotel. */
 function housesOf(ctx) {
@@ -74,7 +75,7 @@ export default {
       game.on('newday', () => {
         dailyUpdate(game);
         // Bad weather keeps some people home: tell the player where to knock.
-        const home = CUSTOMERS.filter((c) => customers.entries.find((e) => e.c === c)?.known && staysHome(game.state.day, c.id)).map((c) => c.name);
+        const home = CUSTOMERS.filter((c) => customers.entries.find((e) => e.c === c)?.known && staysIn(customers.world, c, game.state.day)).map((c) => c.name);
         if (home.length && dayInfo(game.state.day).weather !== 'zon') {
           timers.push(setTimeout(() => toast(`${WEATHER[dayInfo(game.state.day).weather].icon} ${home.slice(0, 2).join(' en ')}${home.length > 2 ? ` en ${home.length - 2} anderen` : ''} blijf${home.length > 1 ? 'ven' : 't'} thuis. Klop aan bij de deur!`), 7600));
         }

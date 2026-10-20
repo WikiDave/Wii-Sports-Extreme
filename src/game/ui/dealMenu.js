@@ -18,6 +18,8 @@ import { tierIndex, tierOf, toNextTier } from '../klanten/tiers.js';
 import { routineHint } from '../klanten/timeline.js';
 import { miiFor } from '../klanten/looks.js';
 import { introduction } from '../klanten/unlock.js';
+import { rivalAt, RIVAL_FACTOR } from '../rivals.js';
+import { priceFactor } from '../weather.js';
 
 export const DOOR_BONUS = 1.1;
 
@@ -54,6 +56,8 @@ export function openDealMenu(game, c, { factor = 1, onDone } = {}) {
   const baseFactor = factor * (door ? DOOR_BONUS : 1);
   const rec = record(state, c.id);
   const request = activeRequest(state, c.id);
+  const rival = c.spot ? rivalAt(state, c.spot) : null;
+  const weatherFactor = priceFactor(state.day);
   const body = h('div', { class: 'kl-deal' });
   let said = '';
   let closed = false;
@@ -139,7 +143,8 @@ export function openDealMenu(game, c, { factor = 1, onDone } = {}) {
       note?.text ? h('div', { class: 'kl-note is-warn' }, note.text) : '',
       door ? h('div', { class: 'kl-note' }, `Aan de deur: de bewaking ziet niets, en ${c.name} betaalt ${Math.round((DOOR_BONUS - 1) * 100)}% extra.`) : '',
       request ? h('div', { class: 'kl-note' }, `Je afspraak: ${request.qty}× ${request.product ? PRODUCTS[request.product].name.toLowerCase() + ' met ' : 'iets '}${EFFECTS[request.effect].name.toLowerCase()}, met +${Math.round((REQUEST_BONUS - 1) * 100)}% bonus.`) : '',
-      baseFactor < 1 ? h('div', { class: 'kl-note is-warn' }, 'Er is hier een rivaal of slecht weer: ze betalen vandaag minder.') : '',
+      rival ? h('div', { class: 'kl-note is-warn' }, `${rival.name} staat hier: ze betalen ${Math.round((1 - RIVAL_FACTOR) * 100)}% minder.`) : '',
+      Math.abs(weatherFactor - 1) > 0.01 ? h('div', { class: `kl-note ${weatherFactor < 1 ? 'is-warn' : ''}` }, `Door het weer en de dag betalen ze vandaag ${Math.round(Math.abs(weatherFactor - 1) * 100)}% ${weatherFactor < 1 ? 'minder' : 'meer'}.`) : '',
       best ? '' : h('div', { class: 'kl-note is-warn' }, `Wat je bij je hebt is te duur voor het budget van ${c.name} (${euro(budgetOf(c, rec.loyalty))}).`),
       h(
         'div',

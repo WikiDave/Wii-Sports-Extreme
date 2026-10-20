@@ -4,7 +4,9 @@ import { PATHS } from '../src/game/world/zones.js';
 import { DAY_START, DAY_END } from '../src/game/state.js';
 import { dayInfo, staysHome } from '../src/game/weather.js';
 import { PLACES, LINKS, buildGraph, buildWorld, nearestNode, shortestPath } from '../src/game/klanten/places.js';
-import { dayTimeline, locate, routineHint, whereNow, meetingSpot, slotIn, stopsOf } from '../src/game/klanten/timeline.js';
+import { dayTimeline, locate, routineHint, whereNow, meetingSpot, slotIn, stopsOf, staysIn } from '../src/game/klanten/timeline.js';
+import { resolveLayout } from '../src/game/klanten/layout.js';
+import { avoidObstacles, nudgeOut, clearanceAt } from '../src/game/klanten/clearance.js';
 import { pickVisible } from '../src/game/klanten/visible.js';
 
 // ---------------------------------------------------------------- the footpaths
@@ -145,12 +147,28 @@ for (const c of CUSTOMERS) {
   locate(world, c, tl, 14 * 60, out); assert.equal(out.indoors, true);
   assert.equal(meetingSpot(world, c, homeDay), null);
   assert.equal(whereNow(world, c, homeDay, 14 * 60), 'thuis');
-  // rain: no one stands at an exposed place after the first stop of the day
+  // rain: whoever is not rainproof does not stand at an exposed place after the first stop of the day
+  let wetOnes = 0;
+  let toughOnes = 0;
+  const storm = dayInfo(rainDay).weather === 'storm';
   for (const x of CUSTOMERS) {
     if (staysHome(rainDay, x.id)) continue;
     const stops = stopsOf(world, x, rainDay);
-    for (const s of stops.slice(1)) assert.ok(!world.places[s.place]?.exposed, `${x.id} at ${s.place} in the rain on day ${rainDay}`);
+    const exposed = stops.slice(1).some((s) => world.places[s.place]?.exposed);
+    if (storm || !x.rainproof) { assert.equal(exposed, false, `${x.id} in the rain on day ${rainDay}`); wetOnes++; } else if (exposed) toughOnes++;
   }
+  assert.ok(wetOnes > 4, `${wetOnes} stay in`);
+  assert.ok(storm || toughOnes >= 2, 'surfers and tourists still go out in the rain');
+  assert.equal(CUSTOMERS.find((c) => c.id === 'bram').rainproof, true); assert.equal(CUSTOMERS.find((c) => c.id === 'kai').rainproof, false);
+  // a storm sends everybody in
+  let stormDay = 2;
+  while (dayInfo(stormDay).weather !== 'storm') stormDay++;
+  for (const x of CUSTOMERS) assert.ok(stopsOf(world, x, stormDay).slice(1).every((s) => !world.places[s.place]?.exposed), `${x.id} in the storm`);
+  // someone who only has open-air stops stays in all day when it rains
+  const kai = CUSTOMERS.find((c) => c.id === 'kai');
+  let wet = 2;
+  while (dayInfo(wet).weather === 'zon' || dayInfo(wet).weather === 'bewolkt') wet++;
+  assert.equal(staysIn(world, kai, wet), true); assert.equal(staysIn(world, kai, 1), false);
 }
 // a beach party: sociable customers go to the beach in the evening
 {
@@ -191,6 +209,46 @@ assert.equal(routineHint({ routine: [[6, 'thuis']] }), 'blijft meestal thuis');
   assert.match(whereNow(world, sakura, 1, (walk.t0 + walk.t1) / 2), /^onderweg naar /);
   const spot = meetingSpot(world, sakura, 1);
   assert.ok(spot.place === 'markt' || spot.place === 'terras');
+}
+
+// ---------------------------------------------------------------- front doors on the real island
+{
+  const houses = [
+    { x: 84, z: 203, r: 6, zone: 'strand' }, { x: 30, z: 223, r: 6, zone: 'strand' }, { x: -9, z: 212, r: 6, zone: 'strand' },
+    { x: 296, z: 82, r: 7, zone: 'haven' }, { x: 240, z: 24, r: 7, zone: 'haven' },
+    { x: 15, z: 24, r: 6, zone: 'heuvels' }, { x: -81, z: 56, r: 6, zone: 'heuvels' }, { x: -282, z: -151, r: 6, zone: 'kaap' },
+  ];
+  const hotel = { x: -41, z: 9, r: 16 };
+  const colliders = [...houses, hotel, { x: 44, z: 208, r: 4.8 }];
+  const lay = resolveLayout({ houses, hotel, colliders, graph: world.graph, places: world.places, customers: CUSTOMERS });
+  assert.equal(Object.keys(lay.homes).length, CUSTOMERS.length, 'everybody has a home');
+  const doors = Object.values(lay.homes).map((p) => `${p.x.toFixed(1)},${p.z.toFixed(1)}`);
+  assert.equal(new Set(doors).size, doors.length, 'no two customers share a front door');
+  for (const c of CUSTOMERS) {
+    const p = lay.homes[c.id];
+    assert.ok(clearanceAt(colliders, p) > 0.5, `${c.id}'s door is in an obstacle`);
+    if (c.home === 'hotel') assert.ok(Math.hypot(p.x - hotel.x, p.z - hotel.z) < hotel.r + 6, `${c.id} lives at the hotel`);
+    else assert.ok(houses.some((h) => h.zone === c.home && Math.hypot(p.x - h.x, p.z - h.z) < h.r + 6), `${c.id} lives in a ${c.home} house`);
+  }
+  assert.ok(Math.hypot(lay.places.hotel.x - hotel.x, lay.places.hotel.z - hotel.z) > hotel.r + 5, 'the hotel terrace is outside the hotel');
+  // standing spots and routes keep out of obstacles
+  const obstacle = [{ x: 0, z: 0, r: 5 }];
+  const p = nudgeOut(obstacle, { x: 1, z: 0 });
+  assert.ok(Math.hypot(p.x, p.z) >= 5.9 - 1e-9);
+  const route = avoidObstacles([[-20, 0.5], [20, 0.5]], obstacle);
+  assert.ok(route.length > 10 && route[0][0] === -20 && route.at(-1)[0] === 20);
+  for (const [x, z] of route) assert.ok(Math.hypot(x, z) >= 5.89, `route point ${x},${z}`);
+  assert.deepEqual(avoidObstacles([[0, 0], [10, 10]], [{ x: 100, z: 100, r: 3 }]), [[0, 0], [10, 10]]);
+  // a world with obstacles gives each customer a spot outside them
+  const w2 = buildWorld({ colliders: [{ x: world.places.strand.x, z: world.places.strand.z, r: 3 }] });
+  for (const c of CUSTOMERS.slice(0, 10)) assert.ok(clearanceAt(w2.colliders, slotIn(w2, c, 'strand')) > 0.8);
+  // footpaths that avoid water: steps for which isLand says no are dropped, so the way round is taken
+  const dry = buildGraph(undefined, { isLand: (x, z) => !(x > 125 && x < 150 && z > 125 && z < 150) });
+  assert.ok(dry.nodes.every((n) => n.edges.every(([, len]) => len < 30)));
+  const a = nearestNode(dry, world.places.strand.x, world.places.strand.z);
+  const b = nearestNode(dry, world.places.markt.x, world.places.markt.z);
+  const direct = shortestPath(g, world.places.strand.node, world.places.markt.node).length;
+  assert.ok(shortestPath(dry, a, b).length > direct, 'the detour has more steps than the road through the inlet');
 }
 
 // ---------------------------------------------------------------- 28 customers cost next to nothing

@@ -41,6 +41,7 @@ export const ASKS = [
 
 /** After the ask: where to find them (from their day) or that they stay at home. */
 export const meetAt = (at, clock) => `Je vindt me ${at} rond ${clock}.`;
+export const LATER = 'Vandaag kom ik niet meer buiten, maar morgen weer!';
 export const STAY_HOME = ['Het weer is niks, ik blijf thuis. Klop maar aan!', 'Ik blijf binnen vandaag. Kom gerust langs aan de deur.'];
 
 /** "14:30" from minutes of the game clock. */
