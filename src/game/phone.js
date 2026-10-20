@@ -8,7 +8,6 @@
 
 import { CUSTOMERS } from './data/customers.js';
 import { PRODUCTS } from './data/products.js';
-import { EFFECTS } from './data/effects.js';
 import { isUnlocked, record, wantsToday } from './customers.js';
 import { parseItem } from './economy.js';
 import { hash01 } from './weather.js';

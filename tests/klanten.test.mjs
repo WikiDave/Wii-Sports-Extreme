@@ -6,7 +6,7 @@ import { dayInfo, staysHome } from '../src/game/weather.js';
 import { PLACES, LINKS, buildGraph, buildWorld, nearestNode, shortestPath } from '../src/game/klanten/places.js';
 import { dayTimeline, locate, routineHint, whereNow, meetingSpot, slotIn, stopsOf, staysIn } from '../src/game/klanten/timeline.js';
 import { resolveLayout } from '../src/game/klanten/layout.js';
-import { avoidObstacles, nudgeOut, clearanceAt } from '../src/game/klanten/clearance.js';
+import { avoidObstacles, nudgeOut, clearanceAt, densify, sidestep } from '../src/game/klanten/clearance.js';
 import { pickVisible } from '../src/game/klanten/visible.js';
 
 // ---------------------------------------------------------------- the footpaths
@@ -78,6 +78,31 @@ for (const day of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]) {
 }
 assert.ok(maxJump > 0.9, 'customers do walk at full speed');
 
+// not everybody walks on the same line, but a walk starts and ends exactly at the spots
+{
+  const mids = new Set(CUSTOMERS.map((c) => {
+    const s = dayTimeline(world, c, 1).segs.find((x) => x.kind === 'walk' && x.from === 'thuis' && x.to === 'markt');
+    return s ? `${Math.round(s.route.pts[Math.floor(s.route.pts.length / 2)][1] * 10)}` : null;
+  }).filter(Boolean));
+  assert.ok(mids.size >= 3, `${mids.size} different lines to the market`);
+  for (const c of CUSTOMERS) {
+    const tl = dayTimeline(world, c, 1);
+    for (const s of tl.segs.filter((x) => x.kind === 'walk')) {
+      locate(world, c, tl, s.t0 + 1e-9, out);
+      assert.ok(Math.hypot(out.x - s.route.pts[0][0], out.z - s.route.pts[0][1]) < 1e-3, `${c.id} starts at the spot`);
+      locate(world, c, tl, s.t1 - 1e-9, out);
+      assert.ok(Math.hypot(out.x - s.route.pts.at(-1)[0], out.z - s.route.pts.at(-1)[1]) < 1e-2, `${c.id} ends at the spot`);
+    }
+  }
+  // sidestep: smooth, nothing at the ends, no jump at a sharp corner
+  const way = densify([[0, 0], [30, 0], [30, 30], [0, 30]], 2.5);
+  const off = sidestep(way, 0.7);
+  assert.deepEqual(off[0], way[0]); assert.deepEqual(off.at(-1), way.at(-1));
+  for (let i = 1; i < off.length; i++) assert.ok(Math.hypot(off[i][0] - off[i - 1][0], off[i][1] - off[i - 1][1]) < 2.5 + 0.8, `step ${i}`);
+  assert.ok(Math.abs(off[6][1] - 0.7) < 1e-9 || Math.abs(off[6][1] + 0.7) < 1e-9, 'full offset in the middle of a straight');
+  assert.equal(sidestep(way, 0), way);
+}
+
 // the segments hang together: stay, walk, stay ...; arrivals are on time unless the walk is too long
 for (const c of CUSTOMERS) {
   const tl = dayTimeline(world, c, 1);
@@ -99,10 +124,21 @@ for (const c of CUSTOMERS) {
   const [x0, z0] = walk.route.pts[0];
   const [x1, z1] = walk.route.pts.at(-1);
   assert.ok(Math.hypot(out.x - x0, out.z - z0) > 10 && Math.hypot(out.x - x1, out.z - z1) > 10);
-  // every route point lies close to a footpath (no shortcuts through the sea)
-  for (const [x, z] of walk.route.pts.slice(1, -1)) {
-    const n = g.nodes[nearestNode(g, x, z)];
-    assert.ok(Math.hypot(n.x - x, n.z - z) < 0.01);
+  // every route point lies close to a footpath (a step to the side at most: no shortcuts through the sea)
+  const lines = [...PATHS, ...LINKS];
+  const near = (x, z) => Math.min(...lines.flatMap((l) => l.slice(1).map((b, i) => {
+    const [ax, az] = l[i];
+    const t = Math.max(0, Math.min(1, ((x - ax) * (b[0] - ax) + (z - az) * (b[1] - az)) / ((b[0] - ax) ** 2 + (b[1] - az) ** 2)));
+    return Math.hypot(x - ax - t * (b[0] - ax), z - az - t * (b[1] - az));
+  })));
+  for (const c of CUSTOMERS) {
+    for (const s of dayTimeline(world, c, 1).segs.filter((x) => x.kind === 'walk')) {
+      const { pts, cum, len } = s.route;
+      // (the first and last 30 m may be the short walk between a door or a spot and the path)
+      pts.forEach(([x, z], i) => {
+        if (cum[i] > 30 && cum[i] < len - 30) assert.ok(near(x, z) < 0.71 + 1e-6, `${c.id} ${s.from}>${s.to} strays ${near(x, z).toFixed(2)} m from the paths`);
+      });
+    }
   }
 }
 

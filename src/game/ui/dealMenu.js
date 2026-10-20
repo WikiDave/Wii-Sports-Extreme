@@ -11,7 +11,7 @@ import { CUSTOMERS } from '../data/customers.js';
 import { itemName, parseItem, qualityLabel } from '../economy.js';
 import { OFFERS, deal, valueFor, record, MAX_LOYALTY, maxQtyOf, budgetOf, boycotted, wantsToday, wishProduct, fitsWish, isUnlocked } from '../customers.js';
 import { activeRequest, fitsRequest, completeRequest, REQUEST_BONUS } from '../phone.js';
-import { appraise, MOOD, fxOf } from '../klanten/appraise.js';
+import { appraise, MOOD } from '../klanten/appraise.js';
 import { lineFor } from '../klanten/lines.js';
 import { TYPES } from '../klanten/types.js';
 import { tierIndex, tierOf, toNextTier } from '../klanten/tiers.js';

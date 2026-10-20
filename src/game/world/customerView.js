@@ -119,11 +119,15 @@ export class CustomerView {
     mii.group.visible = false;
     shadowsOn(mii.group, false);
     this.scene.add(mii.group);
-    m = { mii, top: (mii.headY + 1.15) * MII_SCALE, used: 0 };
+    m = { mii, top: (mii.headY + 1.15) * MII_SCALE, used: this.frame };
     this.models.set(e.c.id, m);
+    // Over the limit: drop the model that was needed longest ago and is not on screen.
     if (this.models.size > CACHE) {
       let oldest = null;
-      for (const [id, x] of this.models) if (!this.entries.find((q) => q.c.id === id).shown && (!oldest || x.used < oldest[1].used)) oldest = [id, x];
+      for (const [id, x] of this.models) {
+        if (x === m || this.entries.find((q) => q.c.id === id).shown) continue;
+        if (!oldest || x.used < oldest[1].used) oldest = [id, x];
+      }
       if (oldest) {
         this.scene.remove(oldest[1].mii.group);
         oldest[1].mii.dispose();
@@ -178,6 +182,20 @@ export class CustomerView {
       if (e.knockable && Math.hypot(e.knock.x - playerPos.x, e.knock.z - playerPos.z) < TAG_RANGE) this.tagList.push(e.doorTag);
     }
     this.bubbles?.setTags(this.tagList);
+    if (!this.madeThisFrame && this.frame % 24 === 0) this.prewarm(playerPos);
+  }
+
+  /** Builds the Mii of the nearest customer who is out but not built yet, in a quiet moment (a model takes ~25 ms). */
+  prewarm(player) {
+    if (this.models.size >= this.maxShown + 3) return;
+    let best = null;
+    let bestD = (RADIUS * 1.6) ** 2;
+    for (const e of this.entries) {
+      if (!e.ok || this.models.has(e.c.id)) continue;
+      const d = (e.x - player.x) ** 2 + (e.z - player.z) ** 2;
+      if (d < bestD) [best, bestD] = [e, d];
+    }
+    if (best) this.model(best);
   }
 
   show(e) {
@@ -278,6 +296,17 @@ export class CustomerView {
     out.y = e.y + e.model.top;
     out.z = e.z;
     return true;
+  }
+
+  /** Where one customer is now (for other features, e.g. a mission to find somebody), or null if unknown to the player. */
+  locationOf(id) {
+    const e = this.entries.find((x) => x.c.id === id);
+    return e?.known ? { x: e.x, z: e.z, place: e.loc.place, moving: !!e.loc.moving, indoors: e.indoors, shown: e.shown } : null;
+  }
+
+  /** The Miis on screen by customer id (what this class exposed before customers walked). */
+  get minis() {
+    return new Map(this.entries.filter((e) => e.shown && e.model).map((e) => [e.c.id, e.model.mii]));
   }
 
   /** For tests and tools: where everybody is. */

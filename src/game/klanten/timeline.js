@@ -8,7 +8,7 @@
 import { DAY_START, MINUTES_PER_SECOND } from '../state.js';
 import { dayInfo, hash01, staysHome } from '../weather.js';
 import { PLACES, nearestNode, shortestPath } from './places.js';
-import { avoidObstacles, nudgeOut } from './clearance.js';
+import { avoidObstacles, densify, nudgeOut, sidestep } from './clearance.js';
 
 const idHash = (s) => [...s].reduce((a, ch) => (Math.imul(a, 31) + ch.charCodeAt(0)) | 0, 7);
 
@@ -37,6 +37,9 @@ export function slotIn(world, c, placeId) {
   return nudgeOut(world.colliders, { x: p.x + Math.cos(a) * r, z: p.z + Math.sin(a) * r });
 }
 
+/** Where they walk on a path: a little left or right of its middle (m), a bit different for everybody. */
+const sideOf = (c) => (((idHash(c.id) % 5) + 5) % 5 - 2) * 0.35;
+
 /** The walking route between two places for this customer: points, cumulative lengths, total. */
 export function routeOf(world, c, from, to) {
   const key = `${c.id}|${from}|${to}`;
@@ -48,7 +51,8 @@ export function routeOf(world, c, from, to) {
   const na = nearestNode(g, a.x, a.z);
   const nb = nearestNode(g, b.x, b.z);
   const nodes = shortestPath(g, na, nb) ?? [na, nb];
-  const pts = avoidObstacles([[a.x, a.z], ...nodes.map((i) => [g.nodes[i].x, g.nodes[i].z]), [b.x, b.z]], world.colliders);
+  const way = densify([[a.x, a.z], ...nodes.map((i) => [g.nodes[i].x, g.nodes[i].z]), [b.x, b.z]]);
+  const pts = avoidObstacles(sidestep(way, sideOf(c)), world.colliders);
   const cum = [0];
   for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
   route = { pts, cum, len: cum[cum.length - 1] };

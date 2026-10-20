@@ -4,9 +4,6 @@
 
 import { nearestNode } from './places.js';
 import { nudgeOut } from './clearance.js';
-import { hash01 } from '../weather.js';
-
-const idHash = (s) => [...s].reduce((a, ch) => (Math.imul(a, 31) + ch.charCodeAt(0)) | 0, 7);
 
 /** The place of each zone that houses are sorted by (the nearest house is given out first). */
 const REFERENCE = { strand: 'strand', haven: 'markt', heuvels: 'uitzicht', kaap: 'kaap', vliegveld: 'markt' };

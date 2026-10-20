@@ -109,7 +109,7 @@ export function renderContacts({ page, game }) {
         'div',
         { class: 'kl-contact is-locked' },
         h('div', { class: 'kl-avatar is-unknown' }, '?'),
-        h('div', { class: 'kl-main' }, h('div', { class: 'kl-top' }, h('strong', {}, '???'), h('span', { class: 'kl-badge' }, 'Onbekend')), h('div', { class: 'kl-hint' }, unlockHint(s, c, game.rank) ? `Leer je kennen met: ${unlockHint(s, c, game.rank)}` : 'Je leert hem of haar snel kennen')),
+        h('div', { class: 'kl-main' }, h('div', { class: 'kl-top' }, h('strong', {}, '???'), h('span', { class: 'kl-badge' }, 'Onbekend')), h('div', { class: 'kl-hint' }, unlockHint(s, c, game.rank) ? `Nodig: ${unlockHint(s, c, game.rank)}` : 'Je leert ze snel kennen')),
       );
     }
     const tier = tierOf(r.trust);

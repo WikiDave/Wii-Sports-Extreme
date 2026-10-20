@@ -103,5 +103,9 @@ export const STYLES = `
 .kl-small { font-size: 12px; font-weight: 700; color: #6b8396; }
 .kl-details { grid-column: 1 / -1; display: grid; gap: 6px; padding-top: 6px; border-top: 1px dashed #cfe0ec; font-size: 13px; font-weight: 600; color: #3b4a58; }
 .kl-details .kl-chips { font-size: 12px; }
+@media (pointer: coarse) {
+  .kl-pill { min-height: 38px; padding: 0 12px; }
+  .kl-search { min-height: 44px; }
+}
 .kl-empty { text-align: center; color: #6b8396; font-weight: 700; margin-top: 30px; }
 `;

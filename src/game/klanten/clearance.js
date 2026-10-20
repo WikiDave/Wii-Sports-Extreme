@@ -54,3 +54,45 @@ export function avoidObstacles(pts, list, step = 2.5, margin = 0.9) {
   }
   return out;
 }
+
+/** Cuts a route into steps of at most `step` metres. */
+export function densify(pts, step = 2.5) {
+  const out = [pts[0]];
+  for (let i = 1; i < pts.length; i++) {
+    const [ax, az] = pts[i - 1];
+    const [bx, bz] = pts[i];
+    const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / step));
+    for (let k = 1; k <= n; k++) out.push([ax + ((bx - ax) * k) / n, az + ((bz - az) * k) / n]);
+  }
+  return out;
+}
+
+/**
+ * Moves a route sideways by `side` metres (positive: to the left of the way of walking), smoothly:
+ * nothing at the ends, full after `ramp` metres, and round corners the normals are averaged, so
+ * nobody jumps. Several customers on the same path then walk next to each other, not through each other.
+ */
+export function sidestep(pts, side, ramp = 5) {
+  if (!side || pts.length < 3) return pts;
+  const cum = [0];
+  for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  const len = cum[cum.length - 1];
+  const normal = (i) => {
+    const [ax, az] = pts[i];
+    const [bx, bz] = pts[i + 1];
+    const l = Math.hypot(bx - ax, bz - az) || 1;
+    return [-(bz - az) / l, (bx - ax) / l];
+  };
+  return pts.map(([x, z], i) => {
+    if (i === 0 || i === pts.length - 1) return [x, z];
+    const [n1x, n1z] = normal(i - 1);
+    const [n2x, n2z] = normal(i);
+    let nx = n1x + n2x;
+    let nz = n1z + n2z;
+    const l = Math.hypot(nx, nz);
+    if (l < 0.3) [nx, nz] = [n1x, n1z];
+    else [nx, nz] = [nx / l, nz / l];
+    const k = side * Math.min(1, cum[i] / ramp, (len - cum[i]) / ramp);
+    return [x + nx * k, z + nz * k];
+  });
+}
