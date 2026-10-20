@@ -17,6 +17,8 @@ import { buildWater } from '../game/world/water.js';
 import { Grass } from '../game/world/grass.js';
 import { Life } from '../game/world/life.js';
 import { Effects } from '../game/world/effects.js';
+import { openPhone } from '../game/ui/phoneUi.js';
+import { dailyMessages, unread } from '../game/phone.js';
 import { bobBoats, windowGlass, lampLight } from '../game/world/buildings.js';
 import { SEA_LEVEL } from '../game/world/zones.js';
 import { WeatherFx } from '../game/world/weatherFx.js';
@@ -151,6 +153,7 @@ async function buildIsland3d(root, app, loader, isCancelled) {
   };
   const weatherFx = new WeatherFx(scene, sky);
   const audio = new Audio();
+  const phoneBtn = h('button', { class: 'btn btn-round phone-btn', type: 'button', 'aria-label': 'Telefoon (Tab)' }, '📱', h('i', { class: 'phone-badge', hidden: true }));
   const muteBtn = h('button', { class: 'btn btn-round', type: 'button', 'aria-label': 'Geluid aan of uit' });
   const showMute = () => (muteBtn.textContent = audio.muted ? '🔇' : '🔊');
   muteBtn.addEventListener('click', () => (audio.setMuted(!audio.muted), showMute()));
@@ -201,6 +204,7 @@ async function buildIsland3d(root, app, loader, isCancelled) {
       h('div', { class: 'island-clock hud-money' }, cash, rank),
       heat,
       muteBtn,
+      phoneBtn,
     ),
   );
   root.append(screen);
@@ -283,6 +287,26 @@ async function buildIsland3d(root, app, loader, isCancelled) {
   follow.yaw = player.heading + Math.PI;
   const input = new Input(screen, renderer.domElement, { onLook: (dx, dy) => follow.look(dx, dy), onZoom: (f) => follow.zoom(f) });
   const minimap = new Minimap(screen);
+  const showBadge = () => {
+    const b = phoneBtn.querySelector('.phone-badge');
+    const n = unread(game.state);
+    b.hidden = !n;
+    b.textContent = String(n);
+  };
+  const phone_ = () => openPhone(game, { openMap: () => minimap.toggle(true) });
+  phoneBtn.addEventListener('click', phone_);
+  const onTab = (e) => {
+    if (e.key === 'Tab' && !document.querySelector('.modal-backdrop')) (e.preventDefault(), phone_());
+  };
+  window.addEventListener('keydown', onTab);
+  game.on('change', showBadge);
+  game.on('messages', (m) => {
+    toast(`📱 ${m.length} nieuw${m.length > 1 ? 'e' : ''} bericht${m.length > 1 ? 'en' : ''}`);
+    audio.play('alert');
+  });
+  game.on('newday', () => dailyMessages(game));
+  dailyMessages(game);
+  showBadge();
   window.__game = { player, follow, game, weatherFx, heightAt, props, life, grassCount: grass.count, hutPos, interactions, guards, teleport: (it) => { player.pos.set(it.x, 0, it.z + 4); player.group.position.copy(player.pos); } }; // for tests
 
   const resize = () => {
@@ -346,6 +370,7 @@ async function buildIsland3d(root, app, loader, isCancelled) {
     game.save();
     input.dispose();
     minimap.dispose();
+    window.removeEventListener('keydown', onTab);
     stopDaily();
     weatherFx.dispose();
     document.removeEventListener('click', onClick);

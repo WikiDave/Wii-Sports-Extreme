@@ -58,7 +58,7 @@ export function maxPrice(c, key, loyalty = 0) {
  * { ok, sold, money, message }. On success the customer's loyalty grows (more for a
  * low offer), on a refusal it drops.
  */
-export function deal(game, c, key, qty, offer, factor = 1) {
+export function deal(game, c, key, qty, offer, factor = 1, request = null) {
   const state = game.state;
   const rec = record(state, c.id);
   const price = Math.round(valueFor(c, key) * OFFERS[offer] * factor);

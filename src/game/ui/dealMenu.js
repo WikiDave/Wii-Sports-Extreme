@@ -4,6 +4,7 @@ import { h, modal, toast } from '../../ui/dom.js';
 import { EFFECTS } from '../data/effects.js';
 import { itemName, parseItem } from '../economy.js';
 import { OFFERS, deal, valueFor, record, MAX_LOYALTY } from '../customers.js';
+import { activeRequest, fitsRequest, completeRequest, REQUEST_BONUS } from '../phone.js';
 
 const OFFER_LABELS = { laag: 'Voordelig', eerlijk: 'Eerlijk', hoog: 'Duur' };
 
@@ -16,11 +17,13 @@ export function openDealMenu(game, c, { factor = 1, onDone } = {}) {
   }
   const likes = c.likes.map((e) => EFFECTS[e].name).join(', ');
   const rec = record(game.state, c.id);
+  const request = activeRequest(game.state, c.id);
   const body = h('div', { class: 'deal' });
   const dlg = modal({ title: c.name, body, actions: [{ label: 'Weg' }] });
   const render = () => {
     body.replaceChildren(
       h('p', {}, `Houdt van: ${likes}. Budget: €${c.budget}. Vertrouwen: ${rec.loyalty}/${MAX_LOYALTY}.`),
+      request ? h('p', { class: 'deal-msg' }, `Je afspraak: ${request.qty}× iets ${EFFECTS[request.effect].name.toLowerCase()}s, met +${Math.round((REQUEST_BONUS - 1) * 100)}% bonus.`) : '',
       factor < 1 ? h('p', { class: 'deal-msg' }, 'Er staat een rivaal: hier betalen ze vandaag minder.') : '',
       ...items
         .filter((k) => game.state.inventory[k])
@@ -36,13 +39,15 @@ export function openDealMenu(game, c, { factor = 1, onDone } = {}) {
                   class: 'btn btn-small',
                   type: 'button',
                   onClick: () => {
-                    const r = deal(game, c, key, 3, offer, factor);
-                    toast(r.message);
+                    const fits = request && fitsRequest(request, key);
+                    const r = deal(game, c, key, fits ? request.qty : 3, offer, factor * (fits ? REQUEST_BONUS : 1));
+                    if (fits && r.ok) completeRequest(game, request, r.sold);
+                    toast(r.message + (fits && r.ok && r.sold >= request.qty ? ' Afspraak nagekomen!' : ''));
                     onDone?.(r);
                     dlg.close();
                   },
                 },
-                `${OFFER_LABELS[offer]} €${Math.round(valueFor(c, key) * OFFERS[offer] * factor)}`,
+                `${OFFER_LABELS[offer]} €${Math.round(valueFor(c, key) * OFFERS[offer] * factor * (request && fitsRequest(request, key) ? REQUEST_BONUS : 1))}`,
               ),
             ),
           ),
