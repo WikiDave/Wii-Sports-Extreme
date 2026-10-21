@@ -1,11 +1,12 @@
 // Rivals: each morning (from rank 1) a rival may take a customer spot for the day. While
 // there, deals at that spot pay 80%. Bribe them away, or tip off the guards (they leave, but
-// some heat sticks to you).
+// some heat sticks to you). During the day a rival may walk over to the other spot.
 
 import { RIVALS } from './data/rivals.js';
 import { addHeat } from './police.js';
 
 export const RIVAL_FACTOR = 0.8;
+export const RIVAL_MOVE_CHANCE = 0.25; // per game hour while a rival is out
 const SPOTS = ['strand', 'haven'];
 
 /** Morning roll: from rank 1, 50% chance of a rival somewhere. */
@@ -18,6 +19,15 @@ export function rollRival(game, rand = Math.random) {
   }
   game.emit('change');
   return s.rival;
+}
+
+/** During the day: the rival may walk over to the other spot. Returns the new spot, or null. */
+export function moveRival(game, rand = Math.random) {
+  const r = game.state.rival;
+  if (!r || rand() >= RIVAL_MOVE_CHANCE) return null;
+  r.spot = r.spot === 'strand' ? 'haven' : 'strand';
+  game.emit('change');
+  return r.spot;
 }
 
 export const rivalAt = (state, spot) => (state.rival?.spot === spot ? RIVALS.find((r) => r.id === state.rival.id) : null);

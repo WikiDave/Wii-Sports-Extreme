@@ -47,3 +47,12 @@ assert.equal(viewFactor(stormDay), 0.6);
 assert.ok([...Array(200).keys()].filter((i) => staysHome(stormDay, 'c' + i)).length > 120);
 assert.equal(staysHome(1, 'saburo'), false);
 console.log('weather ok');
+
+// caught(): the politie feature takes over (the cutscene asks for bail); pure settle without it
+const cg = new Game(null);
+cg.state.heat = 4.2; cg.state.cash = 400; cg.addItem('p:limonade:fris:100', 4);
+let asked = 0; cg.on('politie:arrest', () => asked++);
+assert.match(caught(cg), /Gepakt/); assert.equal(asked, 1); assert.equal(cg.state.ext.politie.pending, true);
+assert.equal(cg.state.cash, 400); assert.equal(carried(cg.state), 4, 'nothing is taken before the choice');
+assert.equal(heatLevel(cg.state), 4);
+console.log('arrest ok');
