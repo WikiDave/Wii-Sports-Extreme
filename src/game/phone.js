@@ -139,11 +139,15 @@ export function completeRequest(game, m, sold) {
 }
 
 // ---------------------------------------------------------------- bank
+import { clampDeposit } from './witwassen/bank.js';
+
 /** Puts cash in the bank (safe from guards). Returns whether it worked. */
 export function deposit(game, amount) {
   const s = game.state;
   amount = Math.floor(amount);
   if (amount <= 0 || amount > s.cash) return false;
+  amount = clampDeposit(game, amount, 'phone'); // unlaundered cash only goes in up to a daily limit (witwassen)
+  if (amount <= 0) return false;
   s.cash -= amount;
   s.bank += amount;
   game.emit('change');
