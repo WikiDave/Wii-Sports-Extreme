@@ -11,7 +11,7 @@ import { OUTFITS, changeClothes } from '../outfits.js';
 
 export const SHOP_CSS = `
 .outfit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-.outfit-btn { display: flex; align-items: center; gap: 10px; text-align: left; padding: 10px; min-height: 52px; }
+.outfit-btn { display: flex; align-items: center; justify-content: flex-start; gap: 10px; text-align: left; padding: 10px; min-height: 52px; }
 .outfit-swatch { flex: 0 0 26px; width: 26px; height: 26px; border-radius: 8px; box-shadow: inset 0 0 0 2px rgba(255,255,255,0.7), 0 1px 3px rgba(0,0,0,0.25); }
 .outfit-btn small { display: block; opacity: 0.75; }
 @media (max-width: 420px) { .outfit-grid { grid-template-columns: 1fr; } }
