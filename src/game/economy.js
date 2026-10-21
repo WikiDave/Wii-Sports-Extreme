@@ -8,6 +8,7 @@ import { INGREDIENTS } from './data/ingredients.js';
 import { PRODUCTS, GOODS } from './data/products.js';
 import { storageOf } from './panden/upgrades.js';
 import { stockCount } from './panden/chest.js';
+import { bagBonus } from './missies/skills.js';
 
 export const MAX_EFFECTS = 6;
 
@@ -78,7 +79,7 @@ export function makeBatch(game, productId, ingredients, quality) {
 /** Free room in the stock: the storage of your places (with upgrades) less everything you own, chests included. */
 function limit(game) {
   const st = game.state;
-  const cap = st.properties.reduce((s, id) => s + storageOf(st, id), 0);
+  const cap = st.properties.reduce((s, id) => s + storageOf(st, id), 0) + bagBonus(st); // missies: skill Zware zak
   return cap - stockCount(st);
 }
 

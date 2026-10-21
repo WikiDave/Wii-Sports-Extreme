@@ -6,14 +6,15 @@ import { PRODUCTS } from './data/products.js';
 import { canMake, makeBatch, parseItem, unitPrice } from './economy.js';
 import { storageOf } from './panden/upgrades.js';
 import { stockCount } from './panden/chest.js';
+import { bagBonus } from './missies/skills.js';
 
 export const GARDENER_LEMONS = 8;
 export const COOK_BATCHES = 3;
 export const PACKER_EXTRA = 2;
 export const SELLER_UNITS = 12;
 
-/** Stock room of your places, with the storage upgrades (see panden/upgrades.js). */
-export const stockLimit = (state) => state.properties.reduce((s, id) => s + storageOf(state, id), 0);
+/** Stock room of your places, with the storage upgrades (see panden/upgrades.js) and the skill Zware zak. */
+export const stockLimit = (state) => state.properties.reduce((s, id) => s + storageOf(state, id), 0) + bagBonus(state);
 export const staffLimit = (state) => state.properties.reduce((s, id) => s + PROPERTIES[id].slots, 0);
 /** Everything you own: carried in the inventory and stored in the chests of your places. */
 export const stockUsed = (state) => stockCount(state);
