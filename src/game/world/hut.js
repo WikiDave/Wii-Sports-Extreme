@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { wall, chestMesh, loungerMesh, mailboxMesh, mat } from '../panden/models/parts.js';
 import { addUpgradeParts } from '../panden/models/upgrades3d.js';
+import { mergeInPlace } from '../uiterlijk/merge.js';
 
 /** Where the hut's things stand, in its local coordinates (see panden/view.js). */
 export const HUT_LAYOUT = {
@@ -55,6 +56,7 @@ export function buildHut() {
   const window2 = window_.clone();
   window2.position.x = 2.6;
   g.add(top, door, sign, porch, window_, window2);
+  mergeInPlace(g); // the static shell in one draw call per colour; furniture and upgrades below stay separate
   const chest = chestMesh();
   chest.position.set(HUT_LAYOUT.chest.x, HUT_LAYOUT.chest.y, HUT_LAYOUT.chest.z);
   const bed = loungerMesh('#ff6f61');

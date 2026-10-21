@@ -39,11 +39,16 @@ export function icon(name, cls = 'icon') {
  * Shows a dialog. actions: [{ label, kind: 'primary' | 'danger', onClick }].
  * An action's onClick may return false to keep the dialog open.
  */
-export function modal({ title, body, actions = [], wide = false, onClose }) {
+export function modal({ title, body, actions = [], wide = false, onClose, tone = '' }) {
   const previous = document.activeElement;
+  let closed = false;
   const close = () => {
-    backdrop.remove();
+    if (closed) return;
+    closed = true;
     document.removeEventListener('keydown', onKey);
+    // The dialog fades and slides out, then goes. Input is already off, so nothing waits on it.
+    backdrop.classList.add('is-leaving');
+    setTimeout(() => backdrop.remove(), 170);
     onClose?.();
     previous?.focus?.();
   };
@@ -66,7 +71,7 @@ export function modal({ title, body, actions = [], wide = false, onClose }) {
   const titleId = 'dlg-' + Math.random().toString(36).slice(2, 8);
   const dialog = h(
     'div',
-    { class: `modal ${wide ? 'modal-wide' : ''}`, role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': titleId },
+    { class: `modal ${wide ? 'modal-wide' : ''} ${tone ? 'modal-' + tone : ''}`, role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': titleId },
     h('h2', { class: 'modal-title', id: titleId }, title),
     h('div', { class: 'modal-body' }, body),
     buttons.length ? h('div', { class: 'modal-actions' }, buttons) : null,
@@ -79,16 +84,22 @@ export function modal({ title, body, actions = [], wide = false, onClose }) {
 }
 
 let toastTimer = null;
-export function toast(text) {
+/**
+ * A short message at the bottom of the screen. Optional icon (an ICONS name) and tone
+ * ('ok' | 'warn' | 'bad') colour it; plain toast(text) works as before.
+ */
+export function toast(text, { icon: name = null, tone = '' } = {}) {
   let el = document.querySelector('.toast');
   if (!el) {
     el = h('div', { class: 'toast', role: 'status', 'aria-live': 'polite' });
     document.body.append(el);
   }
-  el.textContent = text;
+  el.className = `toast ${tone ? 'toast-' + tone : ''}`;
+  el.replaceChildren(...(name ? [icon(name, 'toast-icon')] : []), h('span', { class: 'toast-text' }, text));
+  void el.offsetWidth; // restart the entrance when a new message comes in
   el.classList.add('is-visible');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('is-visible'), 2200);
+  toastTimer = setTimeout(() => el.classList.remove('is-visible'), 2400);
 }
 
 const glyph = (paths) => `<svg viewBox="0 0 24 24" fill="currentColor">${paths}</svg>`;
@@ -118,6 +129,23 @@ export const ICONS = {
   trash: stroke('<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/>'),
   swap: stroke('<path d="M7 7h11l-3-3M17 17H6l3 3"/>'),
   check: stroke('<path d="M5 12.5l4.5 4.5L19 7.5"/>'),
+  // HUD and title screen: round, flat glyphs drawn for white on a coloured chip
+  sun: stroke('<circle cx="12" cy="12" r="4"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/>'),
+  cloud: glyph('<path d="M7.2 18.4h10.1a4.1 4.1 0 0 0 .4-8.2 5.6 5.6 0 0 0-10.7 1.5 3.6 3.6 0 0 0 .2 6.7z"/>'),
+  rain: glyph('<path d="M7.2 14.6h10.1a4.1 4.1 0 0 0 .4-8.2 5.6 5.6 0 0 0-10.7 1.5 3.6 3.6 0 0 0 .2 6.7z"/><path d="M8.5 17.2l-1 2.6M12.5 17.2l-1 2.6M16.5 17.2l-1 2.6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>'),
+  storm: glyph('<path d="M7.2 14.2h10.1a4.1 4.1 0 0 0 .4-8.2 5.6 5.6 0 0 0-10.7 1.5 3.6 3.6 0 0 0 .2 6.7z"/><path d="M13.2 14.6l-3 4.6h2.6l-1 4.2 4-5.6h-2.7l1.4-3.2z"/>'),
+  clock: stroke('<circle cx="12" cy="12" r="8.6"/><path d="M12 7.4V12l3.2 2"/>'),
+  banknote: stroke('<rect x="2.8" y="6.4" width="18.4" height="11.2" rx="2.4"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.6v.01M18 14.4v.01"/>'),
+  star: glyph('<path d="M12 2.6l2.8 6 6.5.8-4.8 4.5 1.3 6.4L12 17.2l-5.8 3.1 1.3-6.4-4.8-4.5 6.5-.8z"/>'),
+  shield: glyph('<path d="M12 2.4l7.4 2.9v5.6c0 4.8-3.1 8.6-7.4 10.7-4.3-2.1-7.4-5.9-7.4-10.7V5.3z"/><path d="M12 7.6v5.2M12 15.4v.6" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>'),
+  speaker: stroke('<path d="M4.5 9.5h3.2l4.6-3.8v12.6l-4.6-3.8H4.5z" fill="currentColor"/><path d="M16 9a4 4 0 0 1 0 6M18.8 6.4a7.6 7.6 0 0 1 0 11.2"/>'),
+  muted: stroke('<path d="M4.5 9.5h3.2l4.6-3.8v12.6l-4.6-3.8H4.5z" fill="currentColor"/><path d="M16.4 9.4l5 5.2M21.4 9.4l-5 5.2"/>'),
+  phone: stroke('<rect x="6.8" y="2.8" width="10.4" height="18.4" rx="2.8"/><path d="M10.6 18.2h2.8"/>'),
+  map: stroke('<path d="M3.5 6.5l5.5-2.2 6 2.2 5.5-2.2v13.2l-5.5 2.2-6-2.2-5.5 2.2z"/><path d="M9 4.3v13.2M15 6.5v13.2"/>'),
+  alert: stroke('<path d="M12 4l9 16H3z"/><path d="M12 10v4.2M12 17.2v.01"/>'),
+  play: glyph('<path d="M8 5.2v13.6c0 .8.9 1.3 1.6.8l10.4-6.8a1 1 0 0 0 0-1.6L9.6 4.4C8.9 3.9 8 4.4 8 5.2z"/>'),
+  gear: stroke('<circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.6M12 18.6v2.6M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M2.8 12h2.6M18.6 12h2.6M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/>'),
+  wave: stroke('<path d="M9 13V6.5a1.6 1.6 0 0 1 3.2 0V12M12.2 11.5V5a1.6 1.6 0 0 1 3.2 0v6.5M15.4 11.5V7.4a1.6 1.6 0 0 1 3.2 0V14c0 3.6-2.6 6-6 6h-.8c-2.2 0-3.6-1-5.2-3.2L5.7 13a1.5 1.5 0 0 1 2.3-1.9L9 12.5"/>'),
   // editor tabs, after the Wii Mii Channel icons
   profile: glyph('<rect x="2.5" y="1.5" width="19" height="8" rx="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="6.6" cy="5.5" r="1.7" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="11" cy="5.5" r="1.1"/><circle cx="14.2" cy="5.5" r="1.1"/><circle cx="17.4" cy="5.5" r="1.1"/><path d="M10.5 9.5l1.5 2 1.5-2z"/><path fill-rule="evenodd" d="M12 12.4a5.4 5.4 0 1 1 0 10.8a5.4 5.4 0 0 1 0-10.8zM10 16.4a.9.9 0 1 0 0 1.8a.9.9 0 0 0 0-1.8zM14 16.4a.9.9 0 1 0 0 1.8a.9.9 0 0 0 0-1.8zM9.8 19.4c1.2 1.4 3.2 1.4 4.4 0l-.6-.5c-.9 1-2.3 1-3.2 0z"/>'),
   body: glyph('<circle cx="7" cy="9.2" r="2.3"/><path d="M5 12.2h4v5H8.4v4.3H7.3v-3.6h-.6v3.6H5.6v-4.3H5z"/><circle cx="16.5" cy="3.6" r="2.2"/><path d="M15 6.6h3v8.4h-.4v6.5h-.9v-6h-.4v6h-.9v-6.5H15z"/>'),
