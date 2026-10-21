@@ -30,7 +30,10 @@ export const STYLES = `
 .wit-pips { display: inline-flex; gap: 4px; }
 .wit-pips i { width: 11px; height: 11px; border-radius: 50%; background: var(--line); display: inline-block; }
 .wit-pips i.is-on { background: var(--wii-blue); }
-.wit-upgrade { flex-wrap: wrap; }
+.wit-scroll { max-height: min(56vh, 520px); overflow-y: auto; padding-right: 6px; overscroll-behavior: contain; }
+.wit-up { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(0, 0, 0, 0.08); }
+.wit-up small { display: block; color: var(--ink-soft); font-size: 12.5px; line-height: 1.3; }
+.wit-up .wit-pips { margin-top: 4px; }
 
 .wit-card { background: #fff; border-radius: 18px; padding: 12px 14px; margin: 8px 0; box-shadow: 0 2px 8px rgba(30, 60, 90, 0.12); display: grid; gap: 4px; }
 .wit-big { font-size: 26px; }
@@ -39,6 +42,7 @@ export const STYLES = `
 .wit-status { font-weight: 800; font-size: 12px; padding: 3px 9px; border-radius: 999px; }
 .wit-status.is-open { background: #d9f7e2; color: #1f7a3a; }
 .wit-status.is-closed { background: #ffd9d1; color: #9b2b19; }
+.wit-new { font: 800 11px/1 var(--font-ui, system-ui); color: #fff; background: #e0533f; border-radius: 999px; padding: 4px 8px; }
 .wit-mail { background: #fff; border-radius: 14px; padding: 10px 12px; margin: 6px 0; border: 1px solid var(--line); }
 .wit-mail.is-new { border-color: var(--wii-blue); }
 .wit-mail p { margin: 4px 0; }

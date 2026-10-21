@@ -81,7 +81,7 @@ function ijskraam(g) {
   box(g, '#dff4ff', 0, 1.85, 1.82, 3.6, 1.1, 0.08, windowGlass);
   box(g, '#3fb6ef', 0, 3.0, 0, 5.9, 0.35, 4.2); // roof
   for (let i = 0; i < 6; i++) ball(g, '#ffffff', -2.6 + i * 1.04, 2.82, 2.18, 0.3); // scalloped edge
-  for (let i = 0; i < 6; i++) box(g, i % 2 ? '#ffffff' : '#ff8fb1', -2.5 + i * 1.0, 2.6, 2.5, 0.95, 0.12, 1.6).rotation.x = -0.28; // awning
+  for (let i = 0; i < 6; i++) box(g, i % 2 ? '#ffffff' : '#ff8fb1', -2.5 + i * 1.0, 2.6, 2.5, 0.95, 0.12, 1.6).rotation.x = 0.26; // awning, sloping down to the front
   cone(g, '#e8b56a', 0, 4.6, 0, 0.95, 2.4).rotation.x = Math.PI; // waffle cone, tip down
   ball(g, '#ff8fb1', 0, 6.1, 0, 1.05);
   ball(g, '#8b5a2b', 0, 6.95, 0, 0.92);

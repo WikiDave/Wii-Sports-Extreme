@@ -1,10 +1,9 @@
 // The numbers the phone app "Zaken" and the HUD show, as plain data. Pure: nothing is changed.
 
 import { BUSINESSES, BUSINESS_IDS, UPGRADE_IDS } from './data.js';
-import { wState, washedToday } from './store.js';
+import { wState, washedToday, dirtyHand } from './store.js';
 import { capacity, cover, feeRate, safeLeft, suspicion, suspicionWord, revenue, isOpen, upgradeCost } from './rules.js';
 import { dirtyLeft, withdrawLeft } from './bank.js';
-import { dirtyHand } from './store.js';
 import { bulge } from './carry.js';
 
 /** One business as a row: always name, price and rank; the numbers only when it is yours. */

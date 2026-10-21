@@ -12,7 +12,7 @@
 // Game events it listens to: change, newday (settles the businesses and plans the visits).
 
 import { track } from '../witwassen/ledger.js';
-import { wState, bizOf, dirtyHand } from '../witwassen/store.js';
+import { wState, dirtyHand } from '../witwassen/store.js';
 import { onNewDay } from '../witwassen/daily.js';
 import { auditPhase, resolveAudit } from '../witwassen/audit.js';
 import { visitEvents, inspectorHere } from '../witwassen/visit.js';
@@ -49,7 +49,6 @@ export default {
     registerApp(zakenApp);
 
     let prevPhase = auditPhase(wState(game).audit, game.state.day, game.state.minutes);
-    let carryPending = 0;
     let lastWarn = -Infinity;
 
     /** The inspector arrives: a toast and a sound; the visit stays open until you talk to him. */
@@ -101,11 +100,7 @@ export default {
         const dirty = dirtyHand(game);
         const add = carryHeat(dirty, game.rank, heatLevel(game.state), !hidden && ctx.guards.sees(p), dt);
         if (add > 0) {
-          carryPending += add;
-          if (carryPending >= 0.05) {
-            addHeat(game, carryPending, true);
-            carryPending = 0;
-          }
+          addHeat(game, add, true); // quiet: only a change of level is announced
           if (performance.now() - lastWarn > WARN_EVERY_MS) {
             lastWarn = performance.now();
             toast('Een bewaker kijkt naar je bolle zakken. Was je geld of zet het op de bank.');

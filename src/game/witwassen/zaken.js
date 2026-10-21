@@ -31,7 +31,7 @@ export const zakenApp = {
           { class: 'wit-card' },
           h('small', {}, 'Zwart geld op zak'),
           h('strong', { class: 'wit-big' }, eur(t.dirty)),
-          h('small', {}, `De bank neemt vandaag nog ${eur(t.bankLeft)} zwart geld aan via de telefoon. De pinautomaat in de haven ${eur(t.atmLeft)}.`),
+          h('small', {}, `De bank neemt vandaag nog ${eur(t.bankLeft)} zwart geld aan via de telefoon. De pinautomaat in de haven nog ${eur(t.atmLeft)}.`),
         ),
         h('h3', {}, 'Jouw zaken'),
         ...(mine.length
@@ -46,7 +46,7 @@ export const zakenApp = {
                 h('small', {}, `Verdachtheid: ${r.word} (${r.suspicion}/100)`),
                 h('div', { class: 'wit-bar wit-bar-thin' }, h('i', { style: { width: `${r.suspicion}%` } })),
                 h('small', {}, `Commissie ${Math.round(r.fee * 100)}% · dekking ${eur(r.safe)} per dag · verdiend in totaal ${eur(r.earned)}`),
-                h('small', {}, `Opgeknapt: ${['cap', 'fee', 'books'].map((k) => `${BUSINESSES[r.id].upgrades[k].name} ${b.up[k]}/3`).join(' · ')}`),
+                h('small', {}, `Verbeteringen: ${b.up.cap + b.up.fee + b.up.books} van 9`),
               );
             })
           : [h('p', { class: 'phone-empty' }, 'Nog geen zaak. Kijk naar de borden TE KOOP op het strand en in Havenstad.')]),
@@ -72,7 +72,7 @@ export const zakenApp = {
               h(
                 'div',
                 { class: `wit-mail ${m.read ? '' : 'is-new'}` },
-                h('div', { class: 'wit-row-head' }, h('strong', {}, m.title), m.read ? null : h('i', { class: 'phone-badge' }, 'nieuw')),
+                h('div', { class: 'wit-row-head' }, h('strong', {}, m.title), m.read ? null : h('span', { class: 'wit-new' }, 'nieuw')),
                 h('p', {}, m.text),
                 h('small', {}, `dag ${m.day} · ${formatClock(m.min)}`),
               ),

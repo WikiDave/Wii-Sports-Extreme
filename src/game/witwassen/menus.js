@@ -7,7 +7,7 @@ import { RANKS } from '../state.js';
 import { wState, bizOf, dirtyHand, rollBiz } from './store.js';
 import { cover, feeRate, safeLeft, upgradeCost, revenue } from './rules.js';
 import { bizRow } from './summary.js';
-import { maxWash, safeWash, previewWash, launder, upgrade, buyBusiness } from './laundering.js';
+import { maxWash, previewWash, launder, upgrade, buyBusiness } from './laundering.js';
 import { atmDeposit, atmWithdraw, dirtyLeft, withdrawLeft } from './bank.js';
 import { inspect, canBribe, bribeCost, bribeOdds, resolveAudit } from './audit.js';
 import { BANK_LIMIT_TEXT } from './texts.js';
@@ -16,13 +16,14 @@ const eur = (n) => `€${Math.round(n).toLocaleString('nl-NL')}`;
 const pct = (f) => `${Math.round(f * 100)}%`;
 const stat = (label, value) => h('div', { class: 'wit-stat' }, h('small', {}, label), h('strong', {}, value));
 const bar = (value, max, cls = '') => h('div', { class: `wit-bar ${cls}` }, h('i', { style: { width: `${Math.round(Math.min(1, value / Math.max(1, max)) * 100)}%` } }));
+const pips = (level) => h('span', { class: 'wit-pips' }, ...[1, 2, 3].map((i) => h('i', { class: i <= level ? 'is-on' : '' })));
 const AMOUNTS = [100, 250, 500, 1000];
 
 /** A business: the day's washing, the books, the fee, the upgrades. */
 export function openBusiness(game, id, onChange = () => {}) {
   const d = BUSINESSES[id];
   let amt = 250;
-  const body = h('div', { class: 'shop wit' });
+  const body = h('div', { class: 'shop wit wit-scroll' });
   const draw = () => {
     const s = game.state;
     const b = bizOf(game, id);
@@ -30,12 +31,17 @@ export function openBusiness(game, id, onChange = () => {}) {
     rollBiz(b, s.day);
     const row = bizRow(game, id);
     const max = maxWash(game, id);
-    const safe = safeWash(game, id);
     const dirty = dirtyHand(game);
     const can = max > 0 && row.open;
     if (amt > max) amt = Math.max(0, max);
     const p = amt > 0 ? previewWash(id, b, amt) : null;
     const left = safeLeft(id, b, s.day);
+    const over = amt - left;
+    let books;
+    if (amt <= 0) books = null;
+    else if (over <= 0) books = h('p', { class: 'wit-ok' }, `Binnen de dekking: daarna nog ${eur(left - amt)} over.`);
+    else if (left <= 0) books = h('p', { class: 'wit-warn' }, 'De dekking is vol vandaag: wat je nu wast, ziet de Fiscus.');
+    else books = h('p', { class: 'wit-warn' }, `${eur(over)} boven de dekking: de Fiscus let hier op.`);
     body.replaceChildren(
       h('p', { class: 'wit-blurb' }, d.blurb),
       h('div', { class: 'wit-stats' }, stat('Commissie', pct(feeRate(id, b))), stat('Dekking per dag', eur(cover(id, b))), stat('Capaciteit per dag', eur(row.cap)), stat('Eerlijke omzet vandaag', eur(revenue(id, b, s.day)))),
@@ -52,17 +58,9 @@ export function openBusiness(game, id, onChange = () => {}) {
         ...AMOUNTS.map((a) => h('button', { class: `btn btn-small ${amt === a ? 'btn-primary' : ''}`, type: 'button', disabled: !can || a > max, onClick: () => ((amt = a), draw()) }, eur(a))),
         h('button', { class: `btn btn-small ${amt === max && max > 0 ? 'btn-primary' : ''}`, type: 'button', disabled: !can, onClick: () => ((amt = max), draw()) }, 'Zoveel mogelijk'),
       ),
-      p
-        ? h('p', {}, `De zaak houdt ${eur(p.fee)} aan commissie. ${eur(p.out)} komt schoon op je bank.`)
-        : h('p', { class: 'wit-small' }, dirty > 0 ? 'Kies een bedrag.' : 'Je hebt geen zwart geld op zak.'),
-      amt > 0 && amt > left
-        ? h('p', { class: 'wit-warn' }, `Boven de dekking (${eur(left)} over): de Fiscus let hier op.`)
-        : h('p', { class: 'wit-ok' }, `Binnen de dekking: nog ${eur(left)} rustig te wassen.`),
-      h(
-        'div',
-        { class: 'wit-actions' },
-        h('button', { class: 'btn btn-primary', type: 'button', disabled: !can || amt <= 0, onClick: () => wash() }, amt > 0 ? `Was ${eur(amt)}` : 'Was'),
-      ),
+      p ? h('p', {}, `De zaak houdt ${eur(p.fee)} aan commissie. ${eur(p.out)} komt schoon op je bank.`) : h('p', { class: 'wit-small' }, dirty > 0 ? 'Kies een bedrag.' : 'Je hebt geen zwart geld op zak.'),
+      books,
+      h('div', { class: 'wit-actions' }, h('button', { class: 'btn btn-primary', type: 'button', disabled: !can || amt <= 0, onClick: () => wash() }, amt > 0 ? `Was ${eur(amt)}` : 'Was')),
       h('h3', {}, 'Verbeteren'),
       ...UPGRADE_IDS.map((kind) => {
         const level = b.up[kind];
@@ -70,12 +68,10 @@ export function openBusiness(game, id, onChange = () => {}) {
         const u = d.upgrades[kind];
         return h(
           'div',
-          { class: 'shop-row wit-upgrade' },
-          h('span', { class: 'shop-name' }, `${u.name}: ${u.text}`),
-          h('span', { class: 'wit-pips' }, ...[1, 2, 3].map((i) => h('i', { class: i <= level ? 'is-on' : '' }))),
-          h('small', {}, UPGRADE_LABEL[kind](level)),
+          { class: 'wit-up' },
+          h('div', {}, h('strong', {}, u.name), h('small', {}, `${u.text}. ${UPGRADE_LABEL[kind](level)}`), pips(level)),
           cost == null
-            ? h('span', { class: 'shop-have' }, 'Hoogste niveau')
+            ? h('span', { class: 'wit-small' }, 'Top')
             : h('button', { class: 'btn btn-small btn-primary', type: 'button', disabled: game.state.cash + game.state.bank < cost, onClick: () => doUpgrade(kind) }, `Upgrade ${eur(cost)}`),
         );
       }),
@@ -137,7 +133,7 @@ export function openAtm(game) {
   const draw = () => {
     const s = game.state;
     body.replaceChildren(
-      h('div', { class: 'bank-card wit-card' }, h('small', {}, 'Op de bank'), h('strong', {}, eur(s.bank)), h('small', {}, `Contant: ${eur(s.cash)} · waarvan zwart: ${eur(dirtyHand(game))}`)),
+      h('div', { class: 'wit-card' }, h('small', {}, 'Op de bank'), h('strong', {}, eur(s.bank)), h('small', {}, `Contant: ${eur(s.cash)} · waarvan zwart: ${eur(dirtyHand(game))}`)),
       h('p', { class: 'wit-small' }, BANK_LIMIT_TEXT(dirtyLeft(game, 'atm'), 'atm')),
       h('p', {}, 'Storten'),
       h(
@@ -208,7 +204,7 @@ export function openAudit(game, onDone = () => {}) {
     });
   }
   actions.push({ label: 'Boeken laten zien', kind: 'primary', onClick: () => settle({ present: true }) });
-  modal({ title: `Bezoek van de Fiscus`, body, actions });
+  modal({ title: 'Bezoek van de Fiscus', body, actions });
 }
 
 const TITLES = { goed: 'Goedgekeurd!', waarschuwing: 'Waarschuwing', boete: 'Boete', omgekocht: 'Koffiegeld werkt', betrapt: 'Betrapt!' };
@@ -226,4 +222,3 @@ export function openAuditResult(r) {
     actions: [{ label: 'Klaar', kind: 'primary' }],
   });
 }
-
