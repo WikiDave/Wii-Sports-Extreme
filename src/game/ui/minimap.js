@@ -50,6 +50,8 @@ export class Minimap {
   constructor(container) {
     this.terrain = paintTerrain();
     this.big = false;
+    /** Places to mark on the maps: [{ x, z, label }] (set by features/panden.js). */
+    this.marks = [];
     this.mini = h('canvas', { class: 'minimap', width: 160, height: 160, 'aria-label': 'Minikaart, tik voor de grote kaart' });
     this.full = h('canvas', { class: 'fullmap', width: 640, height: 640 });
     this.overlay = h('div', { class: 'fullmap-wrap', hidden: true, onClick: () => this.toggle(false) }, this.full, h('p', {}, 'Tik om te sluiten'));
@@ -92,6 +94,11 @@ export class Minimap {
       g.beginPath();
       g.arc(80, 80, 78, 0, Math.PI * 2);
       g.stroke();
+      for (const m of this.marks) {
+        const mx = 80 + ((((m.x - CENTER.x) / (EXTENT * 2) + 0.5) * RES) - px) * k;
+        const my = 80 + ((((m.z - CENTER.z) / (EXTENT * 2) + 0.5) * RES) - pz) * k;
+        if (Math.hypot(mx - 80, my - 80) < 74) this.mark(g, mx, my, 6);
+      }
       this.arrow(g, 80, 80, heading, 9);
     }
     if (!this.big) return;
@@ -110,7 +117,30 @@ export class Minimap {
       g.strokeText(zn.name, zx, zz);
       g.fillText(zn.name, zx, zz);
     }
+    for (const m of this.marks) this.mark(g, (m.x - CENTER.x + EXTENT) * f, (m.z - CENTER.z + EXTENT) * f, 9, m.label);
     this.arrow(g, (x - CENTER.x + EXTENT) * f, (z - CENTER.z + EXTENT) * f, heading, 12);
+  }
+
+  /** An owned place: a blue dot with a white rim, and its short name on the full map. */
+  mark(g, cx, cy, r, label = '') {
+    g.save();
+    g.beginPath();
+    g.arc(cx, cy, r, 0, Math.PI * 2);
+    g.fillStyle = '#3a9ad9';
+    g.strokeStyle = '#fff';
+    g.lineWidth = 2;
+    g.fill();
+    g.stroke();
+    if (label) {
+      g.font = '700 14px sans-serif';
+      g.textAlign = 'center';
+      g.lineWidth = 4;
+      g.strokeStyle = 'rgba(0,0,0,0.5)';
+      g.fillStyle = '#fff';
+      g.strokeText(label, cx, cy + 22);
+      g.fillText(label, cx, cy + 22);
+    }
+    g.restore();
   }
 
   arrow(g, cx, cy, heading, r) {
