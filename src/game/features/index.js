@@ -39,8 +39,10 @@ export function installFeatures(ctx) {
         }
       }
     },
+    // Reverse install order: a feature that wrapped a method (player.update) that another feature
+    // wrapped before it must be undone first, or the older wrapper comes back after the dispose.
     dispose() {
-      for (const l of live) {
+      for (const l of [...live].reverse()) {
         try {
           l.inst.dispose?.();
         } catch (err) {

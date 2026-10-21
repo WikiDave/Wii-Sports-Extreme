@@ -60,6 +60,18 @@ export function formatClock(minutes) {
   return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 }
 
+const reported = new Set();
+/**
+ * Logs an error from a listener, hook or frame part and lets the game go on. The same error is
+ * logged once only: a broken listener on 'time' would otherwise flood the console every frame.
+ */
+export function reportError(where, err) {
+  const key = `${where}: ${err?.message ?? err}`;
+  if (reported.has(key)) return;
+  reported.add(key);
+  console.error(`${where} failed; the game goes on`, err);
+}
+
 export class Game {
   /** @param storage object with getItem/setItem (localStorage); optional, then nothing is saved. */
   constructor(storage = null) {
@@ -98,8 +110,15 @@ export class Game {
     return () => this.listeners.get(event).delete(fn);
   }
 
+  /** Calls every listener of an event. A listener that throws is logged; the others still run. */
   emit(event, data) {
-    this.listeners.get(event)?.forEach((fn) => fn(data, this.state));
+    this.listeners.get(event)?.forEach((fn) => {
+      try {
+        fn(data, this.state);
+      } catch (err) {
+        reportError(`Listener for '${event}'`, err);
+      }
+    });
   }
 
   get rank() {

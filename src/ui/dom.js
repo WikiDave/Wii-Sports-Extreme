@@ -79,7 +79,8 @@ export function modal({ title, body, actions = [], wide = false, onClose, tone =
   const backdrop = h('div', { class: 'modal-backdrop', onClick: (e) => e.target === backdrop && close() }, dialog);
   document.body.append(backdrop);
   document.addEventListener('keydown', onKey);
-  (buttons[buttons.length - 1] ?? dialog.querySelector('button'))?.focus();
+  // A long dialog scrolls itself: focusing its last button must not scroll it to the bottom.
+  (buttons[buttons.length - 1] ?? dialog.querySelector('button'))?.focus({ preventScroll: true });
   return { close, dialog };
 }
 

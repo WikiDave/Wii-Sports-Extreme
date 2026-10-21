@@ -7,6 +7,8 @@ export class Interactions {
   constructor(container) {
     this.items = [];
     this.current = null;
+    // A touch screen has no E key to press, so the prompt says Tik (tap) there.
+    this.touch = !!window.matchMedia?.('(pointer: coarse)').matches;
     this.button = h('button', { class: 'interact-btn', type: 'button', hidden: true, onClick: () => this.use() });
     container.append(this.button);
     this.onKey = (e) => {
@@ -29,10 +31,11 @@ export class Interactions {
       const d = Math.hypot(it.x - pos.x, it.z - pos.z);
       if (d < it.r && d < bestD) [best, bestD] = [it, d];
     }
-    if (best === this.current && (!best || this.button.textContent === `E · ${best.label}`)) return;
+    const text = best ? `${this.touch ? 'Tik' : 'E'} · ${best.label}` : '';
+    if (best === this.current && (!best || this.button.textContent === text)) return;
     this.current = best;
     this.button.hidden = !best;
-    if (best) this.button.textContent = `E · ${best.label}`;
+    if (best) this.button.textContent = text;
   }
 
   use() {

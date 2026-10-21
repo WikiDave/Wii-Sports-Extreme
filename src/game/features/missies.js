@@ -29,7 +29,7 @@ import { missionApps } from '../missies/apps.js';
 import { record } from '../customers.js';
 import { heatLevel, viewRange } from '../police.js';
 import { viewFactor } from '../weather.js';
-import { MINUTES_PER_SECOND } from '../state.js';
+import { MINUTES_PER_SECOND, reportError } from '../state.js';
 
 const NEAR_PLACE = 10; // metres: a place counts as visited
 const TICK = 0.25; // seconds between the slower checks
@@ -159,42 +159,60 @@ export default {
       game.on('klanten:verklikt', () => observeVerklikt(ext)),
     );
 
-    // ---- Uithoudingsvermogen (breath) and the walking, swimming and jumping counters
+    // ---- Uithoudingsvermogen (breath) and the walking, swimming and jumping counters. The base
+    // method runs exactly once, so a failing counter never stops the Mii; the error is logged.
+    // Walking, swimming and jumping are counted on foot only: a vehicle (player.external) drives the Mii.
     const baseUpdate = player.update;
     let stamina = BASE_RUN;
     let winded = false;
     player.update = (move, camYaw, dt, t) => {
-      const max = BASE_RUN + skillBonus(game.state, 'uithouding');
-      stamina = Math.min(stamina, max);
-      const moving = Math.hypot(move.x, move.y) > 0.3;
-      if (move.run && moving && !winded) {
-        stamina -= dt;
-        if (stamina <= 0) {
-          stamina = 0;
-          winded = true;
-          observeBreath(ext);
-          toast('Buiten adem! Even wandelen, schat.');
+      const onFoot = !player.external;
+      let jump = false;
+      try {
+        const max = BASE_RUN + skillBonus(game.state, 'uithouding');
+        stamina = Math.min(stamina, max);
+        const moving = Math.hypot(move.x, move.y) > 0.3;
+        if (move.run && moving && !winded) {
+          stamina -= dt;
+          if (stamina <= 0) {
+            stamina = 0;
+            winded = true;
+            observeBreath(ext);
+            toast('Buiten adem! Even wandelen, schat.');
+          }
+        } else {
+          stamina = Math.min(max, stamina + dt * (moving ? 1.5 : 3));
+          if (winded && stamina >= 4) winded = false;
         }
-      } else {
-        stamina = Math.min(max, stamina + dt * (moving ? 1.5 : 3));
-        if (winded && stamina >= 4) winded = false;
+        if (winded) move.run = false;
+        jump = !!move.jump && player.grounded && !player.swimming && onFoot;
+      } catch (err) {
+        reportError('Missies: breath', err);
       }
-      if (winded) move.run = false;
       const x0 = player.pos.x;
       const z0 = player.pos.z;
-      const jump = move.jump && player.grounded && !player.swimming;
       baseUpdate.call(player, move, camYaw, dt, t);
-      observeMove(ext, Math.hypot(player.pos.x - x0, player.pos.z - z0), player.swimming);
-      if (player.swimming) observeDepth(ext, -heightAt(player.pos.x, player.pos.z));
-      if (jump) observeJump(ext);
+      try {
+        if (onFoot) observeMove(ext, Math.hypot(player.pos.x - x0, player.pos.z - z0), player.swimming);
+        if (onFoot && player.swimming) observeDepth(ext, -heightAt(player.pos.x, player.pos.z));
+        if (jump) observeJump(ext);
+      } catch (err) {
+        reportError('Missies: counters', err);
+      }
     };
 
-    // ---- Sluipen: the guards see you from less far (not while they chase you)
+    // ---- Sluipen: the guards see you from less far (not while they chase you). If the bonus fails,
+    // the guards see as without it (the base method), and the error is logged.
     const sneaks = (p) => {
-      const bonus = skillBonus(game.state, 'sluipen');
-      if (!bonus || guards.chasing) return false;
-      const range = viewRange(heatLevel(game.state), viewFactor(game.state.day)) * (1 - bonus);
-      return guards.list.every((g) => Math.hypot(g.x - p.x, g.z - p.z) > range);
+      try {
+        const bonus = skillBonus(game.state, 'sluipen');
+        if (!bonus || guards.chasing) return false;
+        const range = viewRange(heatLevel(game.state), viewFactor(game.state.day)) * (1 - bonus);
+        return guards.list.every((g) => Math.hypot(g.x - p.x, g.z - p.z) > range);
+      } catch (err) {
+        reportError('Missies: Sluipen', err);
+        return false;
+      }
     };
     const baseSees = guards.sees;
     const baseGuards = guards.update;

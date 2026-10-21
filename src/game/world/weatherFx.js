@@ -8,6 +8,7 @@ import { mergeInPlace } from '../uiterlijk/merge.js';
 
 const RAIN_COUNT = 1600;
 const RAIN_BOX = 60;
+const GREY_FOG = new THREE.Color('#8a96a3');
 
 /** Vertex colours: white on top, a soft grey underneath, so each cloud has some volume. */
 function shadeFromBelow(geo) {
@@ -83,14 +84,16 @@ export class WeatherFx {
     const k = Math.min(1, dt * 0.8);
     for (const key of ['sun', 'fog', 'rain', 'clouds']) this.level[key] += (this.target[key] - this.level[key]) * k;
     const L = this.level;
-    // Dim the sun and hemisphere light, bring the fog closer.
-    this.sky.sun.intensity *= L.sun;
-    this.sky.hemi.intensity *= 0.55 + 0.45 * Math.min(1, L.sun + 0.3);
+    // Dim the sun and hemisphere light, bring the fog closer. Always set from the base of the time
+    // of day (sky.js), never multiplied on the last frame's value: this runs while a menu pauses
+    // the clock too, where sky.setTime is not called.
+    this.sky.sun.intensity = this.sky.baseSun * L.sun;
+    this.sky.hemi.intensity = this.sky.baseHemi * (0.55 + 0.45 * Math.min(1, L.sun + 0.3));
     const fog = this.scene.fog;
     fog.near = 1400 * (0.15 + 0.85 * L.fog);
     fog.far = 4500 * (0.2 + 0.8 * L.fog);
     // Grey the fog colour in bad weather.
-    fog.color.lerp(new THREE.Color('#8a96a3'), Math.min(0.6, (1 - L.fog) * 0.7));
+    fog.color.copy(this.sky.baseFog).lerp(GREY_FOG, Math.min(0.6, (1 - L.fog) * 0.7));
     this.clouds.visible = L.clouds > 0.05;
     this.cloudMat.opacity = 0.3 + 0.65 * Math.min(1, L.clouds);
     this.cloudMat.color.set('#ffffff').lerp(new THREE.Color('#9aa3ad'), Math.min(1, Math.max(0, L.rain) * 0.7));
