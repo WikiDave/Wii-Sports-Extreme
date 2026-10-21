@@ -5,6 +5,7 @@ import { PROPERTIES } from './data/properties.js';
 import { PRODUCTS } from './data/products.js';
 import { canMake, itemKey, recipeEffects, limitFree } from './economy.js';
 import { DAY_START } from './state.js';
+import { speedFor } from './panden/upgrades.js';
 
 /** Minutes of one game day on the clock (06:00 to 04:00). */
 export const DAY_LENGTH = 22 * 60;
@@ -34,7 +35,8 @@ export function startJob(game, productId, ingredients, quality) {
     key: itemKey(productId, recipeEffects(productId, ingredients), quality),
     yield: p.yield,
     startedAt: now(s),
-    readyAt: now(s) + p.time,
+    // The station's property may have the Productie upgrade (panden/upgrades.js speedFor).
+    readyAt: now(s) + Math.round(p.time * speedFor(s, s.jobs.length)),
   };
   s.jobs.push(job);
   game.emit('change');

@@ -6,9 +6,8 @@
 import { EFFECTS } from './data/effects.js';
 import { INGREDIENTS } from './data/ingredients.js';
 import { PRODUCTS, GOODS } from './data/products.js';
-import { PROPERTIES } from './data/properties.js';
-
-const STORAGE = Object.fromEntries(Object.entries(PROPERTIES).map(([id, p]) => [id, p.storage]));
+import { storageOf } from './panden/upgrades.js';
+import { stockCount } from './panden/chest.js';
 
 export const MAX_EFFECTS = 6;
 
@@ -76,11 +75,11 @@ export function makeBatch(game, productId, ingredients, quality) {
   return key;
 }
 
-/** Free room in the stock (Infinity without properties, as in the tests of economy.js alone). */
+/** Free room in the stock: the storage of your places (with upgrades) less everything you own, chests included. */
 function limit(game) {
   const st = game.state;
-  const cap = st.properties.reduce((s, id) => s + (STORAGE[id] ?? 0), 0);
-  return cap - Object.values(st.inventory).reduce((a, b) => a + b, 0);
+  const cap = st.properties.reduce((s, id) => s + storageOf(st, id), 0);
+  return cap - stockCount(st);
 }
 
 /** Buys n of a good or ingredient. */

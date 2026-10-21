@@ -1,16 +1,46 @@
-// The beach hut: the player's home base. Door faces +z (south), a sign above it.
+// The beach hut: the player's home base. Door faces +z (south), a sign above it. Beside it: a
+// chest on the porch (storage), a beach lounger (sleep), a mailbox, and the upgrade parts.
+// The island places the hut; this file only builds it (origin at the hut's ground).
 
 import * as THREE from 'three';
+import { wall, chestMesh, loungerMesh, mailboxMesh, mat } from '../panden/models/parts.js';
+import { addUpgradeParts } from '../panden/models/upgrades3d.js';
 
-const mat = (color) => new THREE.MeshLambertMaterial({ color, flatShading: true });
+/** Where the hut's things stand, in its local coordinates (see panden/view.js). */
+export const HUT_LAYOUT = {
+  chest: { x: 1.8, y: 0.3, z: 4.4, rot: 0 },
+  bed: { x: -6.0, y: 0, z: 1.2, rot: 0 },
+  mailbox: { x: -3.7, y: 0, z: 4.6 },
+  up: {
+    lock: { x: 1.2, y: 1.6, z: 3.75 },
+    cams: [
+      { x: -1.9, y: 3.5, z: 3.7, rot: 0 },
+      { x: 2.6, y: 3.2, z: -3.6, rot: Math.PI },
+    ],
+    crates: [
+      { x: 6.2, z: -1.5 },
+      { x: 6.2, z: 0.2 },
+      { x: 6.2, z: -3.2 },
+    ],
+    lamps: [{ x: -4.6, z: 3.2 }],
+    flowers: [
+      { x: -2.4, y: 0, z: 6.0, rot: 0 },
+      { x: 2.4, y: 0, z: 6.0, rot: 0 },
+    ],
+    lanterns: [
+      { x: -4.8, z: 5.4 },
+      { x: 4.8, z: 5.4 },
+    ],
+    bed: { x: -6.0, z: 1.2 },
+  },
+};
 
 export function buildHut() {
   const g = new THREE.Group();
-  const wall = mat('#ffe2a8');
+  g.userData.property = 'hut';
   const roof = mat('#3a9ad9');
   const wood = mat('#a8743a');
-  const body = new THREE.Mesh(new THREE.BoxGeometry(8.4, 4.6, 7), wall);
-  body.position.y = 2.3;
+  wall(g, 8.4, 4.6, 7, 0, 2.3, 0, '#ffe2a8');
   const top = new THREE.Mesh(new THREE.ConeGeometry(7.2, 3.4, 4), roof);
   top.rotation.y = Math.PI / 4;
   top.position.y = 6.3;
@@ -24,6 +54,14 @@ export function buildHut() {
   window_.position.set(-2.6, 2.6, 3.55);
   const window2 = window_.clone();
   window2.position.x = 2.6;
-  g.add(body, top, door, sign, porch, window_, window2);
+  g.add(top, door, sign, porch, window_, window2);
+  const chest = chestMesh();
+  chest.position.set(HUT_LAYOUT.chest.x, HUT_LAYOUT.chest.y, HUT_LAYOUT.chest.z);
+  const bed = loungerMesh('#ff6f61');
+  bed.position.set(HUT_LAYOUT.bed.x, 0, HUT_LAYOUT.bed.z);
+  const mailbox = mailboxMesh();
+  mailbox.position.set(HUT_LAYOUT.mailbox.x, 0, HUT_LAYOUT.mailbox.z);
+  g.add(chest, bed, mailbox);
+  addUpgradeParts(g, HUT_LAYOUT);
   return g;
 }

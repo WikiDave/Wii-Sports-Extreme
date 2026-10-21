@@ -4,15 +4,19 @@ import { PROPERTIES } from './data/properties.js';
 import { STAFF } from './data/staff.js';
 import { PRODUCTS } from './data/products.js';
 import { canMake, makeBatch, parseItem, unitPrice } from './economy.js';
+import { storageOf } from './panden/upgrades.js';
+import { stockCount } from './panden/chest.js';
 
 export const GARDENER_LEMONS = 8;
 export const COOK_BATCHES = 3;
 export const PACKER_EXTRA = 2;
 export const SELLER_UNITS = 12;
 
-export const stockLimit = (state) => state.properties.reduce((s, id) => s + PROPERTIES[id].storage, 0);
+/** Stock room of your places, with the storage upgrades (see panden/upgrades.js). */
+export const stockLimit = (state) => state.properties.reduce((s, id) => s + storageOf(state, id), 0);
 export const staffLimit = (state) => state.properties.reduce((s, id) => s + PROPERTIES[id].slots, 0);
-export const stockUsed = (state) => Object.values(state.inventory).reduce((a, b) => a + b, 0);
+/** Everything you own: carried in the inventory and stored in the chests of your places. */
+export const stockUsed = (state) => stockCount(state);
 export const stockFree = (state) => stockLimit(state) - stockUsed(state);
 
 export function buyProperty(game, id) {

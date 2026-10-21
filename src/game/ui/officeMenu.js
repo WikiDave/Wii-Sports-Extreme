@@ -1,15 +1,18 @@
-// The office in Havenstad: buy properties and hire staff.
+// The office in Havenstad: buy properties, upgrade the ones you own, and hire staff.
 
 import { h, modal } from '../../ui/dom.js';
 import { PROPERTIES } from '../data/properties.js';
 import { STAFF } from '../data/staff.js';
 import { RANKS } from '../state.js';
 import { buyProperty, hire, fire, stockLimit, staffLimit } from '../empire.js';
+import { upgradeList } from './upgradeList.js';
 
 const euro = (n) => `€${n.toLocaleString('nl-NL')}`;
 
 export function openOffice(game) {
   const body = h('div', { class: 'shop' });
+  // Which owned properties have their upgrades unfolded (kept across redraws).
+  const open = new Set();
   const refresh = () => {
     const s = game.state;
     body.replaceChildren(
@@ -18,13 +21,26 @@ export function openOffice(game) {
       ...Object.entries(PROPERTIES).map(([id, p]) => {
         const owned = s.properties.includes(id);
         const locked = game.rank < p.rank;
+        if (owned) {
+          const details = h(
+            'details',
+            {
+              class: 'office-prop',
+              open: open.has(id) || null,
+              onToggle: (e) => (e.target.open ? open.add(id) : open.delete(id)),
+            },
+            h('summary', {}, h('span', { class: 'shop-name' }, p.name), h('span', { class: 'shop-have' }, 'van jou · verbeteren')),
+            upgradeList(game, id, refresh),
+          );
+          return h('div', { class: 'shop-row office-row' }, details);
+        }
         return h(
           'div',
           { class: 'shop-row' },
           h('span', { class: 'shop-name' }, `${p.name}`),
-          h('span', { class: 'shop-have' }, owned ? 'van jou' : locked ? `vanaf rang ${RANKS[p.rank]}` : euro(p.price)),
-          h('span', { class: 'shop-have' }, `${p.slots} plekken, ${p.storage} voorraad`),
-          owned || locked
+          h('span', { class: 'shop-have' }, locked ? `vanaf rang ${RANKS[p.rank]}` : euro(p.price)),
+          h('span', { class: 'shop-have' }, `${p.slots} plekken, ${p.stations} station${p.stations > 1 ? 's' : ''}, ${p.storage} voorraad`),
+          locked
             ? null
             : h('button', { class: 'btn btn-small btn-primary', type: 'button', disabled: s.cash < p.price, onClick: () => (buyProperty(game, id), refresh()) }, 'Koop'),
         );
