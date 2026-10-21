@@ -31,9 +31,9 @@ export function sellersUi({ page, game, toast, onChange = () => {} }) {
       { class: 'hd-card' },
       h('div', { class: 'hd-row hd-between' }, h('strong', {}, `Handelaren ${hs.sellers.length}/${limit}`), chip(game.rank < 1 ? `vanaf rang ${RANKS[1]}` : `${limit - hs.sellers.length} plek${limit - hs.sellers.length === 1 ? '' : 'ken'} vrij`, game.rank < 1 ? 'dim' : '')),
       h('div', { class: 'hd-row hd-between' }, h('span', { class: 'hd-sub' }, 'In de zakken van je handelaren'), h('span', { class: 'hd-big hd-money' }, euro(total))),
-      btn('Alles laten overmaken (−5%)', () => {
-        const r = S.collectAll(game, 'bank');
-        toast(r.amount ? `${euro(r.net)} naar de bank (kosten ${euro(r.fee)}).` : 'Er zit niets in de zakken.');
+      btn('Alles laten brengen (−5%)', () => {
+        const r = S.collectAll(game, 'phone');
+        toast(r.amount ? `${euro(r.net)} gebracht (kosten ${euro(r.fee)}). Het is zwart geld: was het bij een bedrijf.` : 'Er zit niets in de zakken.');
         onChange();
         drawHome();
       }, { kind: 'is-primary', disabled: total <= 0 }),

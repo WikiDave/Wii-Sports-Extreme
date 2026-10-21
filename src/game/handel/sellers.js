@@ -120,17 +120,18 @@ export function takeAll(game, id) {
 
 /**
  * Collects the pouch. 'hand' = in person (cash, free, a chat that cheers him up),
- * 'bank' = he wires it to the bank for a fee (safe from the guards).
+ * 'phone' = he has it brought to you by courier for a fee. Both are cash in your pocket, and that
+ * money is DIRTY (the ledger counts it as dirty income): it must go through a business before the
+ * bank will take it. Nothing of a pouch goes to the bank directly.
  */
 export function collect(game, id, mode = 'hand') {
   const s = sellerById(game, id);
   if (!s) return fail('Onbekende handelaar.');
   if (s.pouch <= 0) return fail('De zak is leeg.');
   const amount = s.pouch;
-  const fee = mode === 'bank' ? Math.round(amount * BANK_FEE) : 0;
+  const fee = mode === 'phone' ? Math.round(amount * BANK_FEE) : 0;
   const net = amount - fee;
-  if (mode === 'bank') game.state.bank += net;
-  else game.state.cash += net;
+  game.state.cash += net;
   const skimmed = s.skimSince;
   s.pouch = 0;
   s.skimSince = 0;
@@ -141,8 +142,8 @@ export function collect(game, id, mode = 'hand') {
   return { ok: true, amount, fee, net, skimmed, mode };
 }
 
-/** Collects every pouch of every seller (by phone: to the bank). */
-export function collectAll(game, mode = 'bank') {
+/** Collects every pouch of every seller (by phone: brought over for the fee, still dirty cash). */
+export function collectAll(game, mode = 'phone') {
   const total = { amount: 0, fee: 0, net: 0, skimmed: 0 };
   for (const s of [...handelState(game).sellers]) {
     const r = collect(game, s.id, mode);

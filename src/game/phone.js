@@ -146,7 +146,7 @@ export function deposit(game, amount) {
   const s = game.state;
   amount = Math.floor(amount);
   if (amount <= 0 || amount > s.cash) return false;
-  amount = clampDeposit(game, amount, 'phone'); // unlaundered cash only goes in up to a daily limit (witwassen)
+  amount = clampDeposit(game, amount, 'phone'); // only clean cash goes in; dirty cash must be washed first (witwassen)
   if (amount <= 0) return false;
   s.cash -= amount;
   s.bank += amount;

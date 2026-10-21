@@ -509,7 +509,7 @@ const dayWith = (pred, from = 2) => {
   assert.equal(ev2.filter((e) => e.type === 'full').length, 1);
   assert.ok(!ev2.some((e) => e.type === 'sale'));
   assert.ok(S.needs(g, s).includes('vol'));
-  // collect in person: all cash, no fee; by phone: to the bank, minus the fee
+  // collect in person: all cash, no fee; by phone: brought over for the fee, still cash (never the bank)
   const cash0 = g.state.cash;
   const xp0 = g.state.xp;
   const r = S.collect(g, 'haru', 'hand');
@@ -520,15 +520,15 @@ const dayWith = (pred, from = 2) => {
   assert.equal(S.collect(g, 'haru', 'hand').ok, false);
   s.pouch = 1000;
   const bank0 = g.state.bank;
-  const rb = S.collect(g, 'haru', 'bank');
+  const rb = S.collect(g, 'haru', 'phone');
   assert.equal(rb.fee, Math.round(1000 * BANK_FEE));
-  assert.equal(g.state.bank, bank0 + 1000 - rb.fee);
-  assert.equal(g.state.cash, cash0 + r.amount); // cash unchanged
+  assert.equal(g.state.cash, cash0 + r.amount + 1000 - rb.fee);
+  assert.equal(g.state.bank, bank0); // a pouch never goes to the bank directly
   // all at once
   S.hireSeller(g, 'keiko');
   S.sellerById(g, 'keiko').pouch = 200;
   s.pouch = 100;
-  const all = S.collectAll(g, 'bank');
+  const all = S.collectAll(g, 'phone');
   assert.equal(all.amount, 300);
   assert.equal(all.fee, 15);
   assert.equal(S.pouchTotal(g), 0);

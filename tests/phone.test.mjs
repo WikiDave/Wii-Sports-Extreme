@@ -7,6 +7,8 @@ import { staysIn } from '../src/game/klanten/timeline.js';
 import { buildWorld } from '../src/game/klanten/places.js';
 import { PRODUCTS } from '../src/game/data/products.js';
 import { caught } from '../src/game/police.js';
+import { track } from '../src/game/witwassen/ledger.js';
+import { dirtyHand } from '../src/game/witwassen/store.js';
 
 const world = buildWorld();
 const g = new Game(null);
@@ -95,4 +97,18 @@ g.state.cash = 500; g.state.bank = 0;
 assert.equal(deposit(g, 600), false); assert.equal(deposit(g, 300), true); assert.equal(g.state.cash, 200); assert.equal(g.state.bank, 300);
 assert.equal(withdraw(g, 400), false); assert.equal(withdraw(g, 100), true); assert.equal(g.state.bank, 200);
 g.state.heat = 4.5; caught(g); assert.equal(g.state.bank, 200); // the bank is safe
+
+// dirty cash never goes into the bank by phone: only the clean part of your cash does (witwassen)
+{
+  const x = new Game(null);
+  x.state.cash = 800; // clean, before the ledger starts counting
+  track(x);
+  x.addCash(900); // a deal: 900 dirty on top
+  assert.equal(deposit(x, 1000), true);
+  assert.equal(x.state.bank, 800); // the clean 800 only
+  assert.equal(x.state.cash, 900);
+  assert.equal(dirtyHand(x), 900);
+  assert.equal(deposit(x, 100), false); // nothing clean left
+  assert.equal(x.state.bank, 800);
+}
 console.log('ok');

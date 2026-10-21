@@ -3,7 +3,7 @@
 import { BUSINESSES, BUSINESS_IDS, UPGRADE_IDS } from './data.js';
 import { wState, washedToday, dirtyHand } from './store.js';
 import { capacity, cover, feeRate, safeLeft, suspicion, suspicionWord, revenue, isOpen, upgradeCost } from './rules.js';
-import { dirtyLeft, withdrawLeft } from './bank.js';
+import { cleanCash, withdrawLeft } from './bank.js';
 import { bulge } from './carry.js';
 
 /** One business as a row: always name, price and rank; the numbers only when it is yours. */
@@ -41,8 +41,7 @@ export function totals(game) {
   const w = wState(game);
   return {
     dirty: dirtyHand(game),
-    bankLeft: dirtyLeft(game, 'phone'),
-    atmLeft: dirtyLeft(game, 'atm'),
+    clean: cleanCash(game),
     withdrawLeft: withdrawLeft(game),
     bulge: bulge(dirtyHand(game), game.rank),
     profit: w.stats.profit,

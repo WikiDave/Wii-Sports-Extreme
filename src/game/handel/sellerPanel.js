@@ -1,6 +1,6 @@
 // The panel of one seller: skills, route, stock, cash pouch, tip and fire. Used inside the phone
-// app (inPerson false: money goes to the bank) and in the chat with the seller in the world
-// (inPerson true: money in cash). It redraws itself after every action.
+// app (inPerson false: the money is brought over for a fee) and in the chat with the seller in the
+// world (inPerson true: money in hand). Either way it is dirty cash. It redraws itself after every action.
 
 import { h } from '../../ui/dom.js';
 import { itemName, parseItem } from '../economy.js';
@@ -127,9 +127,9 @@ export function sellerPanel(game, id, { inPerson = false, toast = () => {}, onGo
         'div',
         { class: 'hd-btns' },
         inPerson ? btn(`Geld pakken (${euro(s.pouch)})`, () => collectWith('hand'), { kind: 'is-primary', disabled: s.pouch <= 0 }) : null,
-        btn(inPerson ? 'Naar de bank' : `Laten overmaken (−${euro(fee)})`, () => collectWith('bank'), { kind: inPerson ? '' : 'is-primary', disabled: s.pouch <= 0 }),
+        inPerson ? null : btn(`Laten brengen (−${euro(fee)})`, () => collectWith('phone'), { kind: 'is-primary', disabled: s.pouch <= 0 }),
       ),
-      inPerson ? null : h('div', { class: 'hd-sub' }, `Via de telefoon betaal je ${Math.round(BANK_FEE * 100)}% kosten; het geld staat dan veilig op de bank. Persoonlijk ophalen is gratis.`),
+      inPerson ? null : h('div', { class: 'hd-sub' }, `Via de telefoon betaal je ${Math.round(BANK_FEE * 100)}% kosten. Het blijft contant zwart geld tot je het bij een bedrijf wast. Persoonlijk ophalen is gratis.`),
     );
 
     const history = h(
@@ -170,7 +170,7 @@ export function sellerPanel(game, id, { inPerson = false, toast = () => {}, onGo
     const r = S.collect(game, id, mode);
     if (!r.ok) return say(r);
     const lost = r.skimmed > 0 ? ` Let op: er ontbreekt ${euro(r.skimmed)} aan de kas.` : '';
-    toast(mode === 'hand' ? `${euro(r.net)} opgehaald.${lost}` : `${euro(r.net)} naar de bank (kosten ${euro(r.fee)}).${lost}`);
+    toast(mode === 'hand' ? `${euro(r.net)} opgehaald.${lost}` : `${euro(r.net)} gebracht (kosten ${euro(r.fee)}).${lost}`);
     return say({ ok: true });
   }
 

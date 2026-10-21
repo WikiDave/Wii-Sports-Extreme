@@ -1,60 +1,50 @@
-// The bank side of laundering: unlaundered cash may only be deposited up to a daily limit
-// (phone banking is watched closer than the ATM at the harbour), and the ATM limits withdrawals.
-// phone.js deposit() asks clampDeposit() how much of a deposit the bank takes. Pure logic.
+// The bank side of laundering. The bank (phone) and the ATM only take CLEAN cash: dirty cash has to
+// go through a business first (laundering.js), where it pays a fee and counts against the cover and
+// the taxman. The ATM limits withdrawals per day. phone.js deposit() asks clampDeposit() how much of
+// a deposit the bank takes. Pure logic.
 
-import { DIRTY_DEPOSIT, ATM_WITHDRAW } from './data.js';
+import { ATM_WITHDRAW } from './data.js';
 import { wState, dirtyHand } from './store.js';
-import { takeDirty } from './ledger.js';
 
-export const dirtyLimit = (rank, via = 'phone') => DIRTY_DEPOSIT[via].base + DIRTY_DEPOSIT[via].perRank * rank;
 export const withdrawLimit = (rank) => ATM_WITHDRAW.base + ATM_WITHDRAW.perRank * rank;
+export const CLEAN_ONLY = 'De pinautomaat en de bank nemen alleen schoon geld aan. Zwart geld moet eerst door een van je bedrijven.';
 
-/** The bank counters of today (reset on a new day). */
+/** The ATM counters of today (reset on a new day). */
 function today(game) {
   const w = wState(game);
-  if (w.bank.day !== game.state.day) w.bank = { day: game.state.day, dirty: 0, out: 0 };
+  if (w.bank.day !== game.state.day) w.bank = { day: game.state.day, out: 0 };
   return w.bank;
 }
 
-/** Unlaundered euros that can still be deposited today. */
-export const dirtyLeft = (game, via = 'phone') => Math.max(0, dirtyLimit(game.rank, via) - today(game).dirty);
+/** Clean cash on hand: the only money the bank takes. */
+export const cleanCash = (game) => Math.max(0, game.state.cash - dirtyHand(game));
 /** Euros that can still be withdrawn at the ATM today. */
 export const withdrawLeft = (game) => Math.max(0, withdrawLimit(game.rank) - today(game).out);
-export const depositedDirty = (game) => today(game).dirty;
 
-/**
- * What the bank takes of a deposit of `amount`: clean cash always goes through (it is taken
- * first), dirty cash only up to the daily limit.
- */
-export function planDeposit(game, amount, via = 'phone') {
+/** What the bank takes of a deposit of `amount`: clean cash up to the amount, the dirty rest is turned away. */
+export function planDeposit(game, amount) {
   amount = Math.max(0, Math.floor(amount));
-  const clean = Math.max(0, game.state.cash - dirtyHand(game));
-  const cleanPart = Math.min(amount, clean);
-  const dirtyPart = Math.min(amount - cleanPart, dirtyLeft(game, via));
-  return { asked: amount, accepted: cleanPart + dirtyPart, clean: cleanPart, dirty: dirtyPart, over: amount - cleanPart - dirtyPart };
+  const accepted = Math.min(amount, cleanCash(game));
+  return { asked: amount, accepted, over: amount - accepted };
 }
 
 /**
- * The hook for phone.js deposit(): returns the amount the bank accepts and books the dirty part
- * against today's limit. Emits 'witwassen:limiet' when the bank turns money away.
+ * The hook for phone.js deposit(): returns the amount the bank accepts. Emits 'witwassen:limiet'
+ * { asked, accepted, over, via } when dirty cash is turned away.
  */
 export function clampDeposit(game, amount, via = 'phone') {
-  const p = planDeposit(game, amount, via);
-  if (p.dirty > 0) {
-    today(game).dirty += p.dirty;
-    takeDirty(game, p.dirty);
-  }
-  if (p.over > 0) game.emit('witwassen:limiet', { ...p, via, left: dirtyLeft(game, via) });
+  const p = planDeposit(game, amount);
+  if (p.over > 0) game.emit('witwassen:limiet', { ...p, via });
   return p.accepted;
 }
 
-/** Deposit at the ATM (higher limit for unlaundered cash than the phone). */
+/** Deposit at the ATM: clean cash only. */
 export function atmDeposit(game, amount) {
   const s = game.state;
   amount = Math.floor(amount);
   if (!(amount > 0) || amount > s.cash) return { ok: false, amount: 0, reason: 'Zoveel contant geld heb je niet bij je.' };
   const got = clampDeposit(game, amount, 'atm');
-  if (got <= 0) return { ok: false, amount: 0, reason: 'De pinautomaat weigert ongewassen geld: de limiet van vandaag is bereikt.' };
+  if (got <= 0) return { ok: false, amount: 0, reason: CLEAN_ONLY };
   s.cash -= got;
   s.bank += got;
   game.emit('change');

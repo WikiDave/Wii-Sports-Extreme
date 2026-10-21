@@ -1,12 +1,15 @@
 // Police raids: on a morning after heat level 3 or more, the police may search the hut and your
-// other places while you slept. Whatever product is stored in a place can be seized, unless the
-// place has security upgrades (state.ext.panden.security[id], a number: 1 means one upgrade).
+// other places while you slept. A searched place loses a share of the product it holds:
+//   - carried stock (your inventory) counts as stored in the places by their storage room;
+//   - the chest of the place itself (panden/chest.js) loses the same share of what is in it.
+// The share is 45% with no security, 30% with one upgrade, 15% with two and none with three
+// (state.ext.panden.security[id], a number: 1 means one upgrade, `true` counts as one).
 // Pure logic: the caller applies the plans with applyRaids().
 
 import { PROPERTIES } from '../data/properties.js';
-import { parseItem } from '../economy.js';
+import { chestOf } from '../panden/chest.js';
 import { addInbox, logEvent } from './state.js';
-import { goodsCarried } from './arrest.js';
+import { goodsCarried, productUnits, takeStacks } from './arrest.js';
 
 /** Chance per morning of a raid on each place, by heat level (0..4). */
 export const RAID_CHANCE = [0, 0, 0, 0.3, 0.5];
@@ -23,9 +26,9 @@ export function securityOf(state, id) {
 export const seizeShare = (security) => Math.max(0, Math.round((0.45 - 0.15 * security) * 100) / 100);
 
 /**
- * The raids of this morning: [{ id, security, seized: { itemKey: n }, total }] for each place that
- * was searched. rand is injectable for tests; the product stored in a place is its share of the
- * stock limit. Nothing is changed here.
+ * The raids of this morning: [{ id, security, seized, chest, total }] for each place that was
+ * searched. `seized` is taken from the carried stock, `chest` from the place's own chest (both are
+ * { itemKey: n }), `total` is the sum. rand is injectable for tests. Nothing is changed here.
  */
 export function planRaids(state, level, rand = Math.random) {
   const chance = raidChance(level);
@@ -36,28 +39,17 @@ export function planRaids(state, level, rand = Math.random) {
   for (const id of state.properties) {
     if (rand() >= chance) continue;
     const security = securityOf(state, id);
+    const share = seizeShare(security);
     const stored = goodsCarried({ inventory: work }) * (PROPERTIES[id].storage / limit);
-    let want = Math.floor(stored * seizeShare(security));
-    const seized = {};
-    let total = 0;
-    const stacks = Object.entries(work)
-      .filter(([k]) => parseItem(k))
-      .sort((a, b) => b[1] - a[1]);
-    for (const [k, have] of stacks) {
-      if (want <= 0) break;
-      const t = Math.min(have, want);
-      seized[k] = t;
-      total += t;
-      want -= t;
-      work[k] = have - t;
-      if (work[k] === 0) delete work[k];
-    }
-    plans.push({ id, security, seized, total });
+    const seized = takeStacks(work, Math.floor(stored * share));
+    const stash = { ...chestOf(state, id) };
+    const fromChest = takeStacks(stash, Math.floor(productUnits(stash) * share));
+    plans.push({ id, security, seized, chest: fromChest, total: productUnits(seized) + productUnits(fromChest) });
   }
   return plans;
 }
 
-/** Removes the seized product, writes the inbox message and the log. Returns the messages. */
+/** Removes the seized product (carried and from the chests), writes the inbox message and the log. Returns the messages. */
 export function applyRaids(game, plans) {
   const s = game.state;
   const out = [];
@@ -65,6 +57,11 @@ export function applyRaids(game, plans) {
     for (const [k, n] of Object.entries(p.seized)) {
       s.inventory[k] = (s.inventory[k] ?? 0) - n;
       if (s.inventory[k] <= 0) delete s.inventory[k];
+    }
+    const stash = chestOf(s, p.id);
+    for (const [k, n] of Object.entries(p.chest ?? {})) {
+      stash[k] = (stash[k] ?? 0) - n;
+      if (stash[k] <= 0) delete stash[k];
     }
     const place = PROPERTIES[p.id].name;
     let text;

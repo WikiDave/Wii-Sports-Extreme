@@ -37,12 +37,7 @@ export const RESULT = {
 export const WASH_TIPS = [
   'Blijf onder de dekking (de groene streep) dan blijft de Fiscus vriendelijk.',
   'Een zaak die goed draait krijgt een betere naam: meer capaciteit en meer dekking.',
-  'Contant geld in je zak valt op als de bewakers meekijken. Was het weg of zet het op de bank.',
-  'De pinautomaat in de haven neemt meer ongewassen geld aan dan je telefoon.',
+  'Contant geld in je zak valt op als de bewakers meekijken. Was het weg bij een van je bedrijven.',
+  'De bank en de pinautomaat nemen alleen schoon geld aan. Zwart geld moet door een bedrijf.',
   'Een betere boekhouding vergroot de dekking: je mag dan veilig meer wassen.',
 ];
-
-export const BANK_LIMIT_TEXT = (left, via) =>
-  via === 'atm'
-    ? `De pinautomaat neemt vandaag nog €${left.toLocaleString('nl-NL')} aan ongewassen geld aan.`
-    : `Je bank neemt vandaag nog €${left.toLocaleString('nl-NL')} aan ongewassen geld aan via de telefoon.`;

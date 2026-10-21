@@ -74,7 +74,7 @@ export default {
         taxman.forEach((line, i) => later(6400 + i * 2600, () => toast(`🏛️ ${line}`)));
       }),
       game.on('witwassen:limiet', (e) => {
-        if (e?.via === 'phone') toast('De bank neemt vandaag geen ongewassen geld meer aan. Was het eerst, of ga naar de pinautomaat.');
+        if (e?.via === 'phone') toast('De bank neemt geen zwart geld aan. Was het eerst bij een van je bedrijven.');
       }),
     ];
 
@@ -106,7 +106,7 @@ export default {
           addHeat(game, add, true); // quiet: only a change of level is announced
           if (performance.now() - lastWarn > WARN_EVERY_MS) {
             lastWarn = performance.now();
-            toast('Een bewaker kijkt naar je bolle zakken. Was je geld of zet het op de bank.');
+            toast('Een bewaker kijkt naar je bolle zakken. Was je zwarte geld bij een van je bedrijven.');
           }
         }
       },
