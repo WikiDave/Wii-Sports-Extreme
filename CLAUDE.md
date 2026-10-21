@@ -73,6 +73,49 @@ Bouwen (daarna, parallel per onderdeel):
   (verf, velgen, spoiler, stickers)
 - 7.8 havendok: boten aanpasbaar in de dock (verf, motor), vaarbaar tussen eilanden
 
+## Fase 8: wensenlijst (volgorde van bouwen, grootste eerst waar het fundament voor is)
+Wat erbij komt, gegroepeerd. Elke groep bouwt op de fase-7-fundering (map, plaatsingsregister,
+interieur-systeem). Alles volgt docs/FEATURES.md.
+A. Wereld en bouw
+- A1 bouwen op een gekozen plek: huis, winkel of gebouw neerzetten (bouwmodus met plaatsingsregister)
+- A2 huizen met meer detail, verschillende baksteen, betreedbaar; huizen te koop, te huur of van een NPC
+- A3 woning kopen: beginnen in een klein appartement (bed, bureau, badkamer met bad en wc), later een huis
+- A4 meer eilandjes, autowegen, bruggen (zie fase 7 7.2), stadhuis met burgemeester, monumenten
+- A5 kerken, moskeeën, synagogen en tempels als gewone plekken in de stad, met respect, geen spot
+  met geloof of gelovigen
+B. Economie en bedrijven
+- B1 nachtwinkels, wasserijen, hotels en andere zaken als witwaspraktijk (uitbreiding van witwassen)
+- B2 apotheek: verkoopt alleen fictieve middelen (vitamine- en kruidenpillen, energiedrankjes), geen
+  echte drugs
+- B3 fictieve bedrijven die door NPC's worden gerund; solliciteren bij die bedrijven
+- B4 plantages: kweek op eigen grond of in een hangaar (koppelen aan stations, 6.3)
+- B5 handlangers die opdrachten uitvoeren; kunnen door rivalen of politie worden opgepakt en melden
+  zich via de telefoon (uitbreiding van verkopers, 6.5)
+C. Tijd, natuur en weer
+- C1 slapen met gekozen wakker-uur; energie beïnvloedt werken en verkopen
+- C2 planten groeien over de tijd (plantages en tuin)
+- C3 eb en vloed: strand verandert, sommige paden onder water
+- C4 vulkaan: lava en een uitbarsting om het jaar
+- C5 tornado's als weerevent (schade aan plaatsingen wordt hersteld, geen doden)
+D. Mensen
+- D1 NPC's met eigen dagritme (uitbreiding klanten), elk met een uniek dialoog
+- D2 lastige buren en snitches: buren die klagen en de politie verwittigen, te sussen met geld
+- D3 NPC-bedrijven en -bewoners krijgen eigen routines en levenscyclus
+E. Vervoer
+- E1 treinen, bussen, metro (stations en lijnen), taxi (bestel een taxi op de telefoon)
+- E2 vliegveld (fase 7 7.6), auto's en garages (fase 7 7.7)
+F. Vermaak en reclame
+- F1 jukebox: kopen voor eigen domein, platen kopen in de platenwinkel, ook in restaurants
+- F2 reclame met Mii's erop, met een editor om eigen reclame te maken
+- F3 raves en festivals (evenementen met muziek, programma en publiek)
+- F4 fun house: een kermisattractie (spiegels, rare gangen, schrikhuis), voor het hele gezin
+G. Kaart en gevoel
+- G1 markers op de kaart en in de wereld: jezelf, je handelaren, je doelen (objectives)
+- G2 spreekbubbel-waarschuwing als je het gebied van een rivaal binnenloopt
+- G3 meer detail in bomen en meeuwen (fase 5 uitbreiding)
+Niet opgenomen zonder verdere afspraak: sectes als organisatie (kan geloof belachelijk maken),
+en een bordeel of stripclub (valt buiten het spel). Zie de vraag in het antwoord van de sessie.
+
 ## Status
 - Mii-maker: klaar (hoofden, 72 kapsels, ogen/brauwen/monden, brillen, lichamen, 27 officiele
   Miis), en sinds 4.3 ook neus (lijn + 3D-neus, `nose.js`/`nose-data.js`), baarden (3D-meshes per
@@ -80,3 +123,4 @@ Bouwen (daarna, parallel per onderdeel):
   gezichtsvorm, `facetex.js` + `assets/facetex.png`, laden vóór het eerste scherm). Bronnen in de
   scratchpad (cal/gen_face3d.py).
 - Stap 0.1, 0.2, 1.1, 1.2, 1.3, 1.4, 2.1, 2.2, 2.3, 2.4, 3.1, 3.2, 3.3, 3.4, 4.1, 4.2, 4.3, 4.4 klaar. Ontwerp: `docs/ONTWERP.md` (lees dit eerst). Eiland: `src/game/world/` (zones.js, island.js heightAt/zoneAt, sky.js setTime), scherm `src/screens/island.js` (#eiland; menu's en minigames pauzeren de wereld). Props: `src/game/world/props.js` (palmen, huizen, vuurtoren met lamp, rotsen; seeded). Speler: `src/game/player.js` (lopen/rennen, botsing met zee en props-colliders, loopanimatie), `camera.js` (derde persoon), `input.js` (WASD/pijlen, Shift; touch-stick + Ren-knop). Mii-lichaam heeft nu skinning-botten `parts.legL/legR/armL/armR` (body.js, MiiMaterial ondersteunt skinning). Tests: `window.__game`. Kaart: `src/game/ui/minimap.js` (minikaart rechtsboven, M of tik = grote kaart). Staat: `src/game/state.js` (Game: cash/xp/rang/dag/klok/inventory, events change/time/newday/rank, save `wse.game.v1`, 1 s = 1 spelminuut, dag 06:00-04:00; test `node tests/state.test.mjs`). HUD in island.js (dag, klok, geld, rang). Thuisbasis: `world/hut.js` + `ui/hutMenu.js` (slapen, voorraad, opslaan); `interact.js` (Interactions: E of tik bij een object, items {x,z,r,label,run}). Product: data in `src/game/data/` (effects, ingredients, products), logica `economy.js` (mix/recipeEffects/unitPrice/itemKey `p:<product>:<fx+fx>:<q%>`/makeBatch/buy/sell; test `node tests/economy.test.mjs`), minigame `minigames/pour.js` (playPour -> kwaliteit 0.8-1.2), menu's `ui/tradeMenus.js` (mengen in hut, Markt in Havenstad, Strandtent koopt voor 60%). Klanten: data `data/customers.js` (5 Miis: budget, 3 effecten, rooster, unlock), logica `customers.js` (isPresent/available/valueFor/maxPrice/deal; aanbod laag 0.8/eerlijk 1/hoog 1.4, vertrouwen 0-100, 1 deal per dag; test `node tests/customers.test.mjs`), wereld `world/customerView.js`, gesprek `ui/dealMenu.js`. Interactions-items hebben optioneel `enabled()`. Producten: `data/products.js` (limonade rang 0, snoep rang 2, ijs rang 3), extra ingrediënten bosbes/chili/vanille. Panden en personeel: data `data/properties.js` + `data/staff.js`, logica `empire.js` (stockLimit/staffLimit, buyProperty, hire/fire, dailyWork bij newday; test `node tests/empire.test.mjs`), menu `ui/officeMenu.js` (Kantoor in Havenstad). Voorraad is begrensd door je panden (buy/makeBatch weigeren bij vol). Bewaking: `police.js` (heat 0..5, niveau 0-4, onDeal/onRefused/tickHeat/frisk/caught/escaped/disguise, inCone; test `node tests/police.test.mjs`), wereld `world/guards.js` (patrouille, kijkkegels, fouilleren, achtervolging op niveau 4, verstoppen bij de hut), HUD-meter. Rivalen: `data/rivals.js` + `rivals.js` (rollRival bij newday vanaf rang 1, spotFactor 0.8, bribe/tipOff), `world/rivalView.js`. Hut: Omkleden (-1 niveau, 1x per dag). Weer + gebeurtenissen: `weather.js` (dayInfo(day) uit het dagnummer: zon/bewolkt/regen/storm + rustig/feest/inspectie/hittegolf, priceFactor, staysHome, viewFactor; tests in police.test.mjs), beeld `world/weatherFx.js` (wolken, regen, licht/mist). HUD toont weer-icoon bij de dag. Geluid: `audio.js` (Web Audio, geen bestanden: tone/play(click,cash,spend,bad,alarm,alert,rank,newday,pour,perfect), zee + regen via setAmbience, marimba-melodie; mute in `wse.sound.v1`, knop in de HUD). HUD is compact op telefoon (<=560px). Balans (4.2): rangen 0/60/250/800/2500/7000 xp; strandtent 50%, max 8 per dag; tuinier 8 citroenen, kok 3 batches, verkoper 12 stuks; bewakers fouilleren pas vanaf niveau 1. Simulatie: `node tests/balance.sim.mjs`. README bijgewerkt met het spel. Fase 1-4 klaar. 5.1 klaar: `world/render.js` (IslandRenderer: schaduwkaart rond de speler, sRGB-rendertarget met MSAA + kleurbewerkingspass; shadowsOn(obj)); MiiMaterial geeft nu lineair uit + colorspace_fragment (Mii-kleuren elders ongewijzigd, getest); sky.js: sterren, zonnehalo, horizonwaas, meer contrast zon/omgevingslicht. 5.2 klaar: `world/water.js` (buildWater(ground, sky): shader met golfjes per octaaf gedempt op afstand, Fresnel-luchtreflectie, zonneglinstering, kleur op diepte uit een hoogte-textuur van het terrein, schuim aan de waterlijn; deelt de lucht-uniforms met sky.js; update(t, light, rough) per frame). Zand iets donkerder. 5.3 klaar: `world/terrainMaterial.js` (Lambert + shader-detail: grasvlekken, zandribbels, rotslagen op hellingen, paden), PATHS/pathDistance/PATH_SEGMENTS in zones.js (ook op de minikaart), Vuurtorenkaap is een 'cliff'-profiel, `world/grass.js` (Grass: ~40k instanced graspollen + bloemen in chunks van 60 m, alleen dichtbij zichtbaar, wind in de vertex-shader; minder op telefoon). Laadscherm: `src/ui/loading.js` (createLoader: logo, draaiende ring, balk, stap, wisselende tips; nextFrame). main.js toont het bij het laden van de Mii-onderdelen; het eiland bouwt zich in stappen op (`buildIsland3d` in island.js, compileert shaders en rendert één keer achter het laadscherm; FollowCamera.snap). 5.4 klaar: `world/buildings.js` (house(rand): ramen, luiken, deur, luifel, schoorsteen, 1-2 verdiepingen, tentdak of puntdak; hotel(); pier() met boten + bobBoats; streetLamp(); windowGlass/lampLight lichten 's nachts op), props.js plaatst ze (huizen niet op paden, hotel in de heuvels, steiger oost van Havenstad, lantaarns langs paden bij de steden). 5.5 klaar: `world/life.js` (Life: 14 meeuwen die cirkelen en klapwieken, 3 zeilboten op een ellips om het eiland, 5-9 dorpelingen-Miis die over de paden heen en weer lopen, alleen zichtbaar binnen 220 m; props.swayPalms laat palmen binnen 160 m wuiven; allemaal decor, geen botsing). Volgende: 5.6 interface.
+- Samengevoegd op 2026-10-21 (commit 91aa01d): klanten, handel, witwassen, politie, panden, voertuigen, missies, wereld, uiterlijk. Alle 16 tests slaan, het spel start zonder fouten. Eerste QA-ronde loopt (zie workflow merged-game-qa).
