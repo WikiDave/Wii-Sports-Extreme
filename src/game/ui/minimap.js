@@ -8,6 +8,8 @@ import { ZONES, PATHS } from '../world/zones.js';
 const EXTENT = 700; // metres from the centre shown on the full map
 const CENTER = { x: 90, z: -20 };
 const RES = 360;
+const LABEL_DROP = 22; // a place's label is drawn this far under its dot (full-map pixels)
+const CLASH = 40; // a zone name this close to a place's label gives way to it (full-map pixels)
 
 function paintTerrain() {
   const c = document.createElement('canvas');
@@ -106,6 +108,8 @@ export class Minimap {
     const g = c.getContext('2d');
     g.drawImage(this.terrain, 0, 0, c.width, c.height);
     const f = c.width / (EXTENT * 2);
+    // Where the place labels will be. A zone name that would sit on one of them is left out.
+    const labels = this.marks.filter((m) => m.label).map((m) => [(m.x - CENTER.x + EXTENT) * f, (m.z - CENTER.z + EXTENT) * f + LABEL_DROP]);
     g.font = '700 16px sans-serif';
     g.textAlign = 'center';
     g.lineWidth = 4;
@@ -114,6 +118,7 @@ export class Minimap {
     for (const zn of ZONES) {
       const zx = (zn.x - CENTER.x + EXTENT) * f;
       const zz = (zn.z - CENTER.z + EXTENT) * f;
+      if (labels.some(([lx, ly]) => Math.hypot(lx - zx, ly - zz) < CLASH)) continue;
       g.strokeText(zn.name, zx, zz);
       g.fillText(zn.name, zx, zz);
     }
@@ -137,8 +142,8 @@ export class Minimap {
       g.lineWidth = 4;
       g.strokeStyle = 'rgba(0,0,0,0.5)';
       g.fillStyle = '#fff';
-      g.strokeText(label, cx, cy + 22);
-      g.fillText(label, cx, cy + 22);
+      g.strokeText(label, cx, cy + LABEL_DROP);
+      g.fillText(label, cx, cy + LABEL_DROP);
     }
     g.restore();
   }

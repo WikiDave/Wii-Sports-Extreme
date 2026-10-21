@@ -53,7 +53,7 @@ export function policePanel(game, { h, toast }) {
         },
         `Smeren (${euro(bribeCost(lvl))})`,
       ),
-      blocked ? h('small', { class: 'pz-note' }, BLOCKED[blocked]) : null,
+      blocked ? h('p', { class: 'pz-note' }, BLOCKED[blocked]) : null,
     );
   };
 
