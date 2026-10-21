@@ -18,3 +18,6 @@ export function carryHeatRate(dirty, rank, level) {
 
 /** How full your pockets look, 0..1 (1 = the guards frown). */
 export const bulge = (dirty, rank) => Math.max(0, Math.min(1, dirty / carryLimit(rank)));
+
+/** Heat added over `dt` game minutes while a guard sees you (seen = true); 0 otherwise. */
+export const carryHeat = (dirty, rank, level, seen, dt) => (seen ? carryHeatRate(dirty, rank, level) * Math.max(0, dt) : 0);

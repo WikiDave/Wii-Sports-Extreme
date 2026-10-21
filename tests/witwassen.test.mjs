@@ -13,6 +13,9 @@ import { carryLimit, carryHeatRate, bulge } from '../src/game/witwassen/carry.js
 import { deposit, withdraw } from '../src/game/phone.js';
 import { dayInfo } from '../src/game/weather.js';
 import { heatLevel } from '../src/game/police.js';
+import { visitEvents, inspectorHere } from '../src/game/witwassen/visit.js';
+import { carryHeat } from '../src/game/witwassen/carry.js';
+import { bizRow, bizRows, totals } from '../src/game/witwassen/summary.js';
 
 function setup({ xp = 0, cash = 250, day = 3 } = {}) {
   const g = new Game(null);
@@ -449,5 +452,57 @@ const earn = (g, n) => g.addCash(n);
   assert.ok(carryHeatRate(1e9, 0, 0) <= 0.012 * 2.5);
   assert.equal(bulge(600, 0), 0.5);
   assert.equal(bulge(99999, 0), 1);
+  // seen by a guard only: nothing while nobody looks, and the hut hides you (checked in the feature)
+  assert.equal(carryHeat(3000, 0, 0, false, 10), 0);
+  assert.ok(carryHeat(3000, 0, 0, true, 2) > carryHeat(3000, 0, 0, true, 1));
+  assert.equal(carryHeat(3000, 0, 0, true, 0), 0);
+  assert.equal(carryHeat(3000, 0, 2, true, 5), 0);
 }
-console.log('ok');
+
+// ---------------------------------------------------------------- the taxman's visit as events
+{
+  assert.deepEqual(visitEvents('vandaag', 'bezig', null), []); // no visit: nothing happens
+  assert.deepEqual(visitEvents('vandaag', 'bezig', { id: 'ijskraam' }), ['begin']);
+  assert.deepEqual(visitEvents('bezig', 'bezig', { id: 'ijskraam' }), []); // once only
+  assert.deepEqual(visitEvents('geen', 'bezig', { id: 'ijskraam' }), ['begin']); // loaded in the middle of it
+  assert.deepEqual(visitEvents('bezig', 'voorbij', { id: 'ijskraam' }), ['absent']);
+  assert.deepEqual(visitEvents('gepland', 'gemist', { id: 'ijskraam' }), ['absent']);
+  assert.deepEqual(visitEvents('gepland', 'vandaag', { id: 'ijskraam' }), []);
+  assert.equal(inspectorHere('bezig', { id: 'x' }), true);
+  assert.equal(inspectorHere('vandaag', { id: 'x' }), false);
+  assert.equal(inspectorHere('bezig', null), false);
+}
+
+// ---------------------------------------------------------------- the phone app numbers
+{
+  const { g } = setup({ xp: 100, cash: 300, day: 3 }); // rank 1
+  // not owned: the row only says what it costs and whether the rank is enough
+  let row = bizRow(g, 'surfschool');
+  assert.equal(row.owned, false);
+  assert.equal(row.price, 4500);
+  assert.equal(row.locked, true); // rank 2 needed, we are rank 1
+  assert.equal(bizRows(g).length, 4);
+  // own an ice cream stall: the row gets the numbers (cash set quietly: it is not income)
+  quiet(g, () => {
+    g.state.cash = 2000;
+    g.emit('change');
+  });
+  assert.equal(buyBusiness(g, 'ijskraam').ok, true);
+  row = bizRow(g, 'ijskraam');
+  assert.equal(row.owned, true);
+  assert.equal(row.open, true);
+  assert.equal(row.used, 0);
+  assert.equal(row.cap, capacity('ijskraam', wState(g).biz.ijskraam));
+  assert.equal(row.safe, cover('ijskraam', wState(g).biz.ijskraam));
+  assert.equal(row.word, 'Onopvallend');
+  earn(g, 400);
+  launder(g, 'ijskraam', 200);
+  row = bizRow(g, 'ijskraam');
+  assert.equal(row.used, 200);
+  const t = totals(g);
+  assert.equal(t.dirty, 200);
+  assert.equal(t.profit, 0);
+  assert.equal(t.washed, 200);
+  assert.ok(t.bankLeft > 0 && t.atmLeft > t.bankLeft);
+  assert.equal(t.bulge, bulge(200, 1)); // at rank 1 the pockets fill up slower
+}
