@@ -28,12 +28,15 @@ import { WeatherFx } from '../game/world/weatherFx.js';
 import { dayInfo, WEATHER, EVENTS, priceFactor } from '../game/weather.js';
 import { Guards } from '../game/world/guards.js';
 import { RivalView } from '../game/world/rivalView.js';
-import { addHeat, onDeal, onRefused, tickHeat, frisk, caught, escaped, heatLevel, LEVEL_NAMES } from '../game/police.js';
+import { addHeat, onDeal, onRefused, tickHeat, frisk, caught, escaped, heatLevel } from '../game/police.js';
 import { rollRival, spotFactor } from '../game/rivals.js';
 import { RIVALS } from '../game/data/rivals.js';
 import { Player } from '../game/player.js';
 import { FollowCamera } from '../game/camera.js';
-import { Game, formatClock, RANKS, MINUTES_PER_SECOND } from '../game/state.js';
+import { Game, MINUTES_PER_SECOND } from '../game/state.js';
+import { Hud } from '../ui/hud.js';
+import { loadSettings, resolveQuality, pixelRatioFor, lookScale } from '../game/uiterlijk/settings.js';
+import { weatherIcon } from '../game/uiterlijk/hudMath.js';
 import { Interactions } from '../game/interact.js';
 import { openHutMenu } from '../game/ui/hutMenu.js';
 import { openMarket, openStand } from '../game/ui/tradeMenus.js';
@@ -116,10 +119,12 @@ async function buildIsland3d(root, app, loader, isCancelled) {
   await step(0.03, 'Spelstand laden');
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   const phone = matchMedia('(pointer: coarse)').matches;
-  // Phones: a little lower resolution keeps shadows and the grading pass smooth.
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, phone ? 1.5 : 2));
+  // The graphics level from the title screen (auto: low on phones) sets the resolution, the shadow map and the grass.
+  const settings = loadSettings(safeStorage());
+  const quality = resolveQuality(settings.quality, { phone });
+  renderer.setPixelRatio(pixelRatioFor(quality, window.devicePixelRatio));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  const pipeline = new IslandRenderer(renderer, { quality: phone ? 'low' : 'high' });
+  const pipeline = new IslandRenderer(renderer, { quality: quality.shadowLevel });
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(50, 1, 0.2, 9000);
   const sky = new Sky(scene);
@@ -136,33 +141,27 @@ async function buildIsland3d(root, app, loader, isCancelled) {
   shadowsOn(props.group);
 
   const game = new Game(safeStorage());
-  const clock = h('span', { class: 'hud-clock' });
-  const day = h('span', { class: 'hud-day' });
-  const cash = h('span', { class: 'hud-cash' });
-  const rank = h('span', { class: 'hud-rank' });
-  const heat = h('div', { class: 'island-clock hud-heat', title: 'Reglement-meter' });
-  const refreshHud = () => {
-    const st = game.state;
-    clock.textContent = formatClock(st.minutes);
-    const info = dayInfo(st.day);
-    day.textContent = `Dag ${st.day} ${WEATHER[info.weather].icon}`;
-    day.title = `${WEATHER[info.weather].name}${EVENTS[info.event].text ? ' · ' + EVENTS[info.event].name : ''}`;
-    cash.textContent = `€${st.cash.toLocaleString('nl-NL')}`;
-    rank.textContent = RANKS[game.rank];
-    const lvl = heatLevel(st);
-    heat.replaceChildren(
-      ...[1, 2, 3, 4].map((i) => h('span', { class: `heat-dot ${i <= lvl ? 'is-on' : ''}` })),
-      h('span', { class: 'heat-name' }, LEVEL_NAMES[lvl]),
-    );
-    heat.dataset.level = lvl;
-  };
   const weatherFx = new WeatherFx(scene, sky);
   const audio = new Audio();
-  const phoneBtn = h('button', { class: 'btn btn-round phone-btn', type: 'button', 'aria-label': 'Telefoon (Tab)' }, '📱', h('i', { class: 'phone-badge', hidden: true }));
-  const muteBtn = h('button', { class: 'btn btn-round', type: 'button', 'aria-label': 'Geluid aan of uit' });
-  const showMute = () => (muteBtn.textContent = audio.muted ? '🔇' : '🔊');
-  muteBtn.addEventListener('click', () => (audio.setMuted(!audio.muted), showMute()));
-  showMute();
+  audio.setVolumes({ volume: settings.volume, music: settings.music });
+  // The HUD (src/ui/hud.js); its bar is the .island-bar that features add their widgets to.
+  const hud = new Hud({ onBack: () => app.go('menu'), onMute: () => (audio.setMuted(!audio.muted), hud.setMuted(audio.muted)), onPhone: () => phone_() });
+  hud.setMuted(audio.muted);
+  const refreshHud = () => {
+    const st = game.state;
+    const info = dayInfo(st.day);
+    hud.update({
+      minutes: st.minutes,
+      day: st.day,
+      weather: info.weather,
+      event: info.event,
+      weatherName: WEATHER[info.weather].name,
+      eventName: EVENTS[info.event].text ? EVENTS[info.event].name : '',
+      cash: st.cash,
+      xp: st.xp,
+      heat: heatLevel(st),
+    });
+  };
   // Sounds from what happens in the game.
   let lastCash = game.state.cash;
   let lastSound = 0;
@@ -197,21 +196,7 @@ async function buildIsland3d(root, app, loader, isCancelled) {
   refreshSky();
 
   const view = h('div', { class: 'island-view' }, renderer.domElement);
-  const screen = h(
-    'main',
-    { class: 'screen island' },
-    view,
-    h(
-      'div',
-      { class: 'island-bar' },
-      h('button', { class: 'btn btn-round', type: 'button', 'aria-label': 'Terug naar het menu', onClick: () => app.go('menu') }, icon('back')),
-      h('div', { class: 'island-clock' }, day, clock),
-      h('div', { class: 'island-clock hud-money' }, cash, rank),
-      heat,
-      muteBtn,
-      phoneBtn,
-    ),
-  );
+  const screen = h('main', { class: 'screen island' }, view, hud.el);
   root.append(screen);
 
   // The player's Mii, on the beach in the south.
@@ -255,7 +240,7 @@ async function buildIsland3d(root, app, loader, isCancelled) {
   game.on('time', showMachines);
   showMachines();
   // Grass after all buildings are placed, so it keeps clear of them.
-  const grassReady = () => new Grass(scene, island.ground, props.colliders, phone ? 0.45 : 1);
+  const grassReady = () => new Grass(scene, island.ground, props.colliders, quality.grass);
   interactions.add({ x: hutPos.x, z: hutPos.z, r: 9, label: 'Strandhut', run: () => openHutMenu(game) });
   // The market in Havenstad and the beach stand that buys your products.
   for (const [where, label, color, run] of [
@@ -273,7 +258,7 @@ async function buildIsland3d(root, app, loader, isCancelled) {
   }
   await step(0.55, 'Gras en bloemen laten groeien');
   const grass = grassReady();
-  const life = new Life(scene, { phone });
+  const life = new Life(scene, { phone: quality.life < 1 });
   await step(0.75, 'Bewoners en bewaking op hun plek');
   // Customers wait near the beach stand and the market.
   const standSpot = interactions.items.find((i) => i.label === 'Strandtent');
@@ -293,7 +278,7 @@ async function buildIsland3d(root, app, loader, isCancelled) {
     const info = dayInfo(d);
     const ev = EVENTS[info.event];
     if (ev.heat) addHeat(game, ev.heat);
-    setTimeout(() => toast(`${WEATHER[info.weather].icon} ${WEATHER[info.weather].name}.${ev.text ? ' ' + ev.text : ''}`), 1800);
+    setTimeout(() => toast(`${WEATHER[info.weather].name}.${ev.text ? ' ' + ev.text : ''}`, { icon: weatherIcon(info.weather) }), 1800);
     const r = rollRival(game);
     if (r) setTimeout(() => toast(`${RIVALS.find((x) => x.id === r.id).name} staat vandaag bij ${r.spot === 'strand' ? 'het strand' : 'de markt'}.`), 5200);
   });
@@ -319,23 +304,22 @@ async function buildIsland3d(root, app, loader, isCancelled) {
   shadowsOn(player.group, false);
   const follow = new FollowCamera(camera);
   follow.yaw = player.heading + Math.PI;
+  // The camera keeps out of houses and palms, and follows the settings' sensitivity.
+  follow.colliders = props.colliders;
+  follow.sensitivity = lookScale(settings);
+  follow.invertY = settings.invertY;
+  if (phone) follow.dist = 9; // a little further back on a small screen
   const input = new Input(screen, renderer.domElement, { onLook: (dx, dy) => follow.look(dx, dy), onZoom: (f) => follow.zoom(f) });
   const minimap = new Minimap(screen);
-  const showBadge = () => {
-    const b = phoneBtn.querySelector('.phone-badge');
-    const n = unread(game.state);
-    b.hidden = !n;
-    b.textContent = String(n);
-  };
+  const showBadge = () => hud.setPhoneBadge(unread(game.state));
   const phone_ = () => openPhone(game, { openMap: () => minimap.toggle(true) });
-  phoneBtn.addEventListener('click', phone_);
   const onTab = (e) => {
     if (e.key === 'Tab' && !document.querySelector('.modal-backdrop')) (e.preventDefault(), phone_());
   };
   window.addEventListener('keydown', onTab);
   game.on('change', showBadge);
   game.on('messages', (m) => {
-    toast(`📱 ${m.length} nieuw${m.length > 1 ? 'e' : ''} bericht${m.length > 1 ? 'en' : ''}`);
+    toast(`${m.length} nieuw${m.length > 1 ? 'e' : ''} bericht${m.length > 1 ? 'en' : ''}`, { icon: 'phone', tone: 'ok' });
     audio.play('alert');
   });
   game.on('newday', () => dailyMessages(game));
@@ -423,6 +407,7 @@ async function buildIsland3d(root, app, loader, isCancelled) {
     game.save();
     input.dispose();
     minimap.dispose();
+    hud.dispose();
     window.removeEventListener('keydown', onTab);
     stopDaily();
     weatherFx.dispose();

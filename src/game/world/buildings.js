@@ -19,6 +19,7 @@ const GEO = {
   box: new THREE.BoxGeometry(1, 1, 1),
   cyl: new THREE.CylinderGeometry(1, 1, 1, 10),
   cone4: new THREE.ConeGeometry(0.7071, 1, 4),
+  ico: new THREE.IcosahedronGeometry(1, 0),
 };
 GEO.cone4.rotateY(Math.PI / 4);
 // A prism for gable roofs: triangle section along z.
@@ -57,11 +58,57 @@ function windows(g, w, y, z, count = 2, shutters = true) {
   }
 }
 
+/** A seeded generator of its own, so decorations never change the island's random layout. */
+function ownRng(seed) {
+  let s = seed >>> 0;
+  return () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296);
+}
+
+const FLOWERS = ['#ff6fa3', '#ffe14a', '#ff7a4a', '#ffffff', '#b98cff'];
+
+/**
+ * The front garden: flower boxes under the windows with blossoms, a glowing door lamp (it
+ * lights up at night with the windows), a bush or two, and sometimes a white picket fence.
+ */
+function decorate(g, dr, w, d, winY) {
+  const span = w * 0.62;
+  // The window pair sits at span/2 either side of the centre (see windows()).
+  for (const s of [-1, 1]) {
+    const bx = s * (span / 2);
+    g.add(part(GEO.box, '#8a5a32', bx, winY - 1.05, d / 2 + 0.36, 1.9, 0.36, 0.42));
+    for (let k = 0; k < 4; k++) {
+      const c = FLOWERS[Math.floor(dr() * FLOWERS.length)];
+      g.add(part(GEO.ico, c, bx - 0.6 + k * 0.4, winY - 0.7 + dr() * 0.15, d / 2 + 0.45, 0.26, 0.24, 0.26));
+    }
+  }
+  // Door lamp: a little lantern with a glass that glows at night.
+  g.add(part(GEO.box, '#3a4452', 1.3, 2.9, d / 2 + 0.24, 0.5, 0.7, 0.3));
+  g.add(part(GEO.box, null, 1.3, 2.9, d / 2 + 0.4, 0.34, 0.46, 0.08, lampGlass));
+  // A bush or two beside the house.
+  if (dr() < 0.7) {
+    const side = dr() < 0.5 ? -1 : 1;
+    g.add(part(GEO.ico, '#5ab04c', side * (w / 2 + 1.3), 0.9, d / 2 - 0.5, 1.6, 1.3, 1.5));
+    if (dr() < 0.6) g.add(part(GEO.ico, '#4aa03f', side * (w / 2 + 2.6), 0.6, d / 2 + 0.2, 1.0, 0.8, 1.0));
+  }
+  // A short picket fence across the front, with a gap for the path to the door.
+  if (dr() < 0.45) {
+    const fz = d / 2 + 2.6;
+    const half = w / 2 + 1.1;
+    for (let x = -half; x <= half + 0.01; x += 0.8) {
+      if (Math.abs(x) < 1.4) continue;
+      g.add(part(GEO.box, TRIM, x, 0.55, fz, 0.12, 1.1, 0.12));
+    }
+    g.add(part(GEO.box, TRIM, -(half + 1.4) / 2 - 0.3, 0.8, fz, half - 1.4, 0.1, 0.08));
+    g.add(part(GEO.box, TRIM, (half + 1.4) / 2 + 0.3, 0.8, fz, half - 1.4, 0.1, 0.08));
+  }
+}
+
 /** A small house: random walls, roof, chimney, porch; the door faces +z. */
 export function house(rand, level = 1) {
   const g = new THREE.Group();
   const w = 6.4 + rand() * 2;
   const d = 5.4 + rand() * 1.6;
+  const dr = ownRng(Math.round(w * 1000) * 7919 + Math.round(d * 1000));
   const floors = rand() < 0.3 * level ? 2 : 1;
   const h = 3.4 * floors;
   const wall = WALLS[Math.floor(rand() * WALLS.length)];
@@ -80,11 +127,15 @@ export function house(rand, level = 1) {
   g.add(part(GEO.box, WOOD, 0, 1.3, d / 2 + 0.1, 1.3, 2.2, 0.12));
   g.add(part(GEO.box, '#ffd24a', 0.4, 1.3, d / 2 + 0.2, 0.12, 0.12, 0.08)); // knob
   g.add(part(GEO.box, '#d8c8a8', 0, 0.12, d / 2 + 0.7, 2.4, 0.24, 1.0));
+  // Porch: two posts under the awning.
+  for (const s of [-1, 1]) g.add(part(GEO.cyl, TRIM, s * 1.15, 1.45, d / 2 + 1.0, 0.16, 2.9, 0.16));
   const awn = part(GEO.box, roof, 0, 2.95, d / 2 + 0.55, 2.2, 0.12, 1.2);
   awn.rotation.x = 0.28;
   g.add(awn);
-  windows(g, w, 2.0 + (floors > 1 ? 0 : 0.3), d / 2, 2);
+  const winY = 2.0 + (floors > 1 ? 0 : 0.3);
+  windows(g, w, winY, d / 2, 2);
   if (floors > 1) windows(g, w, 5.4, d / 2, 2);
+  decorate(g, dr, w, d, winY);
   // Side windows
   for (const side of [-1, 1]) {
     const sw = part(GEO.box, null, side * (w / 2 + 0.06), 2.2, 0, 0.1, 1.0, 1.15, glass);
@@ -201,7 +252,7 @@ export function pier(x0, z0, dir, length, groundY) {
     group.add(b);
     boats.push(b);
   });
-  return { group, boats, yaw };
+  return { group, boats, yaw, deck };
 }
 
 /** Rocking boats; call every frame with the time in seconds. */

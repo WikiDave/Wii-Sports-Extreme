@@ -1,6 +1,7 @@
 // A market stall with a striped awning (market, beach stand).
 
 import * as THREE from 'three';
+import { mergeInPlace } from '../uiterlijk/merge.js';
 
 const mat = (color) => new THREE.MeshLambertMaterial({ color, flatShading: true });
 
@@ -21,7 +22,7 @@ export function buildStall(awning = '#e2513f') {
     stripe.rotation.x = -0.15;
     g.add(stripe);
   }
-  return g;
+  return mergeInPlace(g);
 }
 
 /** A production machine: a steel tank with a pipe and a status lamp (red busy, green ready). */
@@ -45,5 +46,5 @@ export function buildMachine() {
   dial.position.set(0.0, 1.0, 0.9);
   g.add(base, body, cap, pipe, lamp, dial);
   g.userData.lamp = lampMat;
-  return g;
+  return mergeInPlace(g); // the lamp keeps its own material, so it still changes colour
 }

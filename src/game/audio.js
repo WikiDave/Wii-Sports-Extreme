@@ -24,6 +24,8 @@ export class Audio {
     this.rainGain = null;
     this.seaGain = null;
     this.musicOn = true;
+    this.volume = 1; // sound effects, from the settings (setVolumes)
+    this.musicVol = 0.8; // the tune, from the settings
     this.timer = 0;
     this.unlock = () => this.start();
     for (const e of ['pointerdown', 'keydown']) window.addEventListener(e, this.unlock, { once: false });
@@ -38,7 +40,7 @@ export class Audio {
     if (!AC) return;
     this.ctx = new AC();
     this.master = this.ctx.createGain();
-    this.master.gain.value = this.muted ? 0 : 1;
+    this.master.gain.value = this.muted ? 0 : this.volume;
     this.master.connect(this.ctx.destination);
     this.makeAmbience();
     this.nextAt = this.ctx.currentTime + 0.2;
@@ -54,8 +56,15 @@ export class Audio {
     try {
       localStorage.setItem(KEY, m ? 'off' : 'on');
     } catch {}
-    if (this.master) this.master.gain.value = m ? 0 : 1;
+    if (this.master) this.master.gain.value = m ? 0 : this.volume;
     if (!m) this.start();
+  }
+
+  /** Volumes from the settings, 0..1: effects (master) and the marimba tune. */
+  setVolumes({ volume = 1, music = 0.8 } = {}) {
+    this.volume = volume;
+    this.musicVol = music;
+    if (this.master && !this.muted) this.master.gain.value = volume;
   }
 
   // One soft note: sine/triangle with a quick decay (marimba-ish).
@@ -139,8 +148,8 @@ export class Audio {
       const semi = TUNE[this.step % TUNE.length];
       if (semi != null) {
         const at = this.nextAt - this.ctx.currentTime;
-        this.tone(note(semi), 0.5, { vol: 0.07, at });
-        if (this.step % 8 === 0) this.tone(note(semi - 12), 0.9, { type: 'sine', vol: 0.07, at });
+        this.tone(note(semi), 0.5, { vol: 0.07 * this.musicVol, at });
+        if (this.step % 8 === 0) this.tone(note(semi - 12), 0.9, { type: 'sine', vol: 0.07 * this.musicVol, at });
       }
       this.step++;
       this.nextAt += beat;

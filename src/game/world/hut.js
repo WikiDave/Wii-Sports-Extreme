@@ -1,6 +1,7 @@
 // The beach hut: the player's home base. Door faces +z (south), a sign above it.
 
 import * as THREE from 'three';
+import { mergeInPlace } from '../uiterlijk/merge.js';
 
 const mat = (color) => new THREE.MeshLambertMaterial({ color, flatShading: true });
 
@@ -25,5 +26,5 @@ export function buildHut() {
   const window2 = window_.clone();
   window2.position.x = 2.6;
   g.add(body, top, door, sign, porch, window_, window2);
-  return g;
+  return mergeInPlace(g);
 }

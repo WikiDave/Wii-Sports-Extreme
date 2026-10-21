@@ -4,9 +4,28 @@
 
 import * as THREE from 'three';
 import { WEATHER } from '../weather.js';
+import { mergeInPlace } from '../uiterlijk/merge.js';
 
 const RAIN_COUNT = 1600;
 const RAIN_BOX = 60;
+
+/** Vertex colours: white on top, a soft grey underneath, so each cloud has some volume. */
+function shadeFromBelow(geo) {
+  const p = geo.attributes.position;
+  let lo = Infinity;
+  let hi = -Infinity;
+  for (let i = 0; i < p.count; i++) {
+    lo = Math.min(lo, p.getY(i));
+    hi = Math.max(hi, p.getY(i));
+  }
+  const col = new Float32Array(p.count * 3);
+  for (let i = 0; i < p.count; i++) {
+    const t = (p.getY(i) - lo) / (hi - lo || 1);
+    const k = 0.78 + 0.22 * t * t * (3 - 2 * t);
+    col.set([k, k, Math.min(1, k * 1.03)], i * 3);
+  }
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+}
 
 export class WeatherFx {
   constructor(scene, sky) {
@@ -15,19 +34,24 @@ export class WeatherFx {
     this.level = { sun: 1, fog: 1, rain: 0, clouds: 0.25 };
     this.target = WEATHER.zon;
 
-    // Clouds: flat clusters of white blobs high above the island.
+    // Clouds: soft puffy clusters high above the island. Each cloud is one merged mesh, lit
+    // from above and shaded a little darker underneath (vertex colours).
     this.clouds = new THREE.Group();
-    const mat = new THREE.MeshLambertMaterial({ color: '#ffffff', transparent: true, opacity: 0.92, flatShading: true });
+    const mat = new THREE.MeshLambertMaterial({ color: '#ffffff', transparent: true, opacity: 0.92, flatShading: true, vertexColors: true });
     this.cloudMat = mat;
+    const puff = new THREE.IcosahedronGeometry(1, 1);
     for (let i = 0; i < 22; i++) {
       const c = new THREE.Group();
-      const n = 3 + Math.floor(Math.random() * 3);
+      const n = 4 + Math.floor(Math.random() * 3);
       for (let k = 0; k < n; k++) {
-        const b = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 0), mat);
-        b.position.set((k - n / 2) * 24 + Math.random() * 8, Math.random() * 6, Math.random() * 14);
-        b.scale.set(20 + Math.random() * 14, 8 + Math.random() * 4, 14 + Math.random() * 8);
+        const b = new THREE.Mesh(puff, mat);
+        const top = k === Math.floor(n / 2) ? 4 : 0; // the middle puff rises above the rest
+        b.position.set((k - n / 2) * 22 + Math.random() * 8, Math.random() * 5 + top, Math.random() * 14 - 4);
+        b.scale.set(17 + Math.random() * 12, 9 + Math.random() * 5, 13 + Math.random() * 8);
         c.add(b);
       }
+      mergeInPlace(c);
+      shadeFromBelow(c.children[0].geometry);
       c.position.set((Math.random() - 0.5) * 1800, 260 + Math.random() * 60, (Math.random() - 0.5) * 1400);
       c.userData.speed = 4 + Math.random() * 4;
       this.clouds.add(c);
