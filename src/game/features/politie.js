@@ -36,6 +36,7 @@ import { addHeat, carried, heatLevel } from '../police.js';
 import { PATHS, pathDistance } from '../world/zones.js';
 import { RIVALS } from '../data/rivals.js';
 import { unregisterApp } from '../phoneApps.js';
+import { reportError } from '../state.js';
 
 const POST_SEARCH = { x: 236, z: 40 }; // the police post is built near here, in Havenstad
 const DOOR_OFFSET = 4.6; // the front door is this far in front of the post's centre (+z)
@@ -145,9 +146,15 @@ export default {
     const baseMove = input.move.bind(input);
     input.move = () => {
       const m = baseMove();
-      intent = Math.hypot(m.x, m.y);
-      wantRun = !!m.run;
-      return m.run && !canRun(stamina) ? { ...m, run: false } : m;
+      try {
+        intent = Math.hypot(m.x, m.y);
+        wantRun = !!m.run;
+        return m.run && !canRun(stamina) ? { ...m, run: false } : m;
+      } catch (err) {
+        // If the stamina rule fails, the Mii moves as the player steers (the base input).
+        reportError('Politie: input.move', err);
+        return m;
+      }
     };
     undo.push(() => {
       delete input.move;

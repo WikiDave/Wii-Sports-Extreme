@@ -33,7 +33,7 @@ import { rollRival, spotFactor } from '../game/rivals.js';
 import { RIVALS } from '../game/data/rivals.js';
 import { Player } from '../game/player.js';
 import { FollowCamera } from '../game/camera.js';
-import { Game, MINUTES_PER_SECOND } from '../game/state.js';
+import { Game, MINUTES_PER_SECOND, reportError } from '../game/state.js';
 import { Hud } from '../ui/hud.js';
 import { loadSettings, resolveQuality, pixelRatioFor, lookScale } from '../game/uiterlijk/settings.js';
 import { weatherIcon } from '../game/uiterlijk/hudMath.js';
@@ -359,35 +359,52 @@ async function buildIsland3d(root, app, loader, isCancelled) {
 
   let raf = 0;
   const timer = new THREE.Clock();
+  // The frame is split in parts that run on their own: a fault in one (a listener, a hook, a guard)
+  // is logged, and the rest of the frame, the picture included, still happens.
+  const part = (name, fn) => {
+    try {
+      fn();
+    } catch (err) {
+      reportError(`Frame part '${name}'`, err);
+    }
+  };
   const frame = () => {
     raf = requestAnimationFrame(frame);
     const dt = Math.min(timer.getDelta(), 0.05);
     const t = timer.elapsedTime;
     // A menu or minigame pauses the island: no clock, no guards, no walking.
     const paused = !!document.querySelector('.modal-backdrop, .minigame, .fullmap-wrap:not([hidden])');
-    if (!paused) game.tick(dt);
-    const move = paused ? { x: 0, y: 0, run: false } : input.move();
-    player.update(move, follow.yaw, dt, t);
-    follow.update(player, move, dt);
-    if (!paused) {
-      tickHeat(game, dt * MINUTES_PER_SECOND, game.isNight);
-      guards.update(dt, player, hidden, police);
-    }
-    rival.update(t);
-    customers.update(t, player.pos);
-    interactions.update(player.pos);
-    minimap.draw(player);
-    sky.follow(camera);
-    weatherFx.update(dt, camera, t);
-    grass.update(t, camera);
-    bobBoats(props.boats, t);
-    props.swayPalms(t, camera.position);
-    life.update(t, dt, camera);
-    features.update(t, dt, paused);
-    fx.update(dt);
-    water.userData.update(t, Math.min(1.1, 0.25 + sky.hemi.intensity * 0.7), 1 + weatherFx.level.rain * 0.8);
-    audio.setAmbience({ nearSea: Math.max(0, 1 - heightAt(player.pos.x, player.pos.z) / 8), rain: weatherFx.level.rain });
-    pipeline.follow(player.group.position, sky.dir);
+    part('speler', () => {
+      if (!paused) game.tick(dt);
+      const move = paused ? { x: 0, y: 0, run: false } : input.move();
+      player.update(move, follow.yaw, dt, t);
+      follow.update(player, move, dt);
+    });
+    part('bewaking', () => {
+      if (!paused) {
+        tickHeat(game, dt * MINUTES_PER_SECOND, game.isNight);
+        guards.update(dt, player, hidden, police);
+      }
+    });
+    part('wereld', () => {
+      rival.update(t);
+      customers.update(t, player.pos);
+      interactions.update(player.pos);
+      minimap.draw(player);
+      sky.follow(camera);
+      weatherFx.update(dt, camera, t);
+      grass.update(t, camera);
+      bobBoats(props.boats, t);
+      props.swayPalms(t, camera.position);
+      life.update(t, dt, camera);
+    });
+    part('features', () => features.update(t, dt, paused));
+    part('effecten en geluid', () => {
+      fx.update(dt);
+      water.userData.update(t, Math.min(1.1, 0.25 + sky.hemi.intensity * 0.7), 1 + weatherFx.level.rain * 0.8);
+      audio.setAmbience({ nearSea: Math.max(0, 1 - heightAt(player.pos.x, player.pos.z) / 8), rain: weatherFx.level.rain });
+      pipeline.follow(player.group.position, sky.dir);
+    });
     pipeline.render(scene, camera, sky.night);
   };
   // Compile every shader and draw once behind the loader, so the first second does not stutter.

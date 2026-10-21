@@ -74,6 +74,10 @@ export class Sky {
     this.sun = new THREE.DirectionalLight();
     this.sun.target.position.set(0, 0, 0);
     scene.fog = new THREE.Fog('#ffffff', 1400, 4500);
+    // The light and fog for the time of day, before the weather (weatherFx.js scales them each frame).
+    this.baseSun = this.sun.intensity;
+    this.baseHemi = this.hemi.intensity;
+    this.baseFog = scene.fog.color.clone();
     // Stars, faded in at night.
     const n = 900;
     const pos = new Float32Array(n * 3);
@@ -104,14 +108,17 @@ export class Sky {
     this.sun.position.copy(this.dir).multiplyScalar(800);
     this.sun.color.copy(k.sun);
     this.sun.intensity = k.sunI;
+    this.baseSun = k.sunI;
     this.hemi.color.copy(k.horizon).lerp(new THREE.Color('#ffffff'), 0.5);
     this.hemi.groundColor.copy(k.ground);
     this.hemi.intensity = k.hemi;
+    this.baseHemi = k.hemi;
     const u = this.dome.material.uniforms;
     u.uTop.value.copy(k.top);
     u.uHorizon.value.copy(k.horizon);
     u.uSunDir.value.copy(this.dir);
     u.uSunColor.value.copy(k.sun);
+    this.baseFog.copy(k.horizon);
     this.scene.fog.color.copy(k.horizon);
     this.night = Math.min(1, Math.max(0, (0.9 - k.hemi) / 0.4));
     this.stars.material.opacity = 0.85 * this.night * this.night;
