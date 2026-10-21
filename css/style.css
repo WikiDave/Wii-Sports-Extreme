@@ -2032,7 +2032,9 @@ button {
   right: max(12px, env(safe-area-inset-right));
 }
 
-/* Phones: two rows; the rank and the meter take the second row. */
+/* Phones: the buttons, the clock and the cash take the first row. The rank and the meter take the
+   second row, and the rank grows to fill it so its name always fits. Chips that features add to the
+   bar (stamina, dirty cash, vehicle gauge) come after the meter and wrap onto the rows below. */
 @media (max-width: 560px) {
   .island-bar {
     gap: 6px;
@@ -2070,11 +2072,21 @@ button {
     height: 42px;
     min-height: 42px;
   }
+  .hud-back,
+  .hud-time,
+  .hud-cash,
+  .hud-mute,
+  .hud-phone {
+    order: -2;
+  }
   .hud-rank {
-    order: 10;
-    flex: 1 1 0;
+    order: -1;
+    flex: 1 1 150px;
     margin-left: 0;
     padding-right: 12px;
+  }
+  .hud-rank .hud-stack {
+    flex: 1 1 auto;
   }
   .hud-rank-name {
     font-size: 13px;
@@ -2084,7 +2096,7 @@ button {
     min-width: 0;
   }
   .hud-heat {
-    order: 11;
+    order: -1;
     padding-right: 10px;
   }
   .hud-heat-name {
@@ -2094,7 +2106,7 @@ button {
     width: 12px;
   }
   .minimap {
-    top: calc(max(12px, env(safe-area-inset-top)) + 124px);
+    top: calc(max(12px, env(safe-area-inset-top)) + 158px);
     width: 96px;
     height: 96px;
   }
