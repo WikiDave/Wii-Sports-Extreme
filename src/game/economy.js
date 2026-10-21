@@ -7,6 +7,7 @@ import { EFFECTS } from './data/effects.js';
 import { INGREDIENTS } from './data/ingredients.js';
 import { PRODUCTS, GOODS } from './data/products.js';
 import { PROPERTIES } from './data/properties.js';
+import { bagBonus } from './missies/skills.js';
 
 const STORAGE = Object.fromEntries(Object.entries(PROPERTIES).map(([id, p]) => [id, p.storage]));
 
@@ -79,7 +80,7 @@ export function makeBatch(game, productId, ingredients, quality) {
 /** Free room in the stock (Infinity without properties, as in the tests of economy.js alone). */
 function limit(game) {
   const st = game.state;
-  const cap = st.properties.reduce((s, id) => s + (STORAGE[id] ?? 0), 0);
+  const cap = st.properties.reduce((s, id) => s + (STORAGE[id] ?? 0), 0) + bagBonus(st); // missies: skill Zware zak
   return cap - Object.values(st.inventory).reduce((a, b) => a + b, 0);
 }
 

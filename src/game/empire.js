@@ -4,13 +4,14 @@ import { PROPERTIES } from './data/properties.js';
 import { STAFF } from './data/staff.js';
 import { PRODUCTS } from './data/products.js';
 import { canMake, makeBatch, parseItem, unitPrice } from './economy.js';
+import { bagBonus } from './missies/skills.js';
 
 export const GARDENER_LEMONS = 8;
 export const COOK_BATCHES = 3;
 export const PACKER_EXTRA = 2;
 export const SELLER_UNITS = 12;
 
-export const stockLimit = (state) => state.properties.reduce((s, id) => s + PROPERTIES[id].storage, 0);
+export const stockLimit = (state) => state.properties.reduce((s, id) => s + PROPERTIES[id].storage, 0) + bagBonus(state); // + skill Zware zak
 export const staffLimit = (state) => state.properties.reduce((s, id) => s + PROPERTIES[id].slots, 0);
 export const stockUsed = (state) => Object.values(state.inventory).reduce((a, b) => a + b, 0);
 export const stockFree = (state) => stockLimit(state) - stockUsed(state);
