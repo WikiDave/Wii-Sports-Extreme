@@ -48,6 +48,31 @@ vertrouwen, kopen thuis of op straat), meer dan 5 klanten (20+)
 6.12 uiterlijk: eigen modellen voor bomen/props, betere animaties, UI in Wii-stijl, titelscherm
 6.13 prestaties op telefoon en opslaan/laden robuust
 
+
+## Fase 7: wereld-uitbreiding (na de features-workflow)
+Volgorde is belangrijk: eerst de fundering, dan wat erop rust. Elke feature volgt docs/FEATURES.md.
+Fundering (eerst, achter elkaar):
+- 7.0a grotere map: meer eilandjes (ZONES), grotere ISLAND_SIZE, dieptekaart, grasrasters, performance
+- 7.0b plaatsingsregister (`world/placement.js`): footprints reserveren zodat bruggen, huizen,
+  infrastructuur en grotten elkaar niet overlappen en botsingen centraal staan
+- 7.0c rivieren en beekjes in de hoogtekaart (carve), waterval aan de bergrand
+- 7.0d interieur-systeem: betreden met laadscherm (fade + loading), eigen scène ver weg (y=-1000),
+  deur terug naar buiten. Gebruikt door huizen, winkels, hut, hotel, grotten
+Bouwen (daarna, parallel per onderdeel):
+- 7.1 huizen meer detail en varianten, betreedbaar, huizen met garage (auto erin)
+- 7.2 bruggen: bruggetjes over beekjes, Golden Gate-achtige hangbrug tussen eilanden, touwbrug over
+  steile paden (kloof)
+- 7.3 infrastructuur: riolen (putdeksels, tunnels), banken, vuilbakken, vuilnis, drankautomaten
+  (verkopen limonade), bushalte, brievenbussen, fonteinen, straatmeubilair, parkeerplekken
+- 7.4 piratenschip (boardbaar, bemanning, schatten), vissen (vangen met minigame), schatkisten in
+  het water, avontuur-route (kaart met aanwijzingen)
+- 7.5 waterval (water-shader + deeltjes) en geheime grotten (ingangen, kristallen, schat)
+- 7.6 vliegveld: landingsbaan, verkeerstoren, vliegtuigen die echt opstijgen en landen op
+  dienstregeling; vliegen naar andere eilanden kost geld en tijd (geen teleport)
+- 7.7 auto's: werkende auto's (rijden, botsen), garage bij huizen, garage om auto aan te passen
+  (verf, velgen, spoiler, stickers)
+- 7.8 havendok: boten aanpasbaar in de dock (verf, motor), vaarbaar tussen eilanden
+
 ## Status
 - Mii-maker: klaar (hoofden, 72 kapsels, ogen/brauwen/monden, brillen, lichamen, 27 officiele
   Miis), en sinds 4.3 ook neus (lijn + 3D-neus, `nose.js`/`nose-data.js`), baarden (3D-meshes per
