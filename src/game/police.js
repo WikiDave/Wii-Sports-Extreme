@@ -3,8 +3,12 @@
 //
 // heat is a number 0..5 (level = floor, max level 4). It rises with deals near guards, with
 // walking around at night carrying product, with tips from unhappy customers; it sinks slowly.
+// Getting caught takes you to the police post (politie/arrest.js): with the politie feature a
+// cutscene asks for bail; without it the arrest is settled at once.
 
 import { parseItem } from './economy.js';
+import { resolveArrest } from './politie/arrest.js';
+import { pol } from './politie/state.js';
 
 export const MAX_LEVEL = 4;
 /** Guards on patrol per level. */
@@ -66,17 +70,20 @@ export function frisk(game) {
   return `Gefouilleerd! Boete €${fine}${taken ? `, ${taken} stuks in beslag genomen` : ''}.`;
 }
 
-/** Caught after a chase: all product and 30% of your cash are gone; the heat drops to level 2. */
+/**
+ * Caught after a chase. With the politie feature (a listener for 'politie:arrest') the arrest is
+ * pending: the cutscene asks for bail and then settles it. Without it, the cell is settled at once
+ * (all product and 30% of your cash gone, the heat drops to level 2). Returns the toast text.
+ */
 export function caught(game) {
-  const s = game.state;
-  const lost = Math.round(s.cash * 0.3);
-  game.addCash(-lost);
-  for (const [k, n] of Object.entries(s.inventory)) if (parseItem(k)) game.addItem(k, -n);
-  s.heat = 2;
-  game.emit('heat', 2);
-  game.emit('caught', { lost });
-  game.emit('change');
-  return `Gepakt! Je bent al je waar en €${lost} kwijt.`;
+  if (game.listeners?.get('politie:arrest')?.size) {
+    pol(game.state).pending = true;
+    game.emit('politie:arrest');
+    game.emit('change');
+    return 'Gepakt! Een agent pakt je bij je arm.';
+  }
+  const r = resolveArrest(game, { bail: false });
+  return `Gepakt! Je bent ${r.lost} stuks en €${r.cashLost} kwijt.`;
 }
 
 /** Escaped a chase: back to level 3. */
