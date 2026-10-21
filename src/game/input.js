@@ -10,6 +10,7 @@ export class Input {
     this.stick = { x: 0, y: 0, id: null, cx: 0, cy: 0 };
     this.runHeld = false;
     this.jumpQueued = false;
+    this.brakeHeld = false; // the Spring button held down (a vehicle brakes)
     this.onKey = (e) => {
       if (e.target.tagName === 'INPUT') return;
       const down = e.type === 'keydown';
@@ -29,7 +30,11 @@ export class Input {
     this.stickEl = h('div', { class: 'stick', 'aria-hidden': 'true' }, this.knob);
     this.runEl = h('button', { class: 'run-btn', type: 'button', 'aria-label': 'Rennen' }, 'Ren');
     this.jumpEl = h('button', { class: 'jump-btn', type: 'button', 'aria-label': 'Springen' }, 'Spring');
-    this.jumpEl.addEventListener('pointerdown', () => (this.jumpQueued = true));
+    this.jumpEl.addEventListener('pointerdown', () => ((this.jumpQueued = true), (this.brakeHeld = true)));
+    const brakeUp = () => (this.brakeHeld = false);
+    this.jumpEl.addEventListener('pointerup', brakeUp);
+    this.jumpEl.addEventListener('pointercancel', brakeUp);
+    this.jumpEl.addEventListener('pointerleave', brakeUp);
     container.append(this.stickEl, this.runEl, this.jumpEl);
     const R = 46;
     this.stickEl.addEventListener('pointerdown', (e) => {
@@ -105,7 +110,9 @@ export class Input {
     const run = k.has('shift') || this.runHeld || Math.hypot(this.stick.x, this.stick.y) > 0.98;
     const jump = this.jumpQueued;
     this.jumpQueued = false;
-    return { x, y, run, jump };
+    // Spring (space or the button) is a jump on foot and the brake in a vehicle.
+    const brake = this.brakeHeld || k.has(' ');
+    return { x, y, run, jump, brake };
   }
 
   dispose() {

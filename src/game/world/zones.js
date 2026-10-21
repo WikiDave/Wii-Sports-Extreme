@@ -11,6 +11,8 @@ export const ZONES = [
   { id: 'kaap', name: 'Vuurtorenkaap', x: -270, z: -150, r: 110, h: 24, profile: 'cliff', rank: 2 },
   { id: 'vulkaan', name: 'Vulkaanberg', x: 40, z: -230, r: 170, h: 120, profile: 'cone', rank: 4 },
   { id: 'vliegveld', name: 'Vliegveld-eiland', x: 470, z: -300, r: 110, h: 3.5, profile: 'plateau', rank: 5 },
+  // A small sandbank far out at sea: only reachable by boat (features/voertuigen).
+  { id: 'schat', name: 'Verborgen strand', x: -430, z: 255, r: 58, h: 1, profile: 'plateau', rank: 0 },
 ];
 
 /** Dirt paths between the places, as polylines of [x, z] (metres). */

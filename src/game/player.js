@@ -39,7 +39,16 @@ export class Player {
     this.onStep = null; // (running) => void, for footstep sounds
     this.onSplash = null; // () => void
     this.lastStepSign = 1;
+    // Hooks for features: external(move, camYaw, dt, t) takes over the Mii (a vehicle drives it),
+    // deck(x, z) returns the height of a walkable deck (a jetty) or null.
+    this.external = null;
+    this.deck = null;
     this.group.position.copy(this.pos);
+  }
+
+  /** Walkable height at (x, z): a deck if there is one, else the terrain. */
+  groundAt(x, z) {
+    return this.deck?.(x, z) ?? heightAt(x, z);
   }
 
   /** Free spot test: not out in the open sea, and no obstacle. */
@@ -59,7 +68,8 @@ export class Player {
    * (radians), dt in seconds.
    */
   update(move, camYaw, dt, t) {
-    const ground = heightAt(this.pos.x, this.pos.z);
+    if (this.external) return this.external(move, camYaw, dt, t);
+    const ground = this.groundAt(this.pos.x, this.pos.z);
     if (!this.swimming && ground < SWIM_IN && this.grounded) {
       this.swimming = true;
       this.fx?.splash({ x: this.pos.x, y: 0.1, z: this.pos.z }, 18);
@@ -91,7 +101,7 @@ export class Player {
       else this.speed = 0;
     }
     // Vertical: jump and fall on land, float in water.
-    const gy = heightAt(this.pos.x, this.pos.z);
+    const gy = this.groundAt(this.pos.x, this.pos.z);
     if (this.swimming) {
       const floatY = -0.95 + Math.sin(t * 2.2) * 0.04;
       this.pos.y += (floatY - this.pos.y) * Math.min(1, dt * 9);
