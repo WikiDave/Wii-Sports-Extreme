@@ -1,9 +1,10 @@
 // Production stations: a batch is started in a free station, takes `time` game minutes and is
-// collected afterwards. Staff cooks still make batches in the morning (empire.js). Pure logic.
+// collected afterwards. The cook starts batches in the morning through the same stations (empire.js).
+// Pure logic.
 
 import { PROPERTIES } from './data/properties.js';
 import { PRODUCTS } from './data/products.js';
-import { canMake, itemKey, recipeEffects, limitFree } from './economy.js';
+import { canMake, itemKey, recipeEffects, limitFree, batchInputs, FULL_STOCK } from './economy.js';
 import { DAY_START } from './state.js';
 import { speedFor } from './panden/upgrades.js';
 
@@ -19,21 +20,35 @@ export const stationLimit = (state) => state.properties.reduce((n, id) => n + PR
 export const busy = (state) => state.jobs.length;
 export const ready = (state) => state.jobs.filter((j) => j.readyAt <= now(state));
 
-/** Starts a batch. Returns the job, or null (no free station, missing goods or no room). */
-export function startJob(game, productId, ingredients, quality) {
+/**
+ * Why a batch cannot start now, as Dutch text; '' when it can. `extra` is the number of bottles
+ * on top of the product's yield (the packer). The inputs leave the stock first, so their room
+ * counts for the bottles.
+ */
+export function jobBlock(game, productId, ingredients, extra = 0) {
   const s = game.state;
   const p = PRODUCTS[productId];
-  if (busy(s) >= stationLimit(s) || !canMake(s.inventory, productId, ingredients)) return null;
-  // Room for the result must stay free, counting the batches already cooking.
-  const cooking = s.jobs.reduce((n, j) => n + j.yield, 0);
-  if (limitFree(game) - cooking < p.yield) return null;
+  if (busy(s) >= stationLimit(s)) return 'Alle stations zijn bezig.';
+  if (!canMake(s.inventory, productId, ingredients)) return 'Je mist grondstoffen.';
+  if (limitFree(game) + batchInputs(productId, ingredients) < p.yield + extra) return FULL_STOCK;
+  return '';
+}
+
+/**
+ * Starts a batch in a free station. Returns the job, or null (see jobBlock). `extra` adds bottles
+ * to the yield.
+ */
+export function startJob(game, productId, ingredients, quality, extra = 0) {
+  if (jobBlock(game, productId, ingredients, extra)) return null;
+  const s = game.state;
+  const p = PRODUCTS[productId];
   for (const [id, n] of Object.entries(p.needs)) game.addItem(id, -n);
   for (const i of ingredients) game.addItem(i, -1);
   const job = {
     id: `${now(s)}-${s.jobs.length}-${Math.floor(Math.random() * 1e4)}`,
     product: productId,
     key: itemKey(productId, recipeEffects(productId, ingredients), quality),
-    yield: p.yield,
+    yield: p.yield + extra,
     startedAt: now(s),
     // The station's property may have the Productie upgrade (panden/upgrades.js speedFor).
     readyAt: now(s) + Math.round(p.time * speedFor(s, s.jobs.length)),

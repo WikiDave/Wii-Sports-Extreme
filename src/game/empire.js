@@ -3,21 +3,27 @@
 import { PROPERTIES } from './data/properties.js';
 import { STAFF } from './data/staff.js';
 import { PRODUCTS } from './data/products.js';
-import { canMake, makeBatch, parseItem, unitPrice } from './economy.js';
+import { canMake, parseItem, unitPrice, cookingUnits } from './economy.js';
+import { busy, stationLimit, startJob } from './stations.js';
 import { storageOf } from './panden/upgrades.js';
 import { stockCount } from './panden/chest.js';
 import { bagBonus } from './missies/skills.js';
 
-export const GARDENER_LEMONS = 8;
+/** The gardener keeps this many lemons in stock: the lemons of two batches of limonade, no more. */
+export const GARDENER_KEEP = 2 * PRODUCTS.limonade.needs.citroen;
+/** Batches the cook starts in the morning, each in a free station. */
 export const COOK_BATCHES = 3;
+export const COOK_QUALITY = 1.05;
 export const PACKER_EXTRA = 2;
-export const SELLER_UNITS = 12;
+/** The seller takes this many units a morning, at this share of their value (the rest is commission). */
+export const SELLER_UNITS = 8;
+export const SELLER_SHARE = 0.7;
 
 /** Stock room of your places, with the storage upgrades (see panden/upgrades.js) and the skill Zware zak. */
 export const stockLimit = (state) => state.properties.reduce((s, id) => s + storageOf(state, id), 0) + bagBonus(state);
 export const staffLimit = (state) => state.properties.reduce((s, id) => s + PROPERTIES[id].slots, 0);
-/** Everything you own: carried in the inventory and stored in the chests of your places. */
-export const stockUsed = (state) => stockCount(state);
+/** Everything you own: carried in the inventory, stored in the chests of your places, and cooking in the stations. */
+export const stockUsed = (state) => stockCount(state) + cookingUnits(state);
 export const stockFree = (state) => stockLimit(state) - stockUsed(state);
 
 export function buyProperty(game, id) {
@@ -66,21 +72,25 @@ export function dailyWork(game) {
       continue;
     }
     if (id === 'tuinier') {
-      const n = Math.min(GARDENER_LEMONS, Math.max(0, stockFree(s)));
+      // Only the lemons the limonade recipe can use, so the stock stays free for the other goods.
+      const n = Math.min(Math.max(0, GARDENER_KEEP - (s.inventory.citroen ?? 0)), Math.max(0, stockFree(s)));
       if (n) game.addItem('citroen', n);
-      log.push(`${w.name} plukte ${n} citroenen.`);
+      log.push(n ? `${w.name} plukte ${n} citroenen.` : `${w.name} hoefde geen citroenen te plukken.`);
     } else if (id === 'kok') {
+      // The cook works the stations like you: a batch takes its time, and he waits when none is free.
+      const extra = s.staff.includes('inpakker') ? PACKER_EXTRA : 0;
       let made = 0;
       let name = '';
       for (let b = 0; b < COOK_BATCHES; b++) {
         const product = cookProduct(game);
-        const key = product && makeBatch(game, product, [], 1.05);
-        if (!key) break;
+        if (!product || !startJob(game, product, [], COOK_QUALITY, extra)) break;
         made++;
         name = PRODUCTS[product].name.toLowerCase();
-        if (s.staff.includes('inpakker') && stockFree(s) >= PACKER_EXTRA) game.addItem(key, PACKER_EXTRA);
       }
-      log.push(made ? `${w.name} maakte ${made} batch${made > 1 ? 'es' : ''} ${name}.` : `${w.name} had geen grondstoffen of ruimte.`);
+      let text = `${w.name} had geen grondstoffen of ruimte.`;
+      if (made) text = `${w.name} zette ${made} batch${made > 1 ? 'es' : ''} ${name} in de stations.`;
+      else if (busy(s) >= stationLimit(s)) text = `${w.name} wacht: alle stations zijn bezig.`;
+      log.push(text);
     } else if (id === 'verkoper') {
       let left = SELLER_UNITS;
       let money = 0;
@@ -89,7 +99,7 @@ export function dailyWork(game) {
         if (!p || !left) continue;
         const k = Math.min(n, left);
         game.addItem(key, -k);
-        money += Math.round(unitPrice(p.product, p.effects, p.quality) * 0.8) * k;
+        money += Math.round(unitPrice(p.product, p.effects, p.quality) * SELLER_SHARE) * k;
         left -= k;
       }
       if (money) {

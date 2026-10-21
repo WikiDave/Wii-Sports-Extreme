@@ -6,6 +6,7 @@ import { buy, makeBatch, recipeEffects, unitPrice, sell, canMake } from '../src/
 import { CUSTOMERS } from '../src/game/data/customers.js';
 import { available, deal } from '../src/game/customers.js';
 import { buyProperty, hire, dailyWork, stockFree } from '../src/game/empire.js';
+import { collect } from '../src/game/stations.js';
 import { priceFactor } from '../src/game/weather.js';
 
 const g = new Game(null);
@@ -14,6 +15,7 @@ const BATCHES_PER_DAY = 4; // a player makes about this many by hand in a 22-min
 for (let day = 1; day <= 15; day++) {
   g.state.day = day;
   const st = g.state;
+  collect(g); // the cook's batches of yesterday are done: the player picks them up
   if (day > 1) dailyWork(g);
   // Best unlocked product.
   const prod = Object.entries(PRODUCTS).filter(([, p]) => p.rank <= g.rank).sort((a, b) => b[1].base - a[1].base)[0][0];

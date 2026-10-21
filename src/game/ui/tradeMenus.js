@@ -5,8 +5,8 @@ import { h, modal, toast } from '../../ui/dom.js';
 import { EFFECTS } from '../data/effects.js';
 import { INGREDIENTS } from '../data/ingredients.js';
 import { PRODUCTS, GOODS } from '../data/products.js';
-import { recipeEffects, unitPrice, canMake, buy, sell, itemName, parseItem } from '../economy.js';
-import { startJob, stationLimit } from '../stations.js';
+import { recipeEffects, unitPrice, canMake, buy, sell, sellBack, itemName, parseItem, limitFree, BUYBACK_SHARE, FULL_STOCK } from '../economy.js';
+import { startJob, jobBlock } from '../stations.js';
 import { playPour } from '../minigames/pour.js';
 
 const MAX_MIX = 3;
@@ -61,15 +61,15 @@ export function openMixMenu(game, productId = 'limonade') {
         label: 'Schenken',
         kind: 'primary',
         onClick: () => {
-          if (!canMake(game.state.inventory, productId, chosen)) return false;
-          if (game.state.jobs.length >= stationLimit(game.state)) {
-            toast('Alle stations zijn bezig.');
+          const block = jobBlock(game, productId, chosen);
+          if (block) {
+            toast(block);
             return false;
           }
           const mixIn = [...chosen];
           playPour(document.body, { color: EFFECTS[recipeEffects(productId, mixIn).at(-1)].color }).then((quality) => {
             const job = startJob(game, productId, mixIn, quality);
-            toast(job ? `In het station gezet: klaar over ${p.time} minuten.` : 'Geen vrij station of geen ruimte in je voorraad.');
+            toast(job ? `In het station gezet: klaar over ${p.time} minuten.` : jobBlock(game, productId, mixIn) || 'Dat lukt nu niet.');
           });
         },
       },
@@ -79,36 +79,56 @@ export function openMixMenu(game, productId = 'limonade') {
   refresh();
 }
 
-/** The market: buy base goods and ingredients. */
+/** The market: buy base goods and ingredients, and sell them back at half price (a way out of a full stock). */
 export function openMarket(game) {
   const list = h('div', { class: 'shop' });
   const all = [...Object.entries(GOODS), ...Object.entries(INGREDIENTS)].filter(([id]) => !PRODUCTS[id]);
+  const sellBackNow = (id, n) => {
+    const got = sellBack(game, id, n);
+    if (got) toast(`Verkocht voor €${got}.`);
+    refresh();
+  };
   const refresh = () => {
     list.replaceChildren(
       h('p', { class: 'shop-cash' }, `Je hebt €${game.state.cash}.`),
-      ...all.map(([id, item]) =>
-        h(
+      h('p', {}, `De markt koopt je spullen terug voor ${Math.round(BUYBACK_SHARE * 100)}% van de prijs.`),
+      ...all.map(([id, item]) => {
+        const have = game.state.inventory[id] ?? 0;
+        return h(
           'div',
-          { class: 'shop-row' },
-          h('span', { class: 'shop-name' }, `${item.name} — €${item.price}`),
-          h('span', { class: 'shop-have' }, `${game.state.inventory[id] ?? 0} in bezit`),
-          ...[1, 5].map((n) =>
-            h(
-              'button',
-              {
-                class: 'btn btn-small',
-                type: 'button',
-                disabled: game.state.cash < item.price * n,
-                onClick: () => {
-                  if (!buy(game, id, n)) toast('Je voorraad is vol. Koop een groter pand in het Kantoor.');
-                  refresh();
+          {},
+          h(
+            'div',
+            { class: 'shop-row' },
+            h('span', { class: 'shop-name' }, `${item.name} — €${item.price}`),
+            h('span', { class: 'shop-have' }, `${have} in bezit`),
+            ...[1, 5].map((n) =>
+              h(
+                'button',
+                {
+                  class: 'btn btn-small',
+                  type: 'button',
+                  disabled: game.state.cash < item.price * n,
+                  onClick: () => {
+                    if (!buy(game, id, n)) toast(limitFree(game) < n ? FULL_STOCK : 'Je hebt niet genoeg geld.');
+                    refresh();
+                  },
                 },
-              },
-              `+${n}`,
+                `+${n}`,
+              ),
             ),
           ),
-        ),
-      ),
+          have
+            ? h(
+                'div',
+                { class: 'shop-row', style: { borderBottom: 'none', paddingTop: '0' } },
+                h('span', { class: 'shop-have' }, `Terug aan de markt, €${Math.round(item.price * BUYBACK_SHARE)} per stuk:`),
+                h('button', { class: 'btn btn-small', type: 'button', onClick: () => sellBackNow(id, 1) }, 'Verkoop 1'),
+                have > 1 ? h('button', { class: 'btn btn-small', type: 'button', onClick: () => sellBackNow(id, have) }, `Alles (${have})`) : null,
+              )
+            : null,
+        );
+      }),
     );
   };
   refresh();
