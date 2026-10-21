@@ -59,15 +59,32 @@ export function canMake(inventory, productId, ingredients) {
   return Object.entries(need).every(([id, n]) => (inventory[id] ?? 0) >= n);
 }
 
-/** Takes one batch's goods out of a Game and adds the bottles. Returns the item key or null. */
-export function limitFree(game) {
-  return limit(game);
+/** Units a batch takes out of the stock: what it needs, plus one per mixed-in ingredient. */
+export function batchInputs(productId, ingredients) {
+  return Object.values(PRODUCTS[productId].needs).reduce((n, k) => n + k, 0) + ingredients.length;
 }
 
+/** Bottles still cooking in the stations. Their room is kept free for them (see stations.js). */
+export const cookingUnits = (state) => (state.jobs ?? []).reduce((n, j) => n + j.yield, 0);
+
+/**
+ * Free room in the stock: the storage of your places (with upgrades) less everything you own,
+ * chests included, less the bottles still cooking.
+ */
+export function limitFree(game) {
+  const st = game.state;
+  const cap = st.properties.reduce((s, id) => s + storageOf(st, id), 0) + bagBonus(st); // missies: skill Zware zak
+  return cap - stockCount(st) - cookingUnits(st);
+}
+
+/**
+ * Takes one batch's goods out of a Game and adds the bottles. Returns the item key or null.
+ * The inputs leave the stock first, so their room counts for the bottles.
+ */
 export function makeBatch(game, productId, ingredients, quality) {
   if (!canMake(game.state.inventory, productId, ingredients)) return null;
   const p = PRODUCTS[productId];
-  if (limit(game) < p.yield) return null;
+  if (limitFree(game) + batchInputs(productId, ingredients) < p.yield) return null;
   for (const [id, n] of Object.entries(p.needs)) game.addItem(id, -n);
   for (const i of ingredients) game.addItem(i, -1);
   const key = itemKey(productId, recipeEffects(productId, ingredients), quality);
@@ -76,20 +93,28 @@ export function makeBatch(game, productId, ingredients, quality) {
   return key;
 }
 
-/** Free room in the stock: the storage of your places (with upgrades) less everything you own, chests included. */
-function limit(game) {
-  const st = game.state;
-  const cap = st.properties.reduce((s, id) => s + storageOf(st, id), 0) + bagBonus(st); // missies: skill Zware zak
-  return cap - stockCount(st);
-}
+/** The market buys goods and ingredients back at this share of their price. */
+export const BUYBACK_SHARE = 0.5;
+
+/** What the player reads when there is no room left in the stock. */
+export const FULL_STOCK = 'Er is geen ruimte meer in je voorraad. Verkoop iets terug aan de markt, of koop meer opslag via Verbeteren in je strandhut.';
 
 /** Buys n of a good or ingredient. */
 export function buy(game, id, n = 1) {
-  if (limit(game) < n) return false;
+  if (limitFree(game) < n) return false;
   const price = (GOODS[id] ?? INGREDIENTS[id]).price * n;
   if (!game.addCash(-price)) return false;
   game.addItem(id, n);
   return true;
+}
+
+/** Sells n of a good or ingredient back to the market at BUYBACK_SHARE of its price. Returns the money, or 0. */
+export function sellBack(game, id, n = 1) {
+  const item = GOODS[id] ?? INGREDIENTS[id];
+  if (!item || !(n > 0) || !game.addItem(id, -n)) return 0;
+  const money = Math.round(item.price * BUYBACK_SHARE) * n;
+  game.addCash(money);
+  return money;
 }
 
 /** Sells n units of a product at a share of its value. Returns the money made, or 0. */
