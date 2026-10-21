@@ -9,6 +9,7 @@ import { buy, makeBatch, sell } from '../src/game/economy.js';
 import { CUSTOMERS } from '../src/game/data/customers.js';
 import { available, deal, valueFor, isUnlocked } from '../src/game/customers.js';
 import { buyProperty, hire, dailyWork } from '../src/game/empire.js';
+import { collect } from '../src/game/stations.js';
 import { priceFactor } from '../src/game/weather.js';
 
 const VISITS = Number(process.env.VISITS ?? 6);
@@ -20,6 +21,7 @@ const rows = [];
 for (let day = 1; day <= DAYS; day++) {
   g.state.day = day;
   const st = g.state;
+  collect(g); // the cook's batches of yesterday are done: the player picks them up
   if (day > 1) dailyWork(g);
   // Make what is running out (under 8 units of a product), at most 4 batches a day.
   const unlocked = Object.keys(PRODUCTS).filter((p) => PRODUCTS[p].rank <= g.rank);
