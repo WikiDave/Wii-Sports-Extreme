@@ -31,7 +31,7 @@ export const zakenApp = {
           { class: 'wit-card' },
           h('small', {}, 'Zwart geld op zak'),
           h('strong', { class: 'wit-big' }, eur(t.dirty)),
-          h('small', {}, `De bank neemt vandaag nog ${eur(t.bankLeft)} zwart geld aan via de telefoon. De pinautomaat in de haven nog ${eur(t.atmLeft)}.`),
+          h('small', {}, `De bank en de pinautomaat nemen alleen schoon geld aan (nu ${eur(t.clean)} op zak). Zwart geld wassen doe je bij een bedrijf.`),
         ),
         h('h3', {}, 'Jouw zaken'),
         ...(mine.length

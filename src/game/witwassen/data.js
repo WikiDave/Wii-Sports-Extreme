@@ -11,7 +11,8 @@ export const BUSINESS_IDS = ['ijskraam', 'surfschool', 'paviljoen', 'pretpark'];
 /**
  * capacity: most dirty euros per day you can push through at level 0 (before upgrades/reputation).
  * cover:    euros per day the books can explain (what the shop could plausibly earn).
- * fee:      share the business keeps. staff: wages per day. revenue: honest takings per day.
+ * fee:      share the business keeps. staff: wages per day. revenue: honest takings per day (base,
+ *           at reputation 0; the four together net about 800 a day, see tests/witwassen.test.mjs).
  * weather:  revenue factor per weather (zon, bewolkt, regen, storm).
  */
 export const BUSINESSES = {
@@ -25,7 +26,7 @@ export const BUSINESSES = {
     cover: 240,
     fee: 0.25,
     staff: 30,
-    revenue: 100,
+    revenue: 60,
     weather: { zon: 1.4, bewolkt: 0.9, regen: 0.5, storm: 0.3 },
     where: 'op het strand',
     blurb: 'Een vrolijk kraampje met een reuzenijsje op het dak. Elke bol is een goed excuus voor een kassabonnetje.',
@@ -45,7 +46,7 @@ export const BUSINESSES = {
     cover: 650,
     fee: 0.22,
     staff: 100,
-    revenue: 300,
+    revenue: 170,
     weather: { zon: 1.25, bewolkt: 1, regen: 0.5, storm: 0 },
     where: 'aan de waterkant van het strand',
     blurb: 'Lessen voor beginners, plankverhuur en heel veel natte handdoeken. Wie weet nu wat een les kost?',
@@ -65,7 +66,7 @@ export const BUSINESSES = {
     cover: 1800,
     fee: 0.19,
     staff: 290,
-    revenue: 800,
+    revenue: 450,
     weather: { zon: 1.15, bewolkt: 1, regen: 0.9, storm: 0.6 },
     where: 'aan de rand van het strand',
     blurb: 'Een terras vol parasols. De garnalenkroketten gaan overal heen, de boekhouding ook.',
@@ -85,7 +86,7 @@ export const BUSINESSES = {
     cover: 4800,
     fee: 0.16,
     staff: 700,
-    revenue: 2100,
+    revenue: 1200,
     weather: { zon: 1.3, bewolkt: 0.9, regen: 0.4, storm: 0.2 },
     where: 'in Havenstad',
     blurb: 'Glijbanen, een reuzenrad en een kassa die nooit stilstaat. Niemand telt de bezoekers.',
@@ -113,8 +114,7 @@ export const REP_REVENUE = 0.6; // at reputation 100: +60% honest takings
 export const KEEP_DAYS = 7; // days of washing the taxman looks at
 
 // ------------------------------------------------------------------ bank and ATM
-/** Unlaundered euros per day the bank accepts as a deposit: phone banking is watched closer than the ATM. */
-export const DIRTY_DEPOSIT = { phone: { base: 400, perRank: 150 }, atm: { base: 1000, perRank: 400 } };
+// The bank (phone) and the ATM only take CLEAN cash: dirty cash must go through a business first.
 /** Euros per day you can withdraw at the ATM. */
 export const ATM_WITHDRAW = { base: 1500, perRank: 500 };
 

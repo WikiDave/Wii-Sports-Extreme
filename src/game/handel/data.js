@@ -22,7 +22,7 @@ export const STOCK_MAX = 40;
 export const pouchCap = (rank) => 200 + 400 * Math.max(1, rank);
 /** Passers-by pay this share of what a regular customer with an appointment pays. */
 export const STREET_PRICE = 0.78;
-/** Money sent to the bank by phone costs this share (collecting in person is free). */
+/** Having a pouch brought over by phone costs this share (collecting in person is free). The money is cash, and dirty. */
 export const BANK_FEE = 0.05;
 
 /**

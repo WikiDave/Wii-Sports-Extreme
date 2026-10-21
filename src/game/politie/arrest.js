@@ -1,11 +1,13 @@
 // Getting caught: the police post for the night, or bail. Pure logic. The cutscene is in
 // politie/cutscene.js; this file changes the state and tells what happened.
 //
-// Without bail: all your goods are gone, a share of your cash too, and you sleep in the cell until
-// the morning. With bail (borg): you pay it, keep half of your goods and you are out after an hour.
-// Each catch within ARREST_WINDOW days raises the sentence (nights) and the cash loss.
+// Without bail: all your goods are gone (carried, and the stock in the chests of your places), a share
+// of your cash too, and you sleep in the cell until the morning. With bail (borg): you pay it, keep
+// half of your goods and you are out after an hour. Each catch within ARREST_WINDOW days raises the
+// sentence (nights) and the cash loss.
 
 import { parseItem } from '../economy.js';
+import { chestOf } from '../panden/chest.js';
 import { logEvent, pol } from './state.js';
 
 export const ARREST_WINDOW = 4; // days
@@ -18,8 +20,14 @@ export const CASH_LOSS_MAX = 0.6;
 export const BAIL_SKIP_MINUTES = 60;
 const ARRESTS_MAX = 12;
 
-/** Units of product (not plain goods) in the inventory. */
-export const goodsCarried = (state) => Object.entries(state.inventory).reduce((n, [k, v]) => n + (parseItem(k) ? v : 0), 0);
+/** Units of product (not plain goods) in a set of stacks { itemKey: n }. */
+export const productUnits = (stacks) => Object.entries(stacks).reduce((n, [k, v]) => n + (parseItem(k) ? v : 0), 0);
+/** Units of product in the inventory: what you carry. */
+export const goodsCarried = (state) => productUnits(state.inventory);
+/** Units of product in the chests of your places. */
+export const goodsStored = (state) => state.properties.reduce((n, id) => n + productUnits(chestOf(state, id)), 0);
+/** All the product you own, carried and stored: what a caught-loss can reach. */
+export const goodsOwned = (state) => goodsCarried(state) + goodsStored(state);
 
 /** Catches in the last ARREST_WINDOW days before `day` (the current one is not saved yet). */
 export function recentArrests(ext, day) {
@@ -30,7 +38,7 @@ export function recentArrests(ext, day) {
 export function arrestPlan(state) {
   const recent = recentArrests(pol(state), state.day);
   const bail = BAIL_BASE + BAIL_PER_CATCH * recent;
-  const goods = goodsCarried(state);
+  const goods = goodsOwned(state);
   return {
     recent,
     nights: Math.min(MAX_NIGHTS, 1 + recent),
@@ -42,20 +50,33 @@ export function arrestPlan(state) {
   };
 }
 
-/** Takes up to n units of product out of the inventory, biggest stacks first. Returns how many. */
-export function takeGoods(state, n) {
+/**
+ * Takes up to n units of product out of a set of stacks { itemKey: n }, biggest stacks first (the
+ * same rule for the inventory and for the chests). Changes the stacks; returns { itemKey: n } taken.
+ */
+export function takeStacks(stacks, n) {
   let left = n;
-  let taken = 0;
-  const stacks = Object.entries(state.inventory)
+  const taken = {};
+  const order = Object.entries(stacks)
     .filter(([k]) => parseItem(k))
     .sort((a, b) => b[1] - a[1]);
-  for (const [k, have] of stacks) {
+  for (const [k, have] of order) {
     if (left <= 0) break;
     const t = Math.min(have, left);
     left -= t;
-    taken += t;
-    if (have - t === 0) delete state.inventory[k];
-    else state.inventory[k] = have - t;
+    taken[k] = t;
+    if (have - t === 0) delete stacks[k];
+    else stacks[k] = have - t;
+  }
+  return taken;
+}
+
+/** Takes up to n units of product: the carried goods first, then the chests of your places. Returns how many. */
+export function takeGoods(state, n) {
+  let taken = productUnits(takeStacks(state.inventory, n));
+  for (const id of state.properties) {
+    if (taken >= n) break;
+    taken += productUnits(takeStacks(chestOf(state, id), n - taken));
   }
   return taken;
 }

@@ -6,7 +6,7 @@ import { bulge } from './carry.js';
 
 /** Adds the chip to the HUD bar; returns { remove() }. */
 export function addDirtyChip(bar, game) {
-  const el = h('span', { class: 'wit-chip', hidden: true, title: 'Zwart geld op zak: was het bij een zaak of zet het op de pinautomaat' });
+  const el = h('span', { class: 'wit-chip', hidden: true, title: 'Zwart geld op zak: was het bij een van je bedrijven' });
   bar.append(el);
   const update = () => {
     const d = dirtyHand(game);

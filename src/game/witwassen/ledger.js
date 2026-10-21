@@ -86,3 +86,19 @@ export function takeDirty(game, amount) {
   const w = wState(game);
   w.dirty = Math.max(0, w.dirty - amount);
 }
+
+/** The dirty euros in your cash (the ledger's own number; a purchase makes it shrink in proportion). */
+export const dirtyOf = (game) => wState(game).dirty;
+
+/**
+ * Money that comes back from something you paid for (a cancelled order): not new income. Of the
+ * `amount`, `dirtyPart` is the share that was dirty when it went out, so it stays dirty.
+ */
+export function giveBack(game, amount, dirtyPart = 0) {
+  const w = wState(game);
+  quiet(game, () => {
+    game.state.cash += amount;
+    w.dirty += Math.max(0, Math.min(dirtyPart, amount));
+    game.emit('change');
+  });
+}

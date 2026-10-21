@@ -6,7 +6,9 @@ import { wState, bizOf, owned, dirtyHand, washedWeek, mail, unreadMail, markRead
 import { track, quiet, pending } from '../src/game/witwassen/ledger.js';
 import { capacity, cover, feeRate, suspicion, upgradeCost, revenue, netIncome, allowedWeek, capacityLeft, safeLeft, weekRatio, suspicionWord } from '../src/game/witwassen/rules.js';
 import { buyBusiness, launder, upgrade, maxWash, safeWash, previewWash } from '../src/game/witwassen/laundering.js';
-import { dirtyLimit, withdrawLimit, dirtyLeft, withdrawLeft, planDeposit, clampDeposit, atmDeposit, atmWithdraw } from '../src/game/witwassen/bank.js';
+import { withdrawLimit, withdrawLeft, cleanCash, planDeposit, clampDeposit, atmDeposit, atmWithdraw } from '../src/game/witwassen/bank.js';
+import * as S from '../src/game/handel/sellers.js';
+import * as P from '../src/game/handel/suppliers.js';
 import { closeBooks, onNewDay } from '../src/game/witwassen/daily.js';
 import { planAudit, auditChance, auditPhase, inspect, bribeCost, bribeOdds, resolveAudit, dailyAudit, canBribe } from '../src/game/witwassen/audit.js';
 import { carryLimit, carryHeatRate, bulge } from '../src/game/witwassen/carry.js';
@@ -202,39 +204,39 @@ const earn = (g, n) => g.addCash(n);
 // ---------------------------------------------------------------- bank, ATM and the phone hook
 {
   const { g } = setup({ xp: 250, cash: 100, day: 4 }); // rank 2
-  assert.equal(dirtyLimit(2, 'phone'), 700);
-  assert.equal(dirtyLimit(2, 'atm'), 1800);
-  assert.ok(dirtyLimit(2, 'atm') > dirtyLimit(2, 'phone'));
   assert.equal(withdrawLimit(2), 2500);
   earn(g, 3000); // 100 clean + 3000 dirty
   assert.equal(dirtyHand(g), 3000);
-  // clean cash goes in first, no matter the limit
-  let plan = planDeposit(g, 100, 'phone');
-  assert.deepEqual([plan.accepted, plan.clean, plan.dirty, plan.over], [100, 100, 0, 0]);
-  // asking for more: the dirty part is clamped to the daily limit
-  plan = planDeposit(g, 2000, 'phone');
-  assert.deepEqual([plan.accepted, plan.clean, plan.dirty, plan.over], [800, 100, 700, 1200]);
+  assert.equal(cleanCash(g), 100);
+  // only clean cash goes in (100 here): the dirty rest is turned away, whatever the amount
+  let plan = planDeposit(g, 100);
+  assert.deepEqual([plan.asked, plan.accepted, plan.over], [100, 100, 0]);
+  plan = planDeposit(g, 2000);
+  assert.deepEqual([plan.asked, plan.accepted, plan.over], [2000, 100, 1900]);
   // via the phone.js hook
   let limitEvent = null;
   g.on('witwassen:limiet', (e) => (limitEvent = e));
   assert.equal(deposit(g, 2000), true);
-  assert.equal(g.state.bank, 800);
-  assert.equal(g.state.cash, 3100 - 800);
-  assert.equal(dirtyHand(g), 2300);
-  assert.equal(limitEvent.over, 1200);
-  assert.equal(limitEvent.left, 0);
-  assert.equal(dirtyLeft(g, 'phone'), 0);
-  assert.equal(deposit(g, 500), false); // limit reached for today
-  assert.equal(g.state.bank, 800);
-  // the ATM has a higher limit but shares today's total
-  assert.equal(dirtyLeft(g, 'atm'), 1800 - 700);
+  assert.equal(g.state.bank, 100);
+  assert.equal(g.state.cash, 3000);
+  assert.equal(dirtyHand(g), 3000); // the dirty money stays dirty: it has to be washed
+  assert.equal(limitEvent.over, 1900);
+  assert.equal(limitEvent.via, 'phone');
+  assert.equal(deposit(g, 500), false); // no clean cash left: the phone takes no dirty money
+  assert.equal(g.state.bank, 100);
+  // the ATM takes clean money only, no matter the limit
   const a1 = atmDeposit(g, 5000);
   assert.equal(a1.ok, false); // more than the cash on hand
   const a2 = atmDeposit(g, 1500);
-  assert.equal(a2.ok, true);
-  assert.equal(a2.amount, 1100);
-  assert.equal(a2.short, 400);
-  assert.equal(dirtyHand(g), 1200);
+  assert.equal(a2.ok, false);
+  assert.match(a2.reason, /schoon geld/);
+  assert.equal(dirtyHand(g), 3000);
+  // clean money (not income, so not dirty) goes in without a daily limit
+  quiet(g, () => { g.state.cash += 700; g.emit('change'); });
+  assert.equal(cleanCash(g), 700);
+  assert.equal(deposit(g, 900), true);
+  assert.equal(g.state.bank, 800);
+  assert.equal(g.state.cash, 3000);
   assert.equal(atmDeposit(g, 100).ok, false);
   // withdrawals: the ATM has a daily limit, the phone has none
   g.state.bank = 4000; g.emit("change");
@@ -244,11 +246,11 @@ const earn = (g, n) => g.addCash(n);
   assert.equal(atmWithdraw(g, 10).ok, false);
   assert.equal(withdraw(g, 100), true);
   assert.equal(atmWithdraw(g, 1e6).ok, false);
-  assert.equal(dirtyHand(g), 1200); // taking money out does not make it dirty
-  // a new day: limits are back
+  assert.equal(dirtyHand(g), 3000); // taking money out does not make it dirty
+  // a new day: the ATM limit is back
   g.state.day = 5;
-  assert.equal(dirtyLeft(g, 'phone'), 700);
   assert.equal(withdrawLeft(g), 2500);
+  assert.equal(cleanCash(g), 2600);
 }
 {
   // the phone alone (no business) still works for ordinary money
@@ -503,6 +505,99 @@ const earn = (g, n) => g.addCash(n);
   assert.equal(t.dirty, 200);
   assert.equal(t.profit, 0);
   assert.equal(t.washed, 200);
-  assert.ok(t.bankLeft > 0 && t.atmLeft > t.bankLeft);
+  assert.equal(t.clean, 800); // 1000 on hand, of which 200 dirty
   assert.equal(t.bulge, bulge(200, 1)); // at rank 1 the pockets fill up slower
+}
+
+// ---------------------------------------------------------------- the sellers' money is dirty
+{
+  // a pouch is cash in your pocket, and the ledger counts it as dirty income, by hand or by phone
+  const { g } = setup({ xp: 100, cash: 0, day: 3 }); // rank 1
+  g.state.properties = ['hut', 'loods'];
+  quiet(g, () => {
+    g.state.cash = 5000; // clean money to hire with
+    g.emit('change');
+  });
+  assert.equal(S.hireSeller(g, 'keiko').ok, true);
+  const s = S.sellerById(g, 'keiko');
+  s.pouch = 1000;
+  const bank0 = g.state.bank;
+  const cash0 = g.state.cash;
+  const phone = S.collect(g, 'keiko', 'phone');
+  assert.equal(phone.fee, 50);
+  assert.equal(g.state.bank, bank0); // a pouch never lands on the bank account (that was clean money)
+  assert.equal(g.state.cash, cash0 + 950);
+  assert.equal(dirtyHand(g), 950);
+  s.pouch = 400;
+  const hand = S.collect(g, 'keiko', 'hand');
+  assert.equal(hand.fee, 0);
+  assert.equal(dirtyHand(g), 1350);
+  // all pouches at once by phone: still cash, still dirty, still with the fee
+  s.pouch = 200;
+  const all = S.collectAll(g, 'phone');
+  assert.equal(all.fee, 10);
+  assert.equal(g.state.bank, bank0);
+  assert.equal(dirtyHand(g), 1540);
+}
+
+// ---------------------------------------------------------------- a cancelled order gives the money back as it went out
+{
+  const orderWith = (g) => {
+    let order = null;
+    let dirty0 = 0;
+    for (let d = 3; d < 80 && !order; d++) {
+      g.state.day = d;
+      dirty0 = wState(g).dirty;
+      const r = P.placeOrder(g, 'pim', [{ good: 'citroen', n: 10 }]);
+      if (r.ok) order = r.order;
+    }
+    return { order, dirty0 };
+  };
+  // paid with clean money only: the refund is clean and no new dirty income
+  const clean = setup({ xp: 300, cash: 2000, day: 3 }).g;
+  clean.state.properties = ['hut', 'loods'];
+  clean.state.inventory = {};
+  const c1 = orderWith(clean);
+  assert.ok(c1.order);
+  assert.equal(c1.order.dirty, 0);
+  assert.equal(P.cancelOrder(clean, c1.order.id).ok, true);
+  assert.equal(dirtyHand(clean), 0);
+  // paid partly with dirty money: that share comes back dirty, the rest is clean
+  const { g } = setup({ xp: 300, cash: 2000, day: 3 });
+  g.state.properties = ['hut', 'loods'];
+  g.state.inventory = {};
+  earn(g, 1000); // 2000 clean + 1000 dirty
+  const dirtyBefore = wState(g).dirty;
+  assert.equal(dirtyBefore, 1000);
+  const { order, dirty0 } = orderWith(g);
+  assert.ok(order);
+  const spent = dirty0 - wState(g).dirty;
+  assert.equal(order.dirty, spent);
+  assert.ok(spent > 0 && spent < order.total);
+  const before = wState(g).dirty;
+  const cash0 = g.state.cash;
+  const r = P.cancelOrder(g, order.id);
+  assert.equal(r.ok, true);
+  assert.equal(g.state.cash, cash0 + r.refund);
+  assert.equal(wState(g).dirty, before + Math.round(spent * 0.85)); // only the dirty share is dirty again
+  assert.ok(dirtyHand(g) <= g.state.cash);
+  // so a cancelled order is no laundering route: 15% of the dirty share is gone
+  assert.ok(Math.round(spent * 0.85) < spent);
+}
+
+// ---------------------------------------------------------------- the four businesses net about 800 a day
+{
+  const avgNet = (rep, cap) => {
+    const days = 120;
+    let sum = 0;
+    for (let d = 2; d < 2 + days; d++) {
+      for (const id of BUSINESS_IDS) sum += netIncome(id, { up: { cap, fee: 0, books: 0 }, rep, pen: 0, since: 1, day: d, in: 0, hist: [] }, d);
+    }
+    return sum / days;
+  };
+  const base = avgNet(0, 0);
+  assert.ok(base > 700 && base < 900, `base ${base}`);
+  const best = avgNet(100, 3); // max reputation and the capacity upgrade, all four
+  assert.ok(best > base && best < 3500, `best ${best}`);
+  assert.ok(avgNet(100, 0) > base); // reputation still pays
 }

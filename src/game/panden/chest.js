@@ -1,6 +1,7 @@
 // Storage chests: goods kept at a property. Goods in a chest still count for your stock limit (the
-// stock is inventory plus chests), but they are not carried: staff, sellers and the caught-losses
-// only take what is in your inventory. The chest room of a property is its storage (see upgrades.js).
+// stock is inventory plus chests), but they are not carried: staff and sellers only take what is in
+// your inventory. A caught-loss takes the inventory first, then the chests (politie/arrest.js), and a
+// raid seizes a share of each chest (politie/raid.js). The chest room of a property is its storage (see upgrades.js).
 
 import { storageOf } from './upgrades.js';
 import { pandenOf } from './save.js';

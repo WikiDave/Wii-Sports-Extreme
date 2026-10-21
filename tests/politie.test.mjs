@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { Game, DAY_START } from '../src/game/state.js';
 import { pol, logEvent, addInbox, unreadInbox, markInboxRead, LOG_MAX, INBOX_MAX } from '../src/game/politie/state.js';
-import { arrestPlan, resolveArrest, skipTime, recentArrests, takeGoods, goodsCarried, ARREST_WINDOW } from '../src/game/politie/arrest.js';
+import { arrestPlan, resolveArrest, skipTime, recentArrests, takeGoods, goodsCarried, goodsOwned, ARREST_WINDOW } from '../src/game/politie/arrest.js';
 import { caught, heatLevel } from '../src/game/police.js';
 import { planRaids, applyRaids, raidChance, securityOf, seizeShare } from '../src/game/politie/raid.js';
 import { bribeCop, bribeBlocked, bribeCost, buyDisguise, isDisguised, BRIBE_DROP, DISGUISE_PRICE } from '../src/game/politie/shop.js';
@@ -228,6 +228,59 @@ assert.ok(OPENERS.includes(opener(5)));
   const none = applyRaids(h, planRaids(h.state, 3, () => 0));
   assert.match(none[0].text, /niets/);
   assert.equal(none[0].title, 'Politiebezoek');
+}
+
+// ---------------------------------------------------------------- chests: raids and caught-losses
+{
+  // a searched place loses the same share of its chest as of the carried stock (45% here)
+  const g = game({ properties: ['hut'] });
+  g.state.ext = { panden: { chest: { hut: { [LIM]: 20 } } } };
+  const plans = planRaids(g.state, 4, () => 0);
+  assert.deepEqual(plans[0].chest, { [LIM]: 9 });
+  assert.deepEqual(plans[0].seized, {});
+  assert.equal(plans[0].total, 9);
+  applyRaids(g, plans);
+  assert.equal(g.state.ext.panden.chest.hut[LIM], 11);
+  assert.equal(unreadInbox(g.state), 1);
+  // with three security upgrades the chest is safe; a chest that is empty is not searched for
+  g.state.ext = { panden: { security: { hut: 3 }, chest: { hut: { [LIM]: 20 } } } };
+  assert.equal(planRaids(g.state, 4, () => 0)[0].total, 0);
+  // carried goods and the chest share one raid
+  const h = game({ properties: ['hut'] });
+  h.addItem(LIM, 20);
+  h.state.ext = { panden: { chest: { hut: { [LIM]: 20 } } } };
+  const both = planRaids(h.state, 4, () => 0)[0];
+  assert.equal(both.total, 9 + 9);
+  assert.equal(both.seized[LIM], 9);
+  assert.equal(both.chest[LIM], 9);
+  applyRaids(h, [both]);
+  assert.equal(h.state.inventory[LIM], 11);
+  assert.equal(h.state.ext.panden.chest.hut[LIM], 11);
+}
+{
+  // a caught-loss takes the carried goods first, then the chests; without bail all of it is gone
+  const g = game({ properties: ['hut'], cash: 1000 });
+  g.addItem(LIM, 4);
+  g.state.ext = { panden: { chest: { hut: { [LIM]: 20, [KEY]: 5 } } } };
+  assert.equal(goodsOwned(g.state), 24);
+  assert.equal(arrestPlan(g.state).goods, 24);
+  assert.equal(takeGoods(g.state, 10), 10);
+  assert.equal(LIM in g.state.inventory, false);
+  assert.equal(g.state.ext.panden.chest.hut[LIM], 14);
+  assert.equal(g.state.ext.panden.chest.hut[KEY], 5, 'plain goods are not product: they stay');
+  const r = resolveArrest(g, { bail: false });
+  assert.equal(r.lost, 14);
+  assert.equal(goodsOwned(g.state), 0);
+  assert.equal(g.state.ext.panden.chest.hut[KEY], 5);
+}
+{
+  // with bail you keep half of everything you own, carried or stored
+  const g = game({ properties: ['hut'], cash: 1000 });
+  g.state.ext = { panden: { chest: { hut: { [LIM]: 30 } } } };
+  const r = resolveArrest(g, { bail: true });
+  assert.equal(r.bail, true);
+  assert.equal(r.lost, 15);
+  assert.equal(g.state.ext.panden.chest.hut[LIM], 15);
 }
 
 // ---------------------------------------------------------------- the police contact and disguise

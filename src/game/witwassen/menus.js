@@ -8,9 +8,8 @@ import { wState, bizOf, dirtyHand, rollBiz } from './store.js';
 import { cover, feeRate, safeLeft, upgradeCost, revenue } from './rules.js';
 import { bizRow } from './summary.js';
 import { maxWash, previewWash, launder, upgrade, buyBusiness } from './laundering.js';
-import { atmDeposit, atmWithdraw, dirtyLeft, withdrawLeft } from './bank.js';
+import { CLEAN_ONLY, atmDeposit, atmWithdraw, withdrawLeft } from './bank.js';
 import { inspect, canBribe, bribeCost, bribeOdds, resolveAudit } from './audit.js';
-import { BANK_LIMIT_TEXT } from './texts.js';
 
 const eur = (n) => `€${Math.round(n).toLocaleString('nl-NL')}`;
 const pct = (f) => `${Math.round(f * 100)}%`;
@@ -134,7 +133,7 @@ export function openAtm(game) {
     const s = game.state;
     body.replaceChildren(
       h('div', { class: 'wit-card' }, h('small', {}, 'Op de bank'), h('strong', {}, eur(s.bank)), h('small', {}, `Contant: ${eur(s.cash)} · waarvan zwart: ${eur(dirtyHand(game))}`)),
-      h('p', { class: 'wit-small' }, BANK_LIMIT_TEXT(dirtyLeft(game, 'atm'), 'atm')),
+      h('p', { class: 'wit-small' }, CLEAN_ONLY),
       h('p', {}, 'Storten'),
       h(
         'div',
@@ -154,7 +153,7 @@ export function openAtm(game) {
   const dep = (a) => {
     const r = atmDeposit(game, a);
     if (!r.ok) toast(r.reason);
-    else toast(r.short ? `${eur(r.amount)} gestort. De rest wil de pin vandaag niet hebben.` : `${eur(r.amount)} op je rekening.`);
+    else toast(r.short ? `${eur(r.amount)} gestort. Het zwarte deel laat de pin liggen: wassen bij een bedrijf.` : `${eur(r.amount)} op je rekening.`);
     draw();
   };
   const wd = (a) => {

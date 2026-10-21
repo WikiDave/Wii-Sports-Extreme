@@ -13,6 +13,7 @@ import {
 import { HISTORY_MAX, handelState, nextId } from './store.js';
 import { now, whenText, workTime } from './time.js';
 import { addFresh } from './freshness.js';
+import { dirtyOf, giveBack } from '../witwassen/ledger.js';
 
 const fail = (reason) => ({ ok: false, reason });
 const strNum = (s) => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7);
@@ -158,12 +159,14 @@ export function quote(game, supplierId, basket, rush = false) {
 export function placeOrder(game, supplierId, basket, rush = false) {
   const q = quote(game, supplierId, basket, rush);
   if (!q.ok) return fail(q.errors[0]);
+  const dirty0 = dirtyOf(game);
   if (!game.addCash(-q.total)) return fail('Niet genoeg geld.');
   const h = handelState(game);
   const order = {
     id: nextId(h, 'o'), supplier: supplierId, units: q.units, subtotal: q.subtotal, fee: q.fee, rushFee: q.rushFee, total: q.total, bulk: q.bulk,
     lines: q.lines.map(({ good, tier, n, total }) => ({ good, tier, n, total })),
     rush: q.rush, placedAt: now(game.state), arriveAt: q.arrive, status: 'onderweg',
+    dirty: dirty0 - dirtyOf(game), // the dirty share of the money that went out: a cancelled order returns it as dirty
   };
   h.orders.push(order);
   game.emit('change');
@@ -177,8 +180,8 @@ export function cancelOrder(game, id) {
   if (!o || o.status !== 'onderweg') return fail('Die kun je niet meer annuleren.');
   o.status = 'geannuleerd';
   o.refund = Math.round(o.total * 0.85);
-  game.state.cash += o.refund;
-  game.emit('change');
+  // The money comes back as it went out: the dirty share stays dirty, the rest is clean. It is no new income.
+  giveBack(game, o.refund, Math.round((o.dirty ?? 0) * 0.85));
   return { ok: true, refund: o.refund };
 }
 
