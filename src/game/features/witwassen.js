@@ -16,7 +16,7 @@ import { wState, dirtyHand } from '../witwassen/store.js';
 import { onNewDay } from '../witwassen/daily.js';
 import { auditPhase, resolveAudit } from '../witwassen/audit.js';
 import { visitEvents, inspectorHere } from '../witwassen/visit.js';
-import { carryHeat } from '../witwassen/carry.js';
+import { carryHeat, carryLimit } from '../witwassen/carry.js';
 import { WitWorld } from '../witwassen/world.js';
 import { openBusiness, openBuy, openAtm, openAudit } from '../witwassen/menus.js';
 import { zakenApp } from '../witwassen/zaken.js';
@@ -98,7 +98,10 @@ export default {
         const hut = ctx.hutPos;
         const hidden = Math.hypot(p.x - hut.x, p.z - hut.z) < HUT_RADIUS;
         const dirty = dirtyHand(game);
-        const add = carryHeat(dirty, game.rank, heatLevel(game.state), !hidden && ctx.guards.sees(p), dt);
+        // Only a heavy load is worth a look at the guards (most frames stop here).
+        const heavy = dirty >= carryLimit(game.rank);
+        const seen = heavy && !hidden && ctx.guards.sees(p);
+        const add = carryHeat(dirty, game.rank, heatLevel(game.state), seen, dt);
         if (add > 0) {
           addHeat(game, add, true); // quiet: only a change of level is announced
           if (performance.now() - lastWarn > WARN_EVERY_MS) {
