@@ -26,6 +26,8 @@ import { buildLobby } from '../wereld/interior/lobby.js';
 import { buildBar } from '../wereld/interior/bar.js';
 import { buildShop, SHOP_CSS } from '../wereld/interior/shop.js';
 import { buildTower } from '../wereld/interior/tower.js';
+import { buildHouse } from '../wereld/interior/house.js';
+import { houseDoor } from '../wereld/houses.js';
 import { cyl } from '../wereld/interior/common.js';
 import { findSites } from '../wereld/exterior/sites.js';
 import { Market, stallRing } from '../wereld/exterior/market.js';
@@ -185,7 +187,12 @@ export default {
     hub.register('bar', { door: { x: bar.door.x, z: bar.door.z, r: bar.door.r }, out: bar.door.out, build: buildBar, label: 'Naar binnen: strandbar' });
     hub.register('shop', { door: { x: shop.door.x, z: shop.door.z, r: shop.door.r }, out: shop.door.out, build: buildShop, label: 'Naar binnen: kledingwinkel' });
     hub.register('tower', { door: { x: lh.door.x, z: lh.door.z, r: lh.door.r }, out: lh.door.out, build: buildTower, label: 'Naar binnen: vuurtoren' });
-    const doorItems = ['hut', 'lobby', 'bar', 'shop', 'tower'].filter((id) => hub.regs.has(id)).map((id) => hub.doorItem(id));
+    // Every village house is a room too: its own wall colour, from its place in the list. The hotel has its lobby.
+    houses.filter((hs) => hs.group.userData.radius < 10).forEach((hs, i) => {
+      const { door, out } = houseDoor(hs.group);
+      hub.register(`house-${i}`, { door: { ...door, r: 2.6 }, out, build: (env, o) => buildHouse(env, o, i + 1), label: 'Naar binnen: huis' });
+    });
+    const doorItems = [...hub.regs.keys()].map((id) => hub.doorItem(id));
     for (const it of doorItems) interactions.add(it);
     // For the tests (window.__game.ctx.wereld): where the places are and the shells.
     ctx.wereld = { sites, shells, hub, plants: { banana: plants.banana.length, bush: plants.bush.length, pine: plants.pine.length, flower: plants.flower.length } };
