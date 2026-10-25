@@ -7,7 +7,7 @@ import { itemName } from '../economy.js';
 import { openStations } from './stationMenu.js';
 import { openChest } from './chestMenu.js';
 import { openPropertyMenu } from './propertyMenu.js';
-import { sleepHere } from './sleepUi.js';
+import { askSleep } from './sleepUi.js';
 import { disguise } from '../police.js';
 import { chestOf } from '../panden/chest.js';
 
@@ -49,9 +49,9 @@ export function openHutMenu(game) {
         onClick: () => toast(disguise(game) ? 'Andere kleren aan: de bewaking herkent je minder snel.' : 'Omkleden helpt nu niet (één keer per dag, en alleen als ze je zoeken).'),
       },
       {
-        label: 'Slapen tot de ochtend',
+        label: 'Slapen',
         kind: 'primary',
-        onClick: () => setTimeout(() => sleepHere(game, 'hut'), 0),
+        onClick: () => setTimeout(() => askSleep(game, 'hut'), 0),
       },
     ],
   });

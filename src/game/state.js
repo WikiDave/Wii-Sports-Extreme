@@ -8,6 +8,8 @@ export const VERSION = 1;
 /** Game clock: minutes since midnight of the current day. A day runs 06:00 to 04:00. */
 export const DAY_START = 6 * 60;
 export const DAY_END = 28 * 60;
+/** The latest time you can choose to get up (the sleep menu's slider runs from DAY_START to here). */
+export const WAKE_LATEST = 14 * 60;
 /** One real second is one game minute. */
 export const MINUTES_PER_SECOND = 1;
 
@@ -146,11 +148,11 @@ export class Game {
     this.emit('time');
   }
 
-  /** Ends the day: next morning at 06:00. Daily costs are added in later steps via the 'newday' event. */
-  sleep() {
+  /** Ends the day: the next morning, at 06:00 or the chosen wake time (game minutes, up to WAKE_LATEST). */
+  sleep(wake = DAY_START) {
     const s = this.state;
     s.day += 1;
-    s.minutes = DAY_START;
+    s.minutes = Math.max(DAY_START, Math.min(WAKE_LATEST, Math.round(wake) || DAY_START));
     s.heat = Math.max(0, s.heat - 1);
     this.emit('heat', Math.floor(s.heat));
     this.lastSave = s.minutes;

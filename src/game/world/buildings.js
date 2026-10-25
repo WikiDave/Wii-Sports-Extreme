@@ -252,7 +252,9 @@ export function pier(x0, z0, dir, length, groundY) {
     group.add(b);
     boats.push(b);
   });
-  return { group, boats, yaw, deck };
+  // The walkable planks for the Mii (world/decks.js): 4.4 m wide, the top 0.125 above the deck's centre.
+  const walk = { x0, z0, dx: dir.x, dz: dir.z, length, half: 2.0, top: groundY + 0.625 };
+  return { group, boats, yaw, deck, walk };
 }
 
 /** Rocking boats; call every frame with the time in seconds. */

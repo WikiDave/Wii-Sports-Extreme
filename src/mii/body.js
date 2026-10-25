@@ -18,8 +18,23 @@ export function bodyScale(height, build) {
 const HIP = { x: 0.1, y: -1.18 };
 const SHOULDER = { x: 0.16, y: -0.64 };
 const HAND = { x: 0.4, y: -1.3 };
+const ARM_LEN = Math.hypot(HAND.x - SHOULDER.x, HAND.y - SHOULDER.y);
+const ARM_DIR = { x: (HAND.x - SHOULDER.x) / ARM_LEN, y: (HAND.y - SHOULDER.y) / ARM_LEN };
+const SHOULDER_BALL = new THREE.SphereGeometry(0.095, 16, 12);
+const ARM = new THREE.CapsuleGeometry(0.072, ARM_LEN - 0.1, 6, 14);
+const CORE = new THREE.CapsuleGeometry(0.115, 0.36, 6, 16);
+for (const g of [SHOULDER_BALL, ARM, CORE]) g.userData.shared = true;
 
 const smooth = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
+/** Beside the upper three quarters of the arm (where the scan has a web between arm and torso); the hem stays. */
+function underArm(ax, y) {
+  const dx = HAND.x - SHOULDER.x;
+  const dy = HAND.y - SHOULDER.y;
+  const t = ((ax - SHOULDER.x) * dx + (y - SHOULDER.y) * dy) / (dx * dx + dy * dy);
+  return t < 0.75 && Math.hypot(ax - (SHOULDER.x + t * dx), y - (SHOULDER.y + t * dy)) < 0.15;
+}
+/** Half the width of the torso at height y (head-local units). */
+const torsoHalf = (y) => 0.17 + 0.06 * smooth((SHOULDER.y - y) / 0.6);
 
 /** Skin weights of one vertex: [torso, legL, legR, armL, armR] (L = +x, the Mii's left). */
 function weights(part, x, y, z) {
@@ -37,14 +52,49 @@ function weights(part, x, y, z) {
   const dy = HAND.y - SHOULDER.y;
   const t = Math.min(1, Math.max(0, ((ax - SHOULDER.x) * dx + (y - SHOULDER.y) * dy) / (dx * dx + dy * dy)));
   const d = Math.hypot(ax - (SHOULDER.x + t * dx), y - (SHOULDER.y + t * dy));
-  const torsoHalf = 0.17 + 0.06 * smooth((SHOULDER.y - y) / 0.6);
-  const arm = smooth((0.11 - d) / 0.04) * smooth((ax - torsoHalf + 0.02) / 0.05) * smooth((SHOULDER.y + 0.02 - y) / 0.06);
+  const arm = smooth((0.11 - d) / 0.04) * smooth((ax - torsoHalf(y) + 0.02) / 0.05) * smooth((SHOULDER.y + 0.02 - y) / 0.06);
   // Shirt below the hips (the tail of the hull under the hands) moves with the legs.
   const leg = (1 - arm) * smooth((HIP.y - 0.1 - y) / 0.1);
   w[3 + side] = arm;
   w[1 + side] = leg;
   w[0] = 1 - arm - leg;
   return w;
+}
+
+/**
+ * The shirt without its captured sleeves: those stretch into sheets when an arm swings. The
+ * torso keeps its own triangles (following the torso, and the legs for the tail under the hands);
+ * round arms (buildBody) take the place of the sleeves, and a core fills the torso's sides.
+ */
+function torsoShirt(src) {
+  const vp = src.attributes.position;
+  const w = [];
+  for (let i = 0; i < vp.count; i++) w.push(weights('shirt', vp.getX(i), vp.getY(i), vp.getZ(i)));
+  const idx = src.index.array;
+  const keep = [];
+  for (let t = 0; t < idx.length; t += 3) {
+    const arm = Math.max(...[3, 4].map((b) => (w[idx[t]][b] + w[idx[t + 1]][b] + w[idx[t + 2]][b]) / 3));
+    // The centre of the triangle: strips of the scan beside the torso (under the arms) go too.
+    const cx = Math.abs(vp.getX(idx[t]) + vp.getX(idx[t + 1]) + vp.getX(idx[t + 2])) / 3;
+    const cy = (vp.getY(idx[t]) + vp.getY(idx[t + 1]) + vp.getY(idx[t + 2])) / 3;
+    const side = cy < SHOULDER.y && cx > torsoHalf(cy) + 0.005 && underArm(cx, cy);
+    if (arm <= 0.5 && !side) keep.push(idx[t], idx[t + 1], idx[t + 2]);
+  }
+  const g = src.clone();
+  g.setIndex(keep);
+  const index = new Uint16Array(vp.count * 4);
+  const weight = new Float32Array(vp.count * 4);
+  for (let i = 0; i < vp.count; i++) {
+    const ww = w[i];
+    const sum = ww[0] + ww[1] + ww[2] || 1;
+    index[i * 4] = 0;
+    weight[i * 4] = ww[0] / sum;
+    index[i * 4 + 1] = ww[1] >= ww[2] ? 1 : 2;
+    weight[i * 4 + 1] = Math.max(ww[1], ww[2]) / sum;
+  }
+  g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(index, 4));
+  g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(weight, 4));
+  return g;
 }
 
 const geometries = new Map();
@@ -58,19 +108,22 @@ function geometry(gender, part) {
   g.setIndex(new THREE.BufferAttribute(new Uint16Array(idx), 1));
   g.computeVertexNormals();
   // Skinning: bone 0 torso, 1/2 legs, 3/4 arms (see buildBody).
-  const vp = g.attributes.position;
-  const index = new Uint16Array(vp.count * 4);
-  const weight = new Float32Array(vp.count * 4);
-  for (let i = 0; i < vp.count; i++) {
-    const w = weights(part, vp.getX(i), vp.getY(i), vp.getZ(i));
-    const order = [0, 1, 2, 3, 4].sort((a, b) => w[b] - w[a]).slice(0, 4);
-    order.forEach((b, k) => {
-      index[i * 4 + k] = b;
-      weight[i * 4 + k] = w[b];
-    });
+  if (part === 'shirt') g = torsoShirt(g);
+  else {
+    const vp = g.attributes.position;
+    const index = new Uint16Array(vp.count * 4);
+    const weight = new Float32Array(vp.count * 4);
+    for (let i = 0; i < vp.count; i++) {
+      const w = weights(part, vp.getX(i), vp.getY(i), vp.getZ(i));
+      const order = [0, 1, 2, 3, 4].sort((a, b) => w[b] - w[a]).slice(0, 4);
+      order.forEach((b, k) => {
+        index[i * 4 + k] = b;
+        weight[i * 4 + k] = w[b];
+      });
+    }
+    g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(index, 4));
+    g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(weight, 4));
   }
-  g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(index, 4));
-  g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(weight, 4));
   g.userData.shared = true;
   geometries.set(key, g);
   return g;
@@ -114,6 +167,19 @@ export function buildBody(m, mats) {
     mesh.updateMatrixWorld(true);
     mesh.bind(skeleton);
   }
+  // Round arms in the shirt colour, hanging from a ball on each shoulder, as on a Wii Mii; and a
+  // core inside the torso so its open sides never show through.
+  for (const [arm, side] of [[armL, 1], [armR, -1]]) {
+    arm.add(new THREE.Mesh(SHOULDER_BALL, mats.shirt));
+    const sleeve = new THREE.Mesh(ARM, mats.shirt);
+    sleeve.position.set((side * ARM_DIR.x * ARM_LEN) / 2, (ARM_DIR.y * ARM_LEN) / 2, 0);
+    sleeve.rotation.z = side * Math.atan2(ARM_DIR.x, -ARM_DIR.y);
+    arm.add(sleeve);
+  }
+  const core = new THREE.Mesh(CORE, mats.shirt);
+  core.position.set(0, -0.9, 0);
+  core.scale.set(1.35, 1, 1);
+  root.add(core);
   return {
     group,
     torso,

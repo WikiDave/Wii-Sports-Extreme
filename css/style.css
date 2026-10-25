@@ -2572,3 +2572,15 @@ input:focus-visible,
   outline: 3px solid var(--wii-blue);
   outline-offset: 2px;
 }
+
+/* The sleep menu: the time to get up, on a slider. */
+.sleep-menu p { margin: 0 0 14px; }
+.sleep-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-weight: 700; }
+.sleep-clock { font-size: 34px; font-weight: 800; color: var(--wii-blue); font-variant-numeric: tabular-nums; }
+.sleep-slider { width: 100%; margin: 10px 0 4px; accent-color: var(--wii-blue); height: 32px; }
+.sleep-scale { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted, #6b7785); }
+.sleep-hours { font-weight: 700; }
+
+/* A chat with a Mii on the island. */
+.chat-hello { margin: 0 0 8px; font-weight: 800; font-size: 18px; }
+.chat-line { margin: 0; line-height: 1.45; }

@@ -3,12 +3,15 @@
 
 import { comfortBonus } from './upgrades.js';
 
-/** Sleeps in the bed of property id. Returns { heat, xp } (the bonus given) or null if you do not own it. */
-export function sleepAt(game, id) {
+/**
+ * Sleeps in the bed of property id until wake (game minutes, default 06:00). Returns { heat, xp }
+ * (the bonus given) or null if you do not own it.
+ */
+export function sleepAt(game, id, wake) {
   const s = game.state;
   if (!s.properties.includes(id)) return null;
   const bonus = comfortBonus(s, id);
-  game.sleep();
+  game.sleep(wake);
   if (bonus.heat) {
     s.heat = Math.max(0, s.heat - bonus.heat);
     game.emit('heat', Math.floor(s.heat));

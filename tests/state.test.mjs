@@ -29,3 +29,20 @@ assert.equal(new Game({ getItem() { throw new Error('x'); } }).state.day, 1);
   assert.match(logged[0], /Listener for 'time'/);
 }
 console.log('ok');
+
+// Sleeping with a chosen wake time: the next day starts then, within 06:00 and WAKE_LATEST.
+{
+  const { Game: G2, DAY_START: D0, WAKE_LATEST: WL } = await import('../src/game/state.js');
+  const g = new G2(null);
+  g.reset();
+  const d = g.state.day;
+  g.sleep(9 * 60 + 30);
+  assert.equal(g.state.day, d + 1);
+  assert.equal(g.state.minutes, 9 * 60 + 30, 'wakes at the chosen time');
+  g.sleep();
+  assert.equal(g.state.minutes, D0, 'default: 06:00');
+  g.sleep(23 * 60);
+  assert.equal(g.state.minutes, WL, 'never later than WAKE_LATEST');
+  g.sleep(3 * 60);
+  assert.equal(g.state.minutes, D0, 'never before 06:00');
+}

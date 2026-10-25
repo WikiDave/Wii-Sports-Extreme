@@ -130,5 +130,5 @@ export function fishingJetty(site) {
     floats.push(float);
   });
   g.add(cyl(0.3, 0.26, 0.5, '#e2513f', end.x, site.y + 0.5, end.z - 1.5, 8));
-  return { group: g, boats: p.boats, men, floats, end, colliders: [{ x: end.x, z: end.z, r: 1.4 }] };
+  return { group: g, boats: p.boats, men, floats, end, walk: p.walk, colliders: [{ x: end.x, z: end.z, r: 1.4 }] };
 }

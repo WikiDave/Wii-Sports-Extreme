@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { MiiModel } from '../mii/model.js';
 import { heightAt } from './world/island.js';
+import { deckHeight } from './world/decks.js';
 
 /** Mii units to metres: a default Mii is about 1.75 m tall. */
 export const MII_SCALE = 0.7;
@@ -34,6 +35,7 @@ export class Player {
     this.swimming = false;
     this.swimBlend = 0; // 0 walking .. 1 swimming, for the pose
     this.colliders = colliders;
+    this.people = []; // the other Miis nearby, { x, z, r } (world/people.js sets this every frame)
     this.blinkAt = 2;
     this.fx = null; // Effects, set by the screen
     this.onStep = null; // (running) => void, for footstep sounds
@@ -46,9 +48,13 @@ export class Player {
     this.group.position.copy(this.pos);
   }
 
-  /** Walkable height at (x, z): a deck if there is one, else the terrain. */
+  /** Walkable height at (x, z): a deck if there is one (a feature's, or a pier's), else the terrain. */
   groundAt(x, z) {
-    return this.deck?.(x, z) ?? heightAt(x, z);
+    const own = this.deck?.(x, z);
+    if (own !== null && own !== undefined) return own;
+    const pier = deckHeight(x, z);
+    const ground = heightAt(x, z);
+    return pier === null ? ground : Math.max(pier, ground);
   }
 
   /** Free spot test: not out in the open sea, and no obstacle. */
@@ -59,6 +65,14 @@ export class Player {
       const dz = z - c.z;
       const r = c.r + RADIUS;
       if (dx * dx + dz * dz < r * r) return false;
+    }
+    // Other Miis (world/people.js): no walking into them; stepping away from one is always fine.
+    for (const c of this.people) {
+      const dx = x - c.x;
+      const dz = z - c.z;
+      const r = c.r + RADIUS;
+      const d2 = dx * dx + dz * dz;
+      if (d2 < r * r && d2 < (this.pos.x - c.x) ** 2 + (this.pos.z - c.z) ** 2) return false;
     }
     return true;
   }

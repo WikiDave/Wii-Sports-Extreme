@@ -28,6 +28,7 @@ import { buildShop, SHOP_CSS } from '../wereld/interior/shop.js';
 import { buildTower } from '../wereld/interior/tower.js';
 import { buildHouse } from '../wereld/interior/house.js';
 import { houseDoor } from '../wereld/houses.js';
+import { addDeck, railColliders } from '../world/decks.js';
 import { cyl } from '../wereld/interior/common.js';
 import { findSites } from '../wereld/exterior/sites.js';
 import { Market, stallRing } from '../wereld/exterior/market.js';
@@ -121,7 +122,8 @@ export default {
 
     const pierJetty = fishingJetty(jetty, heightAt);
     scene.add(pierJetty.group);
-    colliders.push(...pierJetty.colliders);
+    colliders.push(...pierJetty.colliders, ...railColliders(pierJetty.walk));
+    const dropDeck = addDeck(pierJetty.walk); // the Mii walks on the planks
     for (const b of pierJetty.boats) colliders.push({ x: b.position.x, z: b.position.z, r: 1.8 });
     // Posts for the strings of lights along the jetty.
     for (const dx of [-2, 2]) {
@@ -248,6 +250,7 @@ export default {
       },
       dispose() {
         unregisterApp('schelpen');
+        dropDeck();
         hub.dispose();
         market.dispose();
         vegetation.dispose();

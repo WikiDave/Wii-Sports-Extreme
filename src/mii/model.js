@@ -29,6 +29,7 @@ export class MiiModel {
   constructor(data, { textureScale = 1, body = true } = {}) {
     this.withBody = body;
     this.group = new THREE.Group();
+    this.group.userData.mii = this; // so a scene can find its Miis (the island: bumping and talking)
     this.headPivot = new THREE.Group();
     this.group.add(this.headPivot);
 
@@ -49,7 +50,7 @@ export class MiiModel {
       skin: new MiiMaterial(),
       // The face texture has the skin colour as background, so face and head match.
       face: new MiiMaterial({ map: this.face.tex }),
-      shirt: new MiiMaterial(),
+      shirt: new MiiMaterial({ side: THREE.DoubleSide }), // both sides: the inside of a swinging sleeve stays shirt-coloured
       pants: new MiiMaterial({ color: PANTS_COLOR }),
       hair: hairMaterial('#000000'),
       beard: new MiiMaterial({ light: MII_HAIR_LIGHT }),

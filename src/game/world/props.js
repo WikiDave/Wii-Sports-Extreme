@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { heightAt, zoneAt } from './island.js';
 import { house as newHouse, hotel, pier, streetLamp } from './buildings.js';
+import { addDeck, clearDecks, railColliders } from './decks.js';
 import { PATH_SEGMENTS, pathDistance } from './zones.js';
 import { bakeMeshes } from '../uiterlijk/merge.js';
 import { addBeachDecor } from './beachDecor.js';
@@ -185,6 +186,7 @@ export function buildProps() {
   const rockSpecs = [];
   const lamps = [];
   const deckMerge = [];
+  clearDecks(); // a new island: the piers of the last one are gone
   // A building on the island; its collider has radius r (scaled with it). The random numbers
   // are drawn in the same order as always, so the island layout does not change.
   const place = (obj, x, z, y, rot, s = 1, r = 0) => {
@@ -301,6 +303,8 @@ export function buildProps() {
       group.add(p.group);
       boats.push(...p.boats);
       deckMerge.push(p.deck);
+      addDeck(p.walk);
+      colliders.push(...railColliders(p.walk));
       break;
     }
   }

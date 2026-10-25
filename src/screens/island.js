@@ -47,6 +47,8 @@ import { stationLimit, ready } from '../game/stations.js';
 import { openStations } from '../game/ui/stationMenu.js';
 import { Minimap } from '../game/ui/minimap.js';
 import { Input } from '../game/input.js';
+import { People } from '../game/world/people.js';
+import { openChat } from '../game/ui/chatMenu.js';
 import { miiStore } from '../mii/storage.js';
 import { defaultMii } from '../mii/data.js';
 
@@ -303,6 +305,14 @@ async function buildIsland3d(root, app, loader, isCancelled) {
   player.onSplash = () => audio.play('splash');
   shadowsOn(player.group, false);
   const follow = new FollowCamera(camera);
+
+  // The other Miis are solid (world/people.js), and every Mii without a talk of its own can be
+  // spoken to: one interaction that follows the nearest such Mii.
+  const people = new People(scene, player, heightAt);
+  let chatWith = null;
+  let chats = 0;
+  const chatItem = interactions.add({ x: 0, z: 0, r: 2.6, label: 'Praat', enabled: () => !!chatWith, run: () => chatWith && openChat(game, chatWith, chats++) });
+  const ownTalk = (a) => interactions.items.some((it) => it !== chatItem && (!it.enabled || it.enabled()) && Math.hypot(it.x - a.x, it.z - a.z) < 1.6);
   follow.yaw = player.heading + Math.PI;
   // The camera keeps out of houses and palms, and follows the settings' sensitivity.
   follow.colliders = props.colliders;
@@ -343,7 +353,7 @@ async function buildIsland3d(root, app, loader, isCancelled) {
   const features = installFeatures(ctx);
   window.__game = {
     ctx,
-    features, player, follow, game, weatherFx, heightAt, props, life, grassCount: grass.count, hutPos, interactions, guards, teleport: (it) => { player.pos.set(it.x, 0, it.z + 4); player.group.position.copy(player.pos); } }; // for tests
+    features, player, follow, game, weatherFx, heightAt, props, life, grassCount: grass.count, hutPos, interactions, guards, people, teleport: (it) => { player.pos.set(it.x, 0, it.z + 4); player.group.position.copy(player.pos); } }; // for tests
 
   const resize = () => {
     const w = view.clientWidth || 1;
@@ -399,6 +409,18 @@ async function buildIsland3d(root, app, loader, isCancelled) {
       life.update(t, dt, camera);
     });
     part('features', () => features.update(t, dt, paused));
+    part('mensen', () => {
+      people.update(t);
+      player.people = people.near;
+      const a = paused ? null : people.nearest(player.pos.x, player.pos.z, 2.4, ownTalk);
+      const guard = !!a && guards.list.some((g) => g.mii === a.m);
+      chatWith = a ? { name: a.m.data?.name || 'Eilander', guard } : null;
+      if (a) {
+        chatItem.x = a.x;
+        chatItem.z = a.z;
+        chatItem.label = guard ? 'Praat met de bewaker' : `Praat met ${chatWith.name}`;
+      }
+    });
     part('effecten en geluid', () => {
       fx.update(dt);
       water.userData.update(t, Math.min(1.1, 0.25 + sky.hemi.intensity * 0.7), 1 + weatherFx.level.rain * 0.8);
