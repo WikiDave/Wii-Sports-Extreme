@@ -10,7 +10,7 @@
 // spots next to the beach stand and the market (island.js findHutSpot), and every customer's
 // front door ('thuis'). buildWorld() takes them as options; the values here are the defaults.
 
-import { PATHS } from '../world/zones.js';
+import { PATHS, BRIDGE, bridgeTop } from '../world/zones.js';
 
 export const PLACES = {
   thuis: { name: 'thuis', at: 'thuis', x: 0, z: 0, spread: 0 },
@@ -30,6 +30,7 @@ export const PLACES = {
 export const LINKS = [
   [[268, 60], [278, 68], [300, 70], [340, 70], [356, 70]],
   [[30, 212], [8, 217], [-18, 222]],
+  [BRIDGE.b, BRIDGE.a], // over the bridge to the cape
 ];
 
 const STEP = 12; // nodes on the paths this far apart
@@ -54,7 +55,8 @@ export function buildGraph(lines = [...PATHS, ...LINKS], { isLand = null } = {})
   };
   const link = (a, b) => {
     if (a === b) return;
-    if (isLand && !(isLand(nodes[a].x, nodes[a].z) && isLand(nodes[b].x, nodes[b].z) && isLand((nodes[a].x + nodes[b].x) / 2, (nodes[a].z + nodes[b].z) / 2))) return;
+    const dry = (x, z) => isLand(x, z) || bridgeTop(x, z) !== null; // the bridge crosses the strait
+    if (isLand && !(dry(nodes[a].x, nodes[a].z) && dry(nodes[b].x, nodes[b].z) && dry((nodes[a].x + nodes[b].x) / 2, (nodes[a].z + nodes[b].z) / 2))) return;
     const len = Math.hypot(nodes[a].x - nodes[b].x, nodes[a].z - nodes[b].z);
     nodes[a].edges.push([b, len]);
     nodes[b].edges.push([a, len]);

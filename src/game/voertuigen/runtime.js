@@ -4,11 +4,13 @@
 // the phone app. The rules live in the pure modules next to it (physics, store, fuel, heat, ...).
 // Started by features/voertuigen.js.
 
+import * as THREE from 'three';
 import { VEHICLES } from './data.js';
 import { drive, surfaceFrame, WATER_MAX } from './physics.js';
 import { usesFuel, fuelShare, isEmpty } from './fuel.js';
 import { store, list, acquire, giveBack, expireRentals, refuel, openChest as takeChest } from './store.js';
 import { deckAt, findJetty, jettyBlockers, tipOf, DECK_HALF } from './harbour.js';
+import { allDecks, deckBlockers, deckHeight } from '../world/decks.js';
 import { findSpot } from './spots.js';
 import { recklessRate, seenBy, bumped, BUMP_HEAT } from './heat.js';
 import { addHeat, heatLevel } from '../police.js';
@@ -24,8 +26,8 @@ import { unregisterApp } from '../phoneApps.js';
 /** Height of the Mii's hips above its feet, in metres (measured in the game: so it sits on the seat). */
 const SEAT_HIP = 0.47;
 /** How much further the camera stands back while you ride (metres). */
-const CAM_EXTRA = { fiets: 1.5, scooter: 2, golfkar: 4, roeiboot: 4, motorboot: 5.5 };
-const ICON = { fiets: '🚲', scooter: '🛵', golfkar: '🛺', roeiboot: '🛶', motorboot: '🚤' };
+const CAM_EXTRA = { fiets: 1.5, scooter: 2, golfkar: 4, roeiboot: 4, motorboot: 5.5, zeilboot: 6 };
+const ICON = { fiets: '🚲', scooter: '🛵', golfkar: '🛺', roeiboot: '🛶', motorboot: '🚤', zeilboot: '⛵' };
 const STROKE_RATE = 1.7;
 
 /** Starts the vehicles in the island (see features/voertuigen.js). Returns { update, dispose }. */
@@ -98,6 +100,9 @@ class Vehicles {
       const d = deckAt(j, x, z);
       if (d !== null && d > y) y = d;
     }
+    // The island's piers and the bridge (world/decks.js), for a vehicle at about their height.
+    const p = deckHeight(x, z, this.world.y ?? -Infinity);
+    if (p !== null && p > y) y = p;
     return y;
   }
 
@@ -263,7 +268,7 @@ class Vehicles {
     rec.speed ??= 0; // a parked vehicle stands still (older saves may lack these)
     rec.wheel ??= 0;
     rec.cargo ??= {};
-    const model = buildVehicle(rec.type);
+    const model = buildVehicle(rec.type, { color: rec.color });
     model.group.rotation.order = 'YXZ';
     this.ctx.shadowsOn(model.group);
     this.scene.add(model.group);
@@ -305,7 +310,7 @@ class Vehicles {
   sync() {
     const recs = list(this.game);
     const ids = new Set(recs.map((r) => r.id));
-    for (const id of [...this.views.keys()]) if (!ids.has(id)) this.removeView(id);
+    for (const [id, view] of [...this.views]) if (!ids.has(id) && !view.rec.public) this.removeView(id);
     for (const rec of recs) if (!this.views.has(rec.id)) this.addView(rec);
   }
 
@@ -314,6 +319,7 @@ class Vehicles {
     const { rec, spec, model } = view;
     const g = model.group;
     if (spec.kind === 'land') {
+      this.world.y = rec.y ?? null;
       const f = surfaceFrame(rec, spec, this.world);
       g.position.set(rec.x, f.y, rec.z);
       g.rotation.set(f.pitch, rec.h, f.roll, 'YXZ');
@@ -417,8 +423,9 @@ class Vehicles {
     return `Op ${Math.round(d)} m, bij ${zoneName(this.ctx.zoneAt(rec.x, rec.z))}.`;
   }
 
-  /** You can load a vehicle when you are next to it, or in it. */
+  /** You can load a vehicle when you are next to it, or in it (not a pier boat: it is not yours). */
   canLoad(rec) {
+    if (rec.public) return false;
     if (this.riding?.id === rec.id) return true;
     return Math.hypot(rec.x - this.player.pos.x, rec.z - this.player.pos.z) < 8;
   }
@@ -428,7 +435,7 @@ class Vehicles {
   mount(view) {
     if (this.riding || !view) return false;
     this.riding = view;
-    store(this.game).riding = view.id;
+    store(this.game).riding = view.rec.public ? null : view.id; // a pier boat is not in the save
     this.player.external = this.hook;
     this.player.swimming = false;
     this.player.grounded = true;
@@ -522,6 +529,7 @@ class Vehicles {
     const { rec, spec } = view;
     this.world.skip = view.col;
     this.world.extra = spec.kind === 'water' ? this.blockers : null;
+    this.world.y = rec.y ?? null; // the height it drives at: on the bridge, or under it
     const out = drive(rec, spec, ctl, dt, this.world);
     view.col.x = rec.x;
     view.col.z = rec.z;
@@ -568,8 +576,10 @@ class Vehicles {
     let pitch = 0;
     let roll = 0;
     if (spec.kind === 'land') {
+      this.world.y = rec.y ?? null;
       const f = surfaceFrame(rec, spec, this.world);
       y = f.y;
+      rec.y = y;
       pitch = f.pitch;
       roll = f.roll;
     } else {
@@ -699,6 +709,7 @@ class Vehicles {
   /** The parked boats bob; the day ends (rentals go back). */
   update(t, dt, paused = false) {
     this.t = t;
+    if (!this.pierBoats) this.makePierBoats(); // after all features are in: the wereld jetty is there by now
     this.sync();
     if (!this.riding && !paused) for (const view of this.views.values()) if (view.spec.kind === 'water') this.bob(view, t);
     if (this.camBack != null && !this.riding) {
@@ -706,6 +717,29 @@ class Vehicles {
       this.follow.dist += d * Math.min(1, dt * 2);
       if (Math.abs(d) < 0.02) this.camBack = null;
     }
+  }
+
+  /**
+   * The boats moored at the piers become pier boats anyone can sail: each decor boat is hidden and
+   * a sailing boat (VEHICLES.zeilboot) takes its place, with the same colour and heading.
+   */
+  makePierBoats() {
+    this.pierBoats = [];
+    // The piers' planks are in the way of boats, as the jetties are.
+    for (const d of allDecks()) this.blockers.push(...deckBlockers(d)); // a high bridge only blocks with its towers
+    const found = [];
+    this.scene.traverse((o) => o.userData.moored && found.push(o));
+    const w = new THREE.Vector3();
+    found.forEach((b, i) => {
+      b.getWorldPosition(w);
+      b.visible = false;
+      // The decor boat's own collider (the wereld jetty pushes one per boat) goes with it.
+      const old = this.props.colliders.find((c) => Math.hypot(c.x - w.x, c.z - w.z) < 0.6 && c.r > 1.5 && c.r < 2);
+      if (old) this.removeFrom(this.props.colliders, old);
+      const rec = { id: `pier-${i}`, type: 'zeilboot', public: true, color: b.userData.color, x: w.x, z: w.z, h: b.rotation.y, speed: 0, wheel: 0, cargo: {}, fuel: 0 };
+      this.pierBoats.push(rec);
+      this.addView(rec);
+    });
   }
 
   onNewDay() {

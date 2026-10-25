@@ -19,6 +19,7 @@ import { setLiveWorld } from '../klanten/live.js';
 import { animateBlink, animateIdle, animateWalk, animateWave } from '../klanten/animate.js';
 import { tierOf } from '../klanten/tiers.js';
 import { heightAt } from './island.js';
+import { bridgeTop } from './zones.js';
 
 const MAX_SHOWN = 8; // Miis on screen at the same time
 const MAX_SHOWN_PHONE = 6;
@@ -224,7 +225,7 @@ export class CustomerView {
   pose(e, t, dt, player) {
     const { mii } = e.model;
     e.model.used = this.frame;
-    e.y = Math.max(heightAt(e.x, e.z), 0);
+    e.y = bridgeTop(e.x, e.z) ?? Math.max(heightAt(e.x, e.z), 0); // on the bridge: its deck
     mii.group.position.set(e.x, e.y, e.z);
     // How fast they really move now (a paused game freezes the clock: they stand still then).
     const v = Math.hypot(e.x - e.px, e.z - e.pz) / dt;

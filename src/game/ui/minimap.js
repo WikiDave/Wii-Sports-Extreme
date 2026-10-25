@@ -3,7 +3,7 @@
 
 import { h } from '../../ui/dom.js';
 import { heightAt } from '../world/island.js';
-import { ZONES, PATHS } from '../world/zones.js';
+import { ZONES, PATHS, BRIDGE } from '../world/zones.js';
 
 const EXTENT = 700; // metres from the centre shown on the full map
 const CENTER = { x: 90, z: -20 };
@@ -45,6 +45,13 @@ function paintTerrain() {
     line.forEach(([x, z], i) => (i ? g.lineTo(px(x), pz(z)) : g.moveTo(px(x), pz(z))));
     g.stroke();
   }
+  // The bridge to the cape, in its own orange.
+  g.strokeStyle = '#c4402f';
+  g.lineWidth = 2.4;
+  g.beginPath();
+  g.moveTo(px(BRIDGE.a[0]), pz(BRIDGE.a[1]));
+  g.lineTo(px(BRIDGE.b[0]), pz(BRIDGE.b[1]));
+  g.stroke();
   return c;
 }
 

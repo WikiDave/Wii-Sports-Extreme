@@ -123,6 +123,30 @@ export const VEHICLES = {
     seatZ: -0.9,
     desc: 'Een witte motorboot met rode streep en een hut. Vaart over zee tot aan de eilanden.',
   },
+  zeilboot: {
+    name: 'Zeilboot',
+    kind: 'water',
+    public: true, // the boats at the piers: anyone may sail them (never sold, never in the save)
+    price: 1800,
+    rent: 90,
+    rank: 0,
+    maxSpeed: 6.5,
+    pushSpeed: 6.5,
+    reverse: 1.5,
+    accel: 1.6,
+    brake: 2.4,
+    coast: 0.45,
+    turn: 1.15,
+    radius: 1.3,
+    len: 4.6,
+    wid: 1.9,
+    fuelMax: 0,
+    fuelUse: 0,
+    cargo: 0,
+    seat: 0.84,
+    seatZ: -1.45,
+    desc: 'Een zeilboot aan de steiger. De wind is gratis: stap in en vaar weg.',
+  },
 };
 
 export const VEHICLE_IDS = Object.keys(VEHICLES);

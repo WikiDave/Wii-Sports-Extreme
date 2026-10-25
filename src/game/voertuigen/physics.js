@@ -40,13 +40,14 @@ export function gradeAhead(v, world, run = 1.2) {
  * Pushes a circle of radius R out of the round obstacles. Returns { x, z, hit, nx, nz }: the new
  * centre and the normal of the last obstacle that was touched.
  */
-export function pushOut(x, z, R, obstacles, skip = null) {
+export function pushOut(x, z, R, obstacles, skip = null, y = null) {
   let hit = false;
   let nx = 0;
   let nz = 0;
   for (let pass = 0; pass < 2; pass++) {
     for (const c of obstacles) {
       if (c === skip) continue;
+      if (y !== null && c.top !== undefined && Math.abs(y - c.top) > 2.5) continue; // a railing high above or far below
       const dx = x - c.x;
       const dz = z - c.z;
       const min = c.r + R;
@@ -121,7 +122,7 @@ export function driveStep(v, spec, ctl, dt, world) {
     }
     v.speed *= 0.4;
   }
-  let p = pushOut(nx, nz, spec.radius, world.colliders, world.skip);
+  let p = pushOut(nx, nz, spec.radius, world.colliders, world.skip, world.y ?? null);
   let normal = p;
   if (world.extra) {
     const q = pushOut(p.x, p.z, spec.radius, world.extra, null);

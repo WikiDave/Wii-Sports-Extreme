@@ -3,6 +3,7 @@
 // prisms, built from shared geometries and materials.
 
 import * as THREE from 'three';
+import { sailboat } from './sailboat.js';
 
 const mat = (color, extra = {}) => new THREE.MeshLambertMaterial({ color, flatShading: true, ...extra });
 const MAT = {};
@@ -200,18 +201,7 @@ export const lampLight = lampGlass;
 
 /** A little sailing boat; bob() animates it. */
 export function boat(color) {
-  const g = new THREE.Group();
-  const hull = new THREE.Group();
-  hull.add(part(GEO.box, color, 0, 0.35, 0, 1.7, 0.7, 4.2));
-  hull.add(part(GEO.cone4, color, 0, 0.35, 2.7, 1.7 * 1.2, 1.3, 1.5 * 1.2));
-  hull.children.at(-1).rotation.x = Math.PI / 2;
-  hull.add(part(GEO.box, '#ffffff', 0, 0.78, 0, 1.8, 0.14, 4.4));
-  g.add(hull);
-  g.add(part(GEO.cyl, WOOD, 0, 3.2, -0.2, 0.07, 5.2, 0.07));
-  const sail = part(GEO.box, '#ffffff', 0.02, 3.4, -0.9, 0.05, 3.6, 2.5);
-  g.add(sail);
-  g.userData.hull = hull;
-  return g;
+  return sailboat(color);
 }
 
 /**
@@ -249,6 +239,8 @@ export function pier(x0, z0, dir, length, groundY) {
     b.rotation.y = yaw + (i % 2 ? 0.08 : -0.06);
     b.userData.base = b.position.clone();
     b.userData.phase = i * 1.7;
+    b.userData.moored = true; // a boat at a pier: the vehicles feature makes it one you can sail
+    b.userData.color = colors[i % colors.length];
     group.add(b);
     boats.push(b);
   });

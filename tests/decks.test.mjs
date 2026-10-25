@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { addDeck, clearDecks, deckHeight, railColliders } from '../src/game/world/decks.js';
+import { addDeck, clearDecks, deckHeight, railColliders, deckBlockers, allDecks } from '../src/game/world/decks.js';
 
 clearDecks();
 // A pier from (10, 0) running towards +z for 20 m, 2 m to each side, planks at 0.8.
@@ -23,6 +23,11 @@ for (const c of rails) {
   assert.ok(Math.abs(c.x - 10) > 2, 'rail posts stand beside the planks');
   assert.ok(c.z >= 1.5, 'the shore end stays open');
 }
+// Boat blockers: round the sides and the far end, never on the planks.
+const bl = deckBlockers(d);
+for (const c of bl) assert.equal(deckHeight(c.x, c.z), null, 'a blocker is off the planks');
+assert.ok(bl.some((c) => c.z > d.length), 'the far end is closed for boats');
+assert.equal(allDecks().length, 2);
 drop();
 assert.equal(deckHeight(10, 5), null, 'removed again');
 clearDecks();

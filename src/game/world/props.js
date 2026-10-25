@@ -7,7 +7,8 @@ import * as THREE from 'three';
 import { heightAt, zoneAt } from './island.js';
 import { house as newHouse, hotel, pier, streetLamp } from './buildings.js';
 import { addDeck, clearDecks, railColliders } from './decks.js';
-import { PATH_SEGMENTS, pathDistance } from './zones.js';
+import { PATH_SEGMENTS, pathDistance, BRIDGE } from './zones.js';
+import { buildBridge } from './bridge.js';
 import { bakeMeshes } from '../uiterlijk/merge.js';
 import { addBeachDecor } from './beachDecor.js';
 
@@ -308,6 +309,12 @@ export function buildProps() {
       break;
     }
   }
+
+  // The bridge over the strait to Vuurtorenkaap, Golden Gate style: walkable, railings on both sides.
+  const bridge = buildBridge(BRIDGE.a, BRIDGE.b, BRIDGE.top, heightAt);
+  group.add(bridge.group);
+  addDeck(bridge.walk);
+  colliders.push(...bridge.colliders);
 
   // Street lamps along the paths near the towns.
   for (const [ax, az, bx, bz] of PATH_SEGMENTS) {

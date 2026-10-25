@@ -3,7 +3,7 @@
 
 import * as THREE from 'three';
 import { fbm } from './noise.js';
-import { ZONES, SEA_LEVEL } from './zones.js';
+import { ZONES, SEA_LEVEL, STRAIT } from './zones.js';
 import { terrainMaterial } from './terrainMaterial.js';
 
 export const ISLAND_SIZE = 1500;
@@ -43,6 +43,10 @@ export function heightAt(x, z) {
   // Rolling ground inland, calm beaches near the sea.
   const inland = smooth((land - 2.5) / 6);
   h += inland * (4 + 0.12 * land) * fbm(x / 110, z / 110, 5, 3) + 0.35 * fbm(x / 40, z / 40, 3, 5);
+  // The strait: the sea cuts the cape off from the hills (flat bottom in the middle, steep banks).
+  const off = Math.abs(Math.hypot(x - STRAIT.x, z - STRAIT.z) - STRAIT.r) / STRAIT.half;
+  const cut = smooth((1 - off) / 0.5);
+  if (cut > 0) h += (Math.min(h, STRAIT.depth) - h) * cut;
   return Math.max(SEA_FLOOR, h);
 }
 

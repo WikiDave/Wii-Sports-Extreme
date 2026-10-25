@@ -4,6 +4,7 @@
 // propeller and oars. Shared geometry and materials, so building many is cheap.
 
 import * as THREE from 'three';
+import { sailboat } from '../world/sailboat.js';
 
 const UP = new THREE.Vector3(0, 1, 0);
 const colorCache = new Map();
@@ -265,11 +266,16 @@ function motorboot() {
   return { group: g, spin: [], steer: [], bars: [], oars: [], prop, wheelR: 0, boat: true, seat: 0.6, shadow: null };
 }
 
-const MODELS = { fiets, scooter, golfkar, roeiboot, motorboot };
+/** The sailing boat of the piers (world/sailboat.js), in the colour it had there. */
+function zeilboot({ color } = {}) {
+  return { group: sailboat(color), spin: [], steer: [], bars: [], oars: [], wheelR: 0, boat: true, seat: 0.84, arm: -0.7, shadow: null };
+}
+
+const MODELS = { fiets, scooter, golfkar, roeiboot, motorboot, zeilboot };
 
 /** Builds the model for a vehicle type (see data.js). Returns the parts described above. */
-export function buildVehicle(type) {
-  const m = MODELS[type]();
+export function buildVehicle(type, opts = {}) {
+  const m = MODELS[type](opts);
   if (!m.boat) m.group.add(blob(m.shadow[0], m.shadow[1]));
   m.type = type;
   return m;

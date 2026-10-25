@@ -52,7 +52,7 @@ export class Player {
   groundAt(x, z) {
     const own = this.deck?.(x, z);
     if (own !== null && own !== undefined) return own;
-    const pier = deckHeight(x, z);
+    const pier = deckHeight(x, z, this.pos.y);
     const ground = heightAt(x, z);
     return pier === null ? ground : Math.max(pier, ground);
   }
@@ -61,6 +61,7 @@ export class Player {
   free(x, z) {
     if (heightAt(x, z) < DEEPEST) return false;
     for (const c of this.colliders) {
+      if (c.top !== undefined && Math.abs(this.pos.y - c.top) > 2.5) continue; // a railing high above or far below
       const dx = x - c.x;
       const dz = z - c.z;
       const r = c.r + RADIUS;

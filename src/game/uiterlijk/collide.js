@@ -29,6 +29,7 @@ export function rayCircle(ox, oz, dx, dz, c, r) {
 export function clipDistance(focus, dx, dz, maxDist, colliders, margin = WALL_MARGIN) {
   let best = maxDist;
   for (const c of colliders) {
+    if (c.top !== undefined) continue; // a low railing (piers, the bridge): the camera looks over it
     const reach = c.r + margin + maxDist;
     const fx = c.x - focus.x;
     const fz = c.z - focus.z;
