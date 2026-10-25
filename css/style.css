@@ -1042,6 +1042,12 @@ button {
   font-size: 14px;
 }
 
+/* A text box fills its column; its own default width must not push the page wider than the phone. */
+.field > .text {
+  width: 100%;
+  min-width: 0;
+}
+
 .field-row {
   display: flex;
   flex-wrap: wrap;
