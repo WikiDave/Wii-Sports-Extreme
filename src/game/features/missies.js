@@ -3,7 +3,7 @@
 //
 // Save data: state.ext.missies (tracker.js emptyExt): chain, stats, achieved, skills, points, tutorial.
 // The skills are read through skillBonus(state, id) (missies/skills.js). Hooks, all undone in dispose:
-//   - player.update is wrapped: running uses breath (Uithoudingsvermogen), walking/swimming/jumping is counted
+//   - player.update is wrapped: walking/swimming/jumping is counted
 //   - guards.sees and guards.update are wrapped: Sluipen shrinks the view range (not while chasing)
 //   - events: deal (Onderhandelen, Charme, sales), collected, frisked, caught, heat, newday, change,
 //     klanten:refused, klanten:verklikt (see docs/FEATURES.md)
@@ -17,9 +17,9 @@ import { MISSIONS, PLACE_NAMES } from '../missies/data.js';
 import { ensureExt, current, progressOf, describeGoal, evaluate, dialogue } from '../missies/tracker.js';
 import {
   observeChange, observeDeal, observeNewDay, observeHeat, observeFrisk, observeCaught, observeCollected, observeBoycott,
-  observeVerklikt, observeJump, observeBreath, observeNight, observeDepth, observeMove, markVisit, checkAchievements, applyBrew,
+  observeVerklikt, observeJump, observeNight, observeDepth, observeMove, markVisit, checkAchievements, applyBrew,
 } from '../missies/stats.js';
-import { BASE_RUN, skillBonus, skillLevel } from '../missies/skills.js';
+import { skillBonus, skillLevel } from '../missies/skills.js';
 import { STEPS, tutorialStep, tickHint, hideHint, skipTutorial } from '../missies/tutorial.js';
 import { pierPoint, waterPoint, spotBeside } from '../missies/places.js';
 import { createMentor, openMentor } from '../missies/mentor.js';
@@ -159,35 +159,17 @@ export default {
       game.on('klanten:verklikt', () => observeVerklikt(ext)),
     );
 
-    // ---- Uithoudingsvermogen (breath) and the walking, swimming and jumping counters. The base
-    // method runs exactly once, so a failing counter never stops the Mii; the error is logged.
+    // ---- The walking, swimming and jumping counters. The base method runs exactly once, so a
+    // failing counter never stops the Mii; the error is logged.
     // Walking, swimming and jumping are counted on foot only: a vehicle (player.external) drives the Mii.
     const baseUpdate = player.update;
-    let stamina = BASE_RUN;
-    let winded = false;
     player.update = (move, camYaw, dt, t) => {
       const onFoot = !player.external;
       let jump = false;
       try {
-        const max = BASE_RUN + skillBonus(game.state, 'uithouding');
-        stamina = Math.min(stamina, max);
-        const moving = Math.hypot(move.x, move.y) > 0.3;
-        if (move.run && moving && !winded) {
-          stamina -= dt;
-          if (stamina <= 0) {
-            stamina = 0;
-            winded = true;
-            observeBreath(ext);
-            toast('Buiten adem! Even wandelen, schat.');
-          }
-        } else {
-          stamina = Math.min(max, stamina + dt * (moving ? 1.5 : 3));
-          if (winded && stamina >= 4) winded = false;
-        }
-        if (winded) move.run = false;
         jump = !!move.jump && player.grounded && !player.swimming && onFoot;
       } catch (err) {
-        reportError('Missies: breath', err);
+        reportError('Missies: jump', err);
       }
       const x0 = player.pos.x;
       const z0 = player.pos.z;
@@ -275,7 +257,6 @@ export default {
       waypoint.setTarget(target(tut));
       syncApps();
       refresh();
-      hud.setBreath(stamina / (BASE_RUN + skillBonus(game.state, 'uithouding')), winded);
     };
     let acc = TICK;
     slow();

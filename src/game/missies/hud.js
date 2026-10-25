@@ -1,5 +1,4 @@
-// The HUD of the missions: the tracker under the top bar (current mission, progress, breath when
-// running), the tutorial hint (bottom centre, with x and 'Sla over'), and the banner for big news.
+// The HUD of the missions: the tracker under the top bar (current mission, progress), the tutorial hint (bottom centre, with x and 'Sla over'), and the banner for big news.
 // Browser only; the texts come from tracker.js and tutorial.js.
 
 export class Hud {
@@ -20,7 +19,6 @@ export class Hud {
         (this.title = h('span', { class: 'ms-title' })),
         (this.text = h('span', { class: 'ms-text' })),
         h('span', { class: 'ms-bar' }, (this.fill = h('i', { class: 'ms-fill' }))),
-        (this.breath = h('span', { class: 'ms-breath', hidden: true }, (this.breathFill = h('i')))),
       ),
     );
     this.tip = h(
@@ -68,15 +66,6 @@ export class Hud {
     const pct = m.goal ? Math.min(100, (m.value / m.goal) * 100) : 0;
     this.fill.style.width = `${pct.toFixed(1)}%`;
     this.tracker.classList.toggle('is-ready', !!m.ready);
-  }
-
-  /** Breath while running: frac 0..1, winded when out of breath. Hidden when full. */
-  setBreath(frac, winded) {
-    const show = winded || frac < 0.98;
-    this.breath.hidden = !show;
-    if (!show) return;
-    this.breathFill.style.transform = `scaleX(${Math.max(0, Math.min(1, frac)).toFixed(3)})`;
-    this.breath.classList.toggle('is-winded', !!winded);
   }
 
   /** The tutorial hint, or null to hide it. step: { index, total, text, hidden } */

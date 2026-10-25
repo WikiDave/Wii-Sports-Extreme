@@ -1,44 +1,7 @@
-// The CSS of the police feature: the stamina bar in the HUD, speech bubbles, the police panel
+// The CSS of the police feature: speech bubbles, the police panel
 // (phone and police post) and the arrest dialogs. Added by the feature (ctx.addStyle).
 
 export const STYLES = `
-.pz-stamina {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  font-weight: 800;
-  font-size: 0.9rem;
-  pointer-events: none;
-}
-.pz-stamina-bar {
-  width: 84px;
-  height: 9px;
-  border-radius: 99px;
-  background: #d5dbe2;
-  overflow: hidden;
-}
-.pz-stamina-bar > i {
-  display: block;
-  height: 100%;
-  width: 100%;
-  background: linear-gradient(90deg, #35e06a, #7ed957);
-}
-.pz-stamina.is-out .pz-stamina-bar > i {
-  background: linear-gradient(90deg, #ff6a2a, #ffb07a);
-}
-@media (max-width: 560px) {
-  .pz-stamina {
-    padding: 6px 10px;
-    font-size: 0.8rem;
-  }
-  .pz-stamina-bar {
-    width: 60px;
-  }
-}
 .pz-speech {
   position: absolute;
   left: 0;

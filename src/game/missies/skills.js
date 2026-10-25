@@ -1,20 +1,17 @@
-// Skills (vaardigheden): six perks with three levels each. A level costs one skill point.
+// Skills (vaardigheden): five perks with three levels each. A level costs one skill point.
 // Points come from your rank (1 at the start, plus 2 per rank) and from some missions (ext.points).
 // Pure functions, no DOM or three.js. Other systems read the effects with skillBonus(state, id):
 //   onderhandelen  extra money per sale, a fraction (0.04 per level)
-//   uithouding     seconds of running in reserve, on top of the base 15 (+5 per level)
 //   sluipen        fraction less view range for the guards (0.15 per level)
 //   brouwen        quality points added to a batch (0.05 per level: 1.00 becomes 1.05, 1.10, 1.15)
 //   zware-zak      extra storage units (+20 per level; economy.js and empire.js add bagBonus)
 //   charme         extra trust per sale (+2 per level)
 
 export const MAX_LEVEL = 3;
-export const BASE_RUN = 15;
 
 /** Effect per level (see the header). */
 const PER = {
   onderhandelen: 0.04,
-  uithouding: 5,
   sluipen: 0.15,
   brouwen: 0.05,
   'zware-zak': 20,
@@ -23,7 +20,6 @@ const PER = {
 
 export const SKILLS = [
   { id: 'onderhandelen', name: 'Onderhandelen', icon: '🤝', text: 'Klanten betalen per verkoop meer.', unit: (v) => `+${Math.round(v * 100)}% per verkoop` },
-  { id: 'uithouding', name: 'Uithoudingsvermogen', icon: '💨', text: 'Langer rennen voordat je buiten adem bent.', unit: (v) => `${BASE_RUN + v} s rennen` },
   { id: 'sluipen', name: 'Sluipen', icon: '🐾', text: 'Bewakers zien je pas van dichterbij.', unit: (v) => `${Math.round(v * 100)}% minder zicht` },
   { id: 'brouwen', name: 'Brouwen', icon: '🧪', text: 'Betere kwaliteit uit de machines.', unit: (v) => `+${Math.round(v * 100)} kwaliteit` },
   { id: 'zware-zak', name: 'Zware zak', icon: '🎒', text: 'Meer plek voor je voorraad.', unit: (v) => `+${v} stuks opslag` },

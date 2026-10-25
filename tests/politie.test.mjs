@@ -5,7 +5,6 @@ import { arrestPlan, resolveArrest, skipTime, recentArrests, takeGoods, goodsCar
 import { caught, heatLevel } from '../src/game/police.js';
 import { planRaids, applyRaids, raidChance, securityOf, seizeShare } from '../src/game/politie/raid.js';
 import { bribeCop, bribeBlocked, bribeCost, buyDisguise, isDisguised, BRIBE_DROP, DISGUISE_PRICE } from '../src/game/politie/shop.js';
-import { newStamina, stepStamina, canRun, STAMINA_MAX, WAKE_AT } from '../src/game/politie/stamina.js';
 import { makeRoute, along, routeAt, driveCar, crossed } from '../src/game/politie/route.js';
 import { carsFor, roadblockFor, checkpointOutcome, CHECKPOINT_HEAT } from '../src/game/politie/cars.js';
 import { PERSONAS, personaOf, partnerOf, hearRadius, radioRecipients } from '../src/game/politie/personality.js';
@@ -327,29 +326,6 @@ assert.ok(OPENERS.includes(opener(5)));
   assert.equal(buyDisguise(g).reason, 'al');
   g.state.day += 1;
   assert.equal(isDisguised(g.state), false, 'the disguise is for one day');
-}
-
-// ---------------------------------------------------------------- stamina
-{
-  const st = newStamina();
-  assert.equal(canRun(st), true);
-  stepStamina(st, { moving: true, running: true }, 1);
-  assert.equal(st.value, STAMINA_MAX - 26);
-  stepStamina(st, { moving: true, running: true, swimming: true }, 1);
-  assert.equal(st.value, STAMINA_MAX - 26 - 14, 'swimming drains less');
-  stepStamina(st, { moving: true }, 1);
-  assert.equal(st.value, STAMINA_MAX - 26 - 14 + 12, 'walking refills');
-  stepStamina(st, {}, 1);
-  assert.equal(st.value, STAMINA_MAX - 26 - 14 + 12 + 20, 'standing still refills faster');
-  const dry = { value: 5, out: false };
-  stepStamina(dry, { moving: true, running: true }, 1);
-  assert.equal(dry.value, 0);
-  assert.equal(canRun(dry), false, 'out of breath');
-  stepStamina(dry, {}, 1);
-  assert.equal(canRun(dry), false, 'still out until it is back at 30');
-  stepStamina(dry, {}, 2);
-  assert.ok(dry.value >= WAKE_AT);
-  assert.equal(canRun(dry), true);
 }
 
 // ---------------------------------------------------------------- police cars and routes

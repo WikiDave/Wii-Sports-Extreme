@@ -60,7 +60,6 @@ export const ACHIEVEMENTS = [
   { id: 'niet-welkom', name: 'Niet welkom', text: 'Een klant wil je even niet zien.', group: 'politie', key: 'boycotts', goal: 1 },
   // grappig
   { id: 'springkampioen', name: 'Springkampioen', text: 'Spring 25 keer.', group: 'grappig', key: 'jumps', goal: 25 },
-  { id: 'buiten-adem', name: 'Buiten adem', text: 'Raak buiten adem tijdens het rennen.', group: 'grappig', key: 'breathless', goal: 1 },
   { id: 'oma-trots', name: 'Oma is trots', text: 'Praat 5 keer met Oma Mies.', group: 'grappig', key: 'talks', goal: 5 },
   { id: 'goede-leerling', name: 'Goede leerling', text: 'Maak 5 opdrachten af.', group: 'grappig', key: 'missionsDone', goal: 5 },
   { id: 'getalenteerd', name: 'Getalenteerd', text: 'Koop 6 niveaus van vaardigheden.', group: 'grappig', key: 'skillLevels', goal: 6 },

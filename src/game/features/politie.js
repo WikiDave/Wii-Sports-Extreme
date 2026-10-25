@@ -9,7 +9,6 @@
 //   - raids on the morning after heat 3 or more: stock seized, unless the place has security upgrades
 //     (state.ext.panden.security[id]); the message goes to the Politie app
 //   - the arrest: a cutscene at the post, bail or a night in the cell; repeated catches raise the sentence
-//   - stamina ("puf") for running, a bar in the HUD
 //   - the phone app "Politie" with the same panel as the desk
 //   - rivals who taunt you when you walk past (world/rivalView.js walks them about)
 //
@@ -22,7 +21,6 @@ import { planRaids, applyRaids } from '../politie/raid.js';
 import { openArrestScene } from '../politie/cutscene.js';
 import { skipTime } from '../politie/arrest.js';
 import { BAIL_OUT, MORNING, RADIO, CHECKPOINT_CLEAN, CHECKPOINT_SEARCHED, ROADBLOCK, HIDE_IN } from '../politie/texts.js';
-import { newStamina, stepStamina, canRun } from '../politie/stamina.js';
 import { PoliceCars } from '../politie/cars3d.js';
 import { checkpointOutcome, CHECKPOINT_NEAR } from '../politie/cars.js';
 import { placeBushes, hidingSpots, hideSpotAt } from '../politie/hide.js';
@@ -36,7 +34,6 @@ import { addHeat, carried, heatLevel } from '../police.js';
 import { PATHS, pathDistance } from '../world/zones.js';
 import { RIVALS } from '../data/rivals.js';
 import { unregisterApp } from '../phoneApps.js';
-import { reportError } from '../state.js';
 
 const POST_SEARCH = { x: 236, z: 40 }; // the police post is built near here, in Havenstad
 const DOOR_OFFSET = 4.6; // the front door is this far in front of the post's centre (+z)
@@ -62,7 +59,7 @@ function findPostSpot({ heightAt, zoneAt, colliders }, from) {
 export default {
   id: 'politie',
   install(ctx) {
-    const { game, scene, player, props, interactions, guards, rival, audio, toast, h, modal, heightAt, zoneAt, input, follow, hudBar, screen, camera, shadowsOn, registerApp, addStyle } = ctx;
+    const { game, scene, player, props, interactions, guards, rival, audio, toast, h, modal, heightAt, zoneAt, follow, screen, camera, shadowsOn, registerApp, addStyle } = ctx;
     addStyle(STYLES);
     pol(game.state);
     const offs = [];
@@ -138,32 +135,6 @@ export default {
         toast(CHECKPOINT_SEARCHED);
       } else toast(CHECKPOINT_CLEAN);
     };
-
-    // ------------------------------------------------------------ stamina: running drains it
-    const stamina = newStamina();
-    let intent = 0;
-    let wantRun = false;
-    const baseMove = input.move.bind(input);
-    input.move = () => {
-      const m = baseMove();
-      try {
-        intent = Math.hypot(m.x, m.y);
-        wantRun = !!m.run;
-        return m.run && !canRun(stamina) ? { ...m, run: false } : m;
-      } catch (err) {
-        // If the stamina rule fails, the Mii moves as the player steers (the base input).
-        reportError('Politie: input.move', err);
-        return m;
-      }
-    };
-    undo.push(() => {
-      delete input.move;
-    });
-    const fill = h('i');
-    const staminaEl = h('div', { class: 'pz-stamina', title: 'Puf: rennen kost puf. Lopen en stilstaan geven het terug.' }, h('span', {}, 'Puf'), h('span', { class: 'pz-stamina-bar' }, fill));
-    hudBar.append(staminaEl);
-    undo.push(() => staminaEl.remove());
-    let shownStamina = -1;
 
     // ------------------------------------------------------------ events: radio, raids, arrests
     offs.push(game.on('politie:arrest', () => {})); // a listener: caught() waits for the cutscene
@@ -247,13 +218,6 @@ export default {
     return {
       update(t, dt, paused) {
         const s = game.state;
-        if (!paused) stepStamina(stamina, { moving: intent > 0.05, running: wantRun && intent > 0.05 && canRun(stamina), swimming: !!player.swimming }, dt);
-        const v = Math.round(stamina.value);
-        if (v !== shownStamina) {
-          shownStamina = v;
-          fill.style.width = `${v}%`;
-          staminaEl.classList.toggle('is-out', stamina.out);
-        }
         if (!paused && !cutscene && pol(s).pending) openArrest();
         if (!paused) {
           cars.update(dt, t, player.pos, heatLevel(s));

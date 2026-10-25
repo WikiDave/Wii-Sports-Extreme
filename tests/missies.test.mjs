@@ -24,7 +24,7 @@ for (const m of MISSIONS) {
 for (let k = 1; k <= 6; k++) assert.ok(describeGoal(openMission(k).goal).length > 5);
 assert.ok(ACHIEVEMENTS.length >= 40, 'about 40 achievements');
 assert.equal(new Set(ACHIEVEMENTS.map((a) => a.id)).size, ACHIEVEMENTS.length, 'achievement ids are unique');
-assert.equal(SKILLS.length, 6);
+assert.equal(SKILLS.length, 5);
 
 // ---- a new game: the first mission is to talk to Oma Mies, she hands in and starts the next one
 const g = new Game(null);
@@ -114,7 +114,6 @@ assert.equal(boostKey('p:limonade:fris:100', 0.05), 'p:limonade:fris:105');
 assert.equal(boostKey('p:snoep:zoet+fris:140', 0.15), 'p:snoep:zoet+fris:150', 'capped at 150');
 assert.equal(boostKey('citroen', 0.05), 'citroen', 'goods are not changed');
 assert.equal(bagBonus({ ext: { missies: { skills: { 'zware-zak': 2 } } } }), 40);
-assert.ok(effectText('uithouding', 2).includes('25'), 'uithouding at two levels: 25 s');
 assert.equal(effectText('sluipen', 0), '');
 assert.ok(SKILL_IDS.every((id) => SKILLS.find((x) => x.id === id).unit(0.04) !== undefined));
 

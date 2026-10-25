@@ -2040,7 +2040,7 @@ button {
 
 /* Phones: the buttons, the clock and the cash take the first row. The rank and the meter take the
    second row, and the rank grows to fill it so its name always fits. Chips that features add to the
-   bar (stamina, dirty cash, vehicle gauge) come after the meter and wrap onto the rows below. */
+   bar (dirty cash, vehicle gauge) come after the meter and wrap onto the rows below. */
 @media (max-width: 560px) {
   .island-bar {
     gap: 6px;

@@ -27,10 +27,6 @@ export const STYLES = `
 .ms-bar { height: 7px; margin-top: 6px; border-radius: 99px; background: #dbe9f3; overflow: hidden; }
 .ms-fill { display: block; height: 100%; width: 0; border-radius: 99px; background: #ffb020; transition: width 0.4s ease; }
 .is-ready .ms-fill { background: #35e06a; }
-.ms-breath { height: 5px; margin-top: 6px; border-radius: 99px; background: rgba(0, 0, 0, 0.08); overflow: hidden; }
-.ms-breath[hidden] { display: none; }
-.ms-breath i { display: block; height: 100%; width: 100%; background: #3fb6ef; transform-origin: left center; transition: transform 0.2s linear, background 0.2s; }
-.ms-breath.is-winded i { background: #ff7a59; }
 .ms-tip {
   position: absolute;
   left: 12px;

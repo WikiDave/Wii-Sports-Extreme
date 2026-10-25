@@ -32,7 +32,6 @@ export function newStats() {
     maxHeat: 0, // highest meter level reached (0..4)
     boycotts: 0,
     verklikt: 0,
-    breathless: 0, // times running ran out of breath
     talks: 0, // talks with Oma Mies
     unseen: 0, // sales where no guard was looking
   };
@@ -93,7 +92,6 @@ export const observeCollected = (ext, items) => (ext.stats.collected += items);
 export const observeBoycott = (ext) => ext.stats.boycotts++;
 export const observeVerklikt = (ext) => ext.stats.verklikt++;
 export const observeJump = (ext) => ext.stats.jumps++;
-export const observeBreath = (ext) => ext.stats.breathless++;
 export const observeNight = (ext, minutes) => (ext.stats.nightMin += minutes);
 export const observeDepth = (ext, depth) => (ext.stats.deepest = Math.max(ext.stats.deepest, depth));
 
@@ -140,7 +138,6 @@ export function metricsOf(game, ext) {
     maxHeat: st.maxHeat,
     boycotts: st.boycotts,
     verklikt: st.verklikt,
-    breathless: st.breathless,
     jumps: st.jumps,
     talks: st.talks,
     missionsDone: ext.done,
